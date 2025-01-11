@@ -1,0 +1,9 @@
+flask
+flask-apscheduler
+flask-sqlalchemy
+pytest
+pytest-cov
+pytest-mock
+ruff
+requests
+requests-mock

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="flex flex-row gap-x-8">
+    <div class="w-full max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 dark:bg-gray-800 dark:border-gray-700">
+        <h5 class="mb-3 text-base font-semibold text-gray-900 md:text-xl dark:text-white">
+            Monzo Account
+        </h5>
+        <p class="text-sm font-normal text-gray-500 dark:text-gray-400">
+            Connect a Monzo account to add money to a pot when you spend on your credit card.
+        </p>
+        <ul class="my-4 space-y-3">
+            <li>
+                <a href="{{ monzo_provider.create_oauth_request_url() }}" class="flex items-center p-3 text-base font-bold text-gray-900 rounded-lg bg-gray-50 hover:bg-gray-100 group hover:shadow dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white">
+                    <img class="h-6" src="{{ url_for('static', filename='img/') }}{{ monzo_provider.icon_name }}" />
+                    <span class="flex-1 ms-3 whitespace-nowrap">Add Monzo Account</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="w-full max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 dark:bg-gray-800 dark:border-gray-700">
+        <h5 class="mb-3 text-base font-semibold text-gray-900 md:text-xl dark:text-white">
+            Credit Card
+        </h5>
+        <p class="text-sm font-normal text-gray-500 dark:text-gray-400">
+            Connect a credit card to sync your Monzo credit card pot balance as you spend.
+        </p>
+        <ul class="my-4 space-y-3">
+            {% for type, provider in credit_providers.items() %}
+            <li>
+                <a href="{{ provider.create_oauth_request_url() }}" class="flex items-center p-3 text-base font-bold text-gray-900 rounded-lg bg-gray-50 hover:bg-gray-100 group hover:shadow dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white">
+                    <img class="h-6" src="{{ url_for('static', filename='img/') }}{{ provider.icon_name }}" />
+                    <span class="flex-1 ms-3 whitespace-nowrap">{{ provider.name }}</span>
+                </a>
+            </li>
+            {% endfor %}
+            <li>
+                <a href="#" class="flex items-center p-3 text-base font-bold text-gray-900 rounded-lg bg-gray-50 hover:bg-gray-100 group hover:shadow dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white">
+                    <span class="flex-1 ms-3 whitespace-nowrap">More coming soon...</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</section>
+{% endblock %}

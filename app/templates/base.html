@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monzo Credit Card Pot Sync</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dist/output.css') }}">
+</head>
+<body class="bg-white dark:bg-gray-900 dark:text-white">
+    {% include 'nav.html' %}
+    
+    <div class="flex justify-center">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <div class="flex justify-center py-10 w-full">
+        {% block content %} 
+        {% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
+</body>
+</html>
