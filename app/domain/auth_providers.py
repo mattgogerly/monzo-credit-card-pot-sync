@@ -18,6 +18,7 @@ repository = SqlAlchemySettingRepository(db)
 class AuthProviderType(Enum):
     MONZO = "Monzo"
     AMEX = "American Express"
+    BARCLAYCARD = "Barclaycard"
 
 
 class AuthProvider:
@@ -154,9 +155,18 @@ class AmericanExpressAuthProvider(TrueLayerAuthProvider):
 
     def get_provider_specific_oauth_request_params(self) -> dict:
         return {"providers": "uk-ob-amex", "scope": self.oauth_scopes}
+    
+
+class BarclaycardAuthProvider(TrueLayerAuthProvider):
+    def __init__(self):
+        super().__init__("Barclaycard", AuthProviderType.BARCLAYCARD.value, "barclaycard.svg")
+
+    def get_provider_specific_oauth_request_params(self) -> dict:
+        return {"providers": "uk-ob-barclaycard", "scope": self.oauth_scopes}
 
 
 provider_mapping: dict[AuthProviderType, AuthProvider] = {
     AuthProviderType.MONZO: MonzoAuthProvider(),
     AuthProviderType.AMEX: AmericanExpressAuthProvider(),
+    AuthProviderType.BARCLAYCARD: BarclaycardAuthProvider(),
 }
