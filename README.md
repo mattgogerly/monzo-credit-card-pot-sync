@@ -5,6 +5,8 @@ This project is a tool to sync the balance of your credit cards and a Monzo pot.
 ## Features
 
 - Automatically add and remove funds from a Monzo pot as you spend on your credit cards
+- Choose a Monzo pot to keep synced, and change it at any time
+- Connect all of your credit card providers to keep your pot up to date
 
 ## Installation
 
@@ -16,9 +18,17 @@ This project is a tool to sync the balance of your credit cards and a Monzo pot.
     ```bash
     cd monzo-credit-card-pot-sync
     ```
-3. Install dependencies:
+3. Install Python dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+4. Install web dependencies:
     ```bash
     npm install
+    ```
+5. Build static web assets:
+    ```bash
+    npm run build-css
     ```
 
 ## Usage
