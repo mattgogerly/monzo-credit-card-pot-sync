@@ -58,6 +58,7 @@ def sync_balance():
 
                 log.info(f"Checking health of {credit_account.type} connection")
                 credit_account.ping()
+                log.info(f"{credit_account.type} connection is healthy")
             except AuthException:
                 log.error(
                     f"Failed to check health of {credit_account.type} connection; connection will be removed"

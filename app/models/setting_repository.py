@@ -12,6 +12,10 @@ class SqlAlchemySettingRepository:
         return SettingModel(key=setting.key, value=setting.value)
 
     def _to_domain(self, model: SettingModel) -> Setting:
+        # Convert the string 'True' or 'False' to a boolean
+        if (model.value == 'True') or (model.value == 'False'):
+            return Setting(key=model.key, value=model.value == 'True')
+        
         return Setting(key=model.key, value=model.value)
 
     def get_all(self) -> list[Setting]:
