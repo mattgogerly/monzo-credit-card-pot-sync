@@ -1,5 +1,9 @@
 # Monzo Credit Card Pot Sync
 
+![GitHub Release](https://img.shields.io/github/v/release/mattgogerly/monzo-credit-card-pot-sync)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/mattgogerly/monzo-credit-card-pot-sync/build.yml?branch=main)
+![Coveralls](https://img.shields.io/coverallsCoverage/github/mattgogerly/monzo-credit-card-pot-sync?branch=main)
+
 This project is a tool to sync the balance of your credit cards and a Monzo pot. It allows you to use credit cards for your day-to-day spend, all the while ensuring your Monzo pot has enough funds to pay off bills in full - providing a seamless experience for managing your finances.
 
 ## Features
