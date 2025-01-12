@@ -1,12 +1,12 @@
 import pytest
-from app.errors import AuthException
 
 from app.domain.auth_providers import (
-    MonzoAuthProvider,
     AmericanExpressAuthProvider,
     AuthProviderType,
+    MonzoAuthProvider,
     provider_mapping,
 )
+from app.errors import AuthException
 
 
 def test_monzo_provider_initialization(monzo_provider):

@@ -1,6 +1,6 @@
-from flask import render_template
+from flask import Blueprint, render_template
 
-from app.web import home_bp
+home_bp = Blueprint("home", __name__)
 
 
 @home_bp.route("/", methods=["GET"])

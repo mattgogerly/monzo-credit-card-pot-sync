@@ -1,8 +1,8 @@
 import pytest
 
 from app.domain.auth_providers import (
-    MonzoAuthProvider,
     AmericanExpressAuthProvider,
+    MonzoAuthProvider,
 )
 from app.models.setting_repository import SqlAlchemySettingRepository
 

@@ -1,11 +1,12 @@
 import logging
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 from app.domain.settings import Setting
 from app.extensions import db
 from app.models.setting_repository import SqlAlchemySettingRepository
-from app.web import settings_bp
+
+settings_bp = Blueprint("settings", __name__)
 
 log = logging.getLogger("settings")
 repository = SqlAlchemySettingRepository(db)

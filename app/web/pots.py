@@ -1,4 +1,4 @@
-from flask import flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy.exc import NoResultFound
 
 from app.domain.accounts import MonzoAccount
@@ -6,7 +6,8 @@ from app.domain.settings import Setting
 from app.extensions import db
 from app.models.account_repository import SqlAlchemyAccountRepository
 from app.models.setting_repository import SqlAlchemySettingRepository
-from app.web import pots_bp
+
+pots_bp = Blueprint("pots", __name__)
 
 account_repository = SqlAlchemyAccountRepository(db)
 setting_repository = SqlAlchemySettingRepository(db)

@@ -1,11 +1,11 @@
-from flask import flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy.exc import NoResultFound
 
 from app.domain.auth_providers import AuthProviderType, provider_mapping
 from app.extensions import db
 from app.models.account_repository import SqlAlchemyAccountRepository
-from app.web import accounts_bp
 
+accounts_bp = Blueprint("accounts", __name__)
 repository = SqlAlchemyAccountRepository(db)
 
 

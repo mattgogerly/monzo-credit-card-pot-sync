@@ -1,6 +1,6 @@
 from time import time
 
-from flask import flash, redirect, request, url_for
+from flask import Blueprint, flash, redirect, request, url_for
 
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
 from app.domain.auth_providers import (
@@ -10,7 +10,8 @@ from app.domain.auth_providers import (
 )
 from app.extensions import db
 from app.models.account_repository import SqlAlchemyAccountRepository
-from app.web import auth_bp
+
+auth_bp = Blueprint("auth", __name__)
 
 account_repository = SqlAlchemyAccountRepository(db)
 
