@@ -2,7 +2,7 @@ import logging
 
 from flask import Flask
 
-from config import Config
+from app.config import Config
 
 
 def create_app():
