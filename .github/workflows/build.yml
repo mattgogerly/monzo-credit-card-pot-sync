@@ -1,12 +1,12 @@
 name: Build and Dockerize
 
 on:
-    push:
-        branches:
-            - main
-    pull_request:
-        branches:
-            - main
+  release:
+    types: [ published ]
+
+  push:
+    branches:
+      - main
 
 jobs:
     build:
@@ -39,6 +39,9 @@ jobs:
 
         - name: Test
           run: python -m pytest . --cov=app
-
-        - name: Build Docker image
-          run: docker build .
+        
+        - name: Build & Push Docker image
+          uses: macbre/push-to-ghcr@master
+          with:
+            image_name: ${{ github.repository }}
+            github_token: ${{ secrets.GH_TOKEN }}
