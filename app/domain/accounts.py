@@ -21,24 +21,28 @@ class Account:
     def is_token_within_expiry_window(self):
         # returns True if the token expires in the next two minutes, or has already expired
         return self.token_expiry - int(time()) <= 120
+    
+    def refresh_access_token(self):
+        log.info(
+            f"{self.type} access token is within expiry window, refreshing tokens"
+        )
 
-    def get_auth_header(self):
-        if self.is_token_within_expiry_window():
+        try:
+            tokens = self.auth_provider.refresh_access_token(self.refresh_token)
+            self.access_token = tokens["access_token"]
+            self.refresh_token = tokens["refresh_token"]
+            self.token_expiry = int(time()) + tokens["expires_in"]
+
             log.info(
-                f"{self.type} access token is within expiry window, refreshing tokens"
+                f"Successfully refreshed {self.type} access token, new expiry time is {self.token_expiry}"
             )
-
-            try:
-                tokens = self.auth_provider.refresh_access_token(self.refresh_token)
-                self.access_token = tokens["access_token"]
-                self.refresh_token = tokens["refresh_token"]
-                self.token_expiry = int(time()) + tokens["expires_in"]
-            except KeyError as e:
-                raise AuthException(e)
-            except AuthException as e:
-                log.error(f"Failed to refresh access token for {self.type}")
-                raise e
-
+        except KeyError as e:
+            raise AuthException(e)
+        except AuthException as e:
+            log.error(f"Failed to refresh access token for {self.type}")
+            raise e
+    
+    def get_auth_header(self):
         return {"Authorization": f"Bearer {self.access_token}"}
 
 

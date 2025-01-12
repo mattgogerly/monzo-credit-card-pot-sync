@@ -26,6 +26,11 @@ def sync_balance():
             log.info("Retrieving Monzo connection")
             monzo_account: MonzoAccount = account_repository.get_monzo_account()
 
+            log.info("Checking if Monzo access token needs refreshing")
+            if monzo_account.is_token_within_expiry_window():
+                monzo_account.refresh_access_token()
+                account_repository.save(monzo_account)
+
             log.info("Checking health of Monzo connection")
             monzo_account.ping()
             log.info("Monzo connection is healthy")
@@ -46,6 +51,11 @@ def sync_balance():
         log.info(f"Retrieved {len(credit_accounts)} credit card connections")
         for credit_account in credit_accounts:
             try:
+                log.info(f"Checking if {credit_account.type} access token needs refreshing")
+                if credit_account.is_token_within_expiry_window():
+                    credit_account.refresh_access_token()
+                    account_repository.save(credit_account)
+
                 log.info(f"Checking health of {credit_account.type} connection")
                 credit_account.ping()
             except AuthException:
