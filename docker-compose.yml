@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  monzo-credit-card-pot-sync:
+    image: ghcr.io/mattgogerly/monzo-credit-card-pot-sync:latest
+    container_name: monzo-credit-card-pot-sync
+    restart: always
+    environment:
+      - DATABASE_URI=sqlite:////monzo-credit-card-pot-sync/data/app.db
+    ports:
+      - 1337:1337
+    volumes:
+      - data:/monzo-credit-card-pot-sync/data:rw
+
+volumes:
+  data:
