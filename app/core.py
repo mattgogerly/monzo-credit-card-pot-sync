@@ -71,6 +71,7 @@ def sync_balance():
 
         if not settings_repository.get("enable_sync"):
             log.info("Balance sync is disabled; exiting sync loop")
+            return
 
         # 2
         try:
