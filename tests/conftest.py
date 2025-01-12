@@ -35,7 +35,7 @@ def setting_repository(mocker):
 def test_client():
     test_config = {
         "TESTING": True,
-        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory",
+        "SQLALCHEMY_DATABASE_URI": "sqlite://",
         "SECRET_KEY": "testing",
     }
     flask_app = create_app(test_config)
