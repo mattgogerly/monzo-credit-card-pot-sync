@@ -105,8 +105,7 @@ def sync_balance():
             balance = credit_account.get_total_balance()
             log.info(f"Total {credit_account.type} card balance: £{balance / 100}")
             credit_balance += balance
-
-        log.info(f"Total credit card balance is £{balance / 100}")
+        log.info(f"Total credit card balance is £{credit_balance / 100}")
 
         # 4
         try:
@@ -128,7 +127,7 @@ def sync_balance():
                 log.error(
                     f"Monzo account balance is insufficient to sync pot; exiting sync loop"
                 )
-                settings_repository.save(Setting("enable_sync", False))
+                settings_repository.save(Setting("enable_sync", "False"))
                 monzo_account.send_notification(
                     "Balance Insufficient To Sync Credit Card Pot",
                     "Sync has been disabled. Top up your Monzo account and re-enable to resume syncing with your credit card pot",
