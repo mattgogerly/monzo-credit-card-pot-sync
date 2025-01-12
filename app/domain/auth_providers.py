@@ -155,11 +155,13 @@ class AmericanExpressAuthProvider(TrueLayerAuthProvider):
 
     def get_provider_specific_oauth_request_params(self) -> dict:
         return {"providers": "uk-ob-amex", "scope": self.oauth_scopes}
-    
+
 
 class BarclaycardAuthProvider(TrueLayerAuthProvider):
     def __init__(self):
-        super().__init__("Barclaycard", AuthProviderType.BARCLAYCARD.value, "barclaycard.svg")
+        super().__init__(
+            "Barclaycard", AuthProviderType.BARCLAYCARD.value, "barclaycard.svg"
+        )
 
     def get_provider_specific_oauth_request_params(self) -> dict:
         return {"providers": "uk-ob-barclaycard", "scope": self.oauth_scopes}

@@ -53,7 +53,9 @@ def sync_balance():
         log.info(f"Retrieved {len(credit_accounts)} credit card connections")
         for credit_account in credit_accounts:
             try:
-                log.info(f"Checking if {credit_account.type} access token needs refreshing")
+                log.info(
+                    f"Checking if {credit_account.type} access token needs refreshing"
+                )
                 if credit_account.is_token_within_expiry_window():
                     credit_account.refresh_access_token()
                     account_repository.save(credit_account)
@@ -113,9 +115,7 @@ def sync_balance():
             account_balance = monzo_account.get_balance()
             log.info(f"Monzo account balance is £{account_balance / 100}")
         except AuthException:
-            log.error(
-                "Failed to retrieve Monzo account balance; exiting sync loop"
-            )
+            log.error("Failed to retrieve Monzo account balance; exiting sync loop")
             return
 
         # 5
@@ -125,7 +125,7 @@ def sync_balance():
             difference = credit_balance - pot_balance
             if account_balance < difference:
                 log.error(
-                    f"Monzo account balance is insufficient to sync pot; exiting sync loop"
+                    "Monzo account balance is insufficient to sync pot; exiting sync loop"
                 )
                 settings_repository.save(Setting("enable_sync", "False"))
                 monzo_account.send_notification(
@@ -133,7 +133,7 @@ def sync_balance():
                     "Sync has been disabled. Top up your Monzo account and re-enable to resume syncing with your credit card pot",
                 )
                 return
-            
+
             log.info(f"Adding £{difference / 100} to pot to sync balance")
             monzo_account.add_to_pot(pot_id, difference)
         else:

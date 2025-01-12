@@ -21,11 +21,9 @@ class Account:
     def is_token_within_expiry_window(self):
         # returns True if the token expires in the next two minutes, or has already expired
         return self.token_expiry - int(time()) <= 120
-    
+
     def refresh_access_token(self):
-        log.info(
-            f"{self.type} access token is within expiry window, refreshing tokens"
-        )
+        log.info(f"{self.type} access token is within expiry window, refreshing tokens")
 
         try:
             tokens = self.auth_provider.refresh_access_token(self.refresh_token)
@@ -41,7 +39,7 @@ class Account:
         except AuthException as e:
             log.error(f"Failed to refresh access token for {self.type}")
             raise e
-    
+
     def get_auth_header(self):
         return {"Authorization": f"Bearer {self.access_token}"}
 
@@ -60,11 +58,12 @@ class MonzoAccount(Account):
             f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
         )
         return response.json()["accounts"][0]["id"]
-    
+
     def get_balance(self) -> int:
         query = parse.urlencode({"account_id": self.get_account_id()})
         response = r.get(
-            f"{self.auth_provider.api_url}/balance?{query}", headers=self.get_auth_header(),
+            f"{self.auth_provider.api_url}/balance?{query}",
+            headers=self.get_auth_header(),
         )
         return response.json()["balance"]
 
