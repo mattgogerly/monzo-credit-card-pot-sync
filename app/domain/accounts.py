@@ -33,6 +33,8 @@ class Account:
                 self.access_token = tokens["access_token"]
                 self.refresh_token = tokens["refresh_token"]
                 self.token_expiry = int(time()) + tokens["expires_in"]
+            except KeyError as e:
+                raise AuthException(e)
             except AuthException as e:
                 log.error(f"Failed to refresh access token for {self.type}")
                 raise e

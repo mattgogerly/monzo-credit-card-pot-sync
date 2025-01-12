@@ -6,12 +6,13 @@ from app.extensions import db
 from app.models.account_repository import SqlAlchemyAccountRepository
 
 accounts_bp = Blueprint("accounts", __name__)
-repository = SqlAlchemyAccountRepository(db)
+
+account_repository = SqlAlchemyAccountRepository(db)
 
 
 @accounts_bp.route("/", methods=["GET"])
 def index():
-    accounts = repository.get_all()
+    accounts = account_repository.get_all()
     return render_template("accounts/index.html", accounts=accounts)
 
 
@@ -36,7 +37,7 @@ def add_account():
 def delete_account():
     account_type = request.form["account_type"]
     try:
-        repository.delete(account_type)
+        account_repository.delete(account_type)
         flash("Account deleted")
     except NoResultFound:
         pass

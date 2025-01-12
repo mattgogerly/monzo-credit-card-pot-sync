@@ -33,11 +33,10 @@ def sync_balance():
             log.error("No Monzo connection configured; sync will not run")
             monzo_account = None
         except AuthException:
-            # TODO remove account
             log.error(
                 "Failed to check health of Monzo connection; connection will be removed & sync will not run"
             )
-            account_repository.delete(monzo_account)
+            account_repository.delete(monzo_account.type)
             monzo_account = None
 
         log.info("Retrieving credit card connections")
