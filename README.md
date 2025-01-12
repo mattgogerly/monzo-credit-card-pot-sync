@@ -1,6 +1,6 @@
 # Monzo Credit Card Pot Sync
 
-![GitHub Release](https://img.shields.io/github/v/release/mattgogerly/monzo-credit-card-pot-sync)
+![GitHub Release](https://img.shields.io/github/v/release/mattgogerly/monzo-credit-card-pot-sync?include_prereleases)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/mattgogerly/monzo-credit-card-pot-sync/build.yml?branch=main)
 ![Coveralls](https://img.shields.io/coverallsCoverage/github/mattgogerly/monzo-credit-card-pot-sync?branch=main)
 
