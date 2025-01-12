@@ -15,7 +15,6 @@ repository = SqlAlchemySettingRepository(db)
 @settings_bp.route("/", methods=["GET"])
 def index():
     settings = {s.key: s.value for s in repository.get_all()}
-    print(settings)
     return render_template("settings/index.html", settings=settings)
 
 
