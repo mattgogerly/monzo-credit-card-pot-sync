@@ -12,3 +12,4 @@ docs/_build/
 .pytest_cache/
 node_modules/
 *.db
+instance/
