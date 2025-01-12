@@ -3,6 +3,7 @@ import logging
 from sqlalchemy.exc import NoResultFound
 
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
+from app.domain.settings import Setting
 from app.errors import AuthException
 from app.extensions import db, scheduler
 from app.models.account_repository import SqlAlchemyAccountRepository
@@ -18,7 +19,8 @@ settings_repository = SqlAlchemySettingRepository(db)
 # 1. Fetch all accounts from the database
 # 2. Determine the designated pot owned by the Monzo account
 # 3. Calculate the total balance of the credit accounts
-# 4. Move the difference from the Monzo account to the pot
+# 4. Get the balance of the Monzo account, so we can check if there's enough money to move
+# 5. Move the difference from the Monzo account to the pot
 def sync_balance():
     with scheduler.app.app_context():
         # 1
@@ -107,10 +109,32 @@ def sync_balance():
         log.info(f"Total credit card balance is £{balance / 100}")
 
         # 4
+        try:
+            log.info("Retrieving balance of Monzo account")
+            account_balance = monzo_account.get_balance()
+            log.info(f"Monzo account balance is £{account_balance / 100}")
+        except AuthException:
+            log.error(
+                "Failed to retrieve Monzo account balance; exiting sync loop"
+            )
+            return
+
+        # 5
         if credit_balance == pot_balance:
             log.info("Credit card & pot balances are equal, nothing to sync")
         elif credit_balance > pot_balance:
             difference = credit_balance - pot_balance
+            if account_balance < difference:
+                log.error(
+                    f"Monzo account balance is insufficient to sync pot; exiting sync loop"
+                )
+                settings_repository.save(Setting("enable_sync", False))
+                monzo_account.send_notification(
+                    "Balance Insufficient To Sync Credit Card Pot",
+                    "Sync has been disabled. Top up your Monzo account and re-enable to resume syncing with your credit card pot",
+                )
+                return
+            
             log.info(f"Adding £{difference / 100} to pot to sync balance")
             monzo_account.add_to_pot(pot_id, difference)
         else:
