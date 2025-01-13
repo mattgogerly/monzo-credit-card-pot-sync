@@ -41,7 +41,20 @@ This project is a tool to sync the balance of your credit cards and a Monzo pot.
     ```bash
     npm start
     ```
-2. Open your browser and navigate to `http://localhost:1337`.
+2. Open your browser and navigate to `http://localhost:1337`
+
+## Configuration
+
+1. Log in to the Monzo developer portal at `https://developers.monzo.com` (note you'll need to approve the login in the app)
+2. Create a client, entering the redirect URL as `http://localhost:1337/auth/callback/monzo` and confidentiality as `Confidential`
+3. Make a note of the client ID and client secret
+4. Login to the TrueLayer console at `https://console.truelayer.com`
+5. Create an application
+6. Switch to the `Live` environment and add `http://localhost:1337/auth/callback/truelayer` as a redirect URI
+7. Copy the client ID and client secret
+8. Navigate to `https://localhost:1337/settings` and save the Monzo and TrueLayer client IDs and secrets
+
+You're all set! Head to `https://localhost:1337/accounts` to connect your Monzo account and credit cards.
 
 ## Docker
 
@@ -51,8 +64,7 @@ Releases are also published as container images on GitHub Container Registry.
    ```bash
    docker compose up -d
    ```
-
-2. Open your browser and navigate to `http://localhost:1337`.
+2. Open your browser and navigate to `http://localhost:1337`
 
 ## License
 
