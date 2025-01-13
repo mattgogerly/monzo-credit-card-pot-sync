@@ -24,10 +24,10 @@ def create_app(test_config=None):
     with app.app_context():
         db.create_all()
 
-    from .web.home import home_bp
     from .web.accounts import accounts_bp
-    from .web.pots import pots_bp
     from .web.auth import auth_bp
+    from .web.home import home_bp
+    from .web.pots import pots_bp
     from .web.settings import settings_bp
 
     app.register_blueprint(home_bp)

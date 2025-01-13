@@ -1,14 +1,15 @@
-import pytest
 import os
 from time import time
+
+import pytest
 
 from app import create_app
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
 from app.domain.auth_providers import (
-    AuthProviderType,
     AmericanExpressAuthProvider,
-    MonzoAuthProvider,
+    AuthProviderType,
     BarclaycardAuthProvider,
+    MonzoAuthProvider,
 )
 from app.domain.settings import Setting
 from app.extensions import db
