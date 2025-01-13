@@ -55,7 +55,9 @@ def test_client():
 @pytest.fixture(scope="function")
 def seed_data():
     monzo_account = MonzoAccount("access_token", "refresh_token", time() + 10000)
-    amex_account = TrueLayerAccount(AuthProviderType.AMEX.value, "access_token", "refresh_token", time())
+    amex_account = TrueLayerAccount(
+        AuthProviderType.AMEX.value, "access_token", "refresh_token", time()
+    )
 
     account_repository = SqlAlchemyAccountRepository(db)
     account_repository.save(monzo_account)
@@ -64,8 +66,12 @@ def seed_data():
     setting_repository = SqlAlchemySettingRepository(db)
     setting_repository.save(Setting("monzo_client_id", "monzo_dummy_client_id"))
     setting_repository.save(Setting("monzo_client_secret", "monzo_dummy_client_secret"))
-    setting_repository.save(Setting("truelayer_client_id", os.getenv("TRUELAYER_SANDBOX_CLIENT_ID")))
-    setting_repository.save(Setting("truelayer_client_secret", os.getenv("TRUELAYER_SANDBOX_CLIENT_SECRET")))
+    setting_repository.save(
+        Setting("truelayer_client_id", os.getenv("TRUELAYER_SANDBOX_CLIENT_ID"))
+    )
+    setting_repository.save(
+        Setting("truelayer_client_secret", os.getenv("TRUELAYER_SANDBOX_CLIENT_SECRET"))
+    )
 
 
 @pytest.fixture()
@@ -74,11 +80,14 @@ def barclaycard_sandbox_provider(mocker):
     barclaycard_provider.api_url = "https://api.truelayer-sandbox.com"
     barclaycard_provider.auth_url = "https://auth.truelayer-sandbox.com"
     barclaycard_provider.token_url = "https://auth.truelayer-sandbox.com"
-    mocker.patch.object(barclaycard_provider, "get_provider_specific_oauth_request_params", return_value={
-        "providers": "uk-cs-mock", "scope": barclaycard_provider.oauth_scopes
-    })
+    mocker.patch.object(
+        barclaycard_provider,
+        "get_provider_specific_oauth_request_params",
+        return_value={
+            "providers": "uk-cs-mock",
+            "scope": barclaycard_provider.oauth_scopes,
+        },
+    )
 
-    replaced_provider_mapping = {
-        AuthProviderType.BARCLAYCARD: barclaycard_provider
-    }
+    replaced_provider_mapping = {AuthProviderType.BARCLAYCARD: barclaycard_provider}
     mocker.patch("app.web.auth.provider_mapping", replaced_provider_mapping)
