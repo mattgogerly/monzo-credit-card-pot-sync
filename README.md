@@ -47,6 +47,13 @@ This project is a tool to sync the balance of your credit cards and a Monzo pot.
 
 Releases are also published as container images on GitHub Container Registry.
 
+1. Start the container:
+   ```bash
+   docker compose up -d
+   ```
+
+2. Open your browser and navigate to `http://localhost:1337`.
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
