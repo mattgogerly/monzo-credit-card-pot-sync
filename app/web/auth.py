@@ -39,7 +39,6 @@ def truelayer_callback():
 
     code = request.args.get("code")
     tokens = provider.handle_oauth_code_callback(code)
-
     account = TrueLayerAccount(
         provider.name,
         tokens["access_token"],

@@ -128,8 +128,7 @@ class MonzoAuthProvider(AuthProvider):
             SettingsPrefix.MONZO.value,
         )
 
-    @staticmethod
-    def get_provider_specific_oauth_request_params() -> dict:
+    def get_provider_specific_oauth_request_params(self) -> dict:
         return {"response_mode": "form_post"}
 
 
