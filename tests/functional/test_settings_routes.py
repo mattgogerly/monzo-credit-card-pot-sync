@@ -9,6 +9,8 @@ def test_settings_get(test_client, seed_data):
     assert b"Monzo Client Secret" in response.data
     assert b"TrueLayer Client ID" in response.data
     assert b"TrueLayer Client Secret" in response.data
+    assert b"Sync Interval" in response.data
+    assert b"Enable Balance Sync" in response.data
 
 
 def test_settings_post(test_client, seed_data):
