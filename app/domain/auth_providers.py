@@ -20,6 +20,7 @@ class AuthProviderType(Enum):
     AMEX = "American Express"
     BARCLAYCARD = "Barclaycard"
     HALIFAX = "Halifax"
+    NATWEST = "NatWest"
 
 
 class AuthProvider:
@@ -175,6 +176,16 @@ class HalifaxAuthProvider(TrueLayerAuthProvider):
 
     def get_provider_specific_oauth_request_params(self) -> dict:
         return {"providers": "uk-ob-halifax", "scope": self.oauth_scopes}
+    
+
+class NatWestAuthProvider(TrueLayerAuthProvider):
+    def __init__(self):
+        super().__init__(
+            "NatWest", AuthProviderType.NATWEST.value, "natwest.svg"
+        )
+
+    def get_provider_specific_oauth_request_params(self) -> dict:
+        return {"providers": "uk-ob-natwest", "scope": self.oauth_scopes}
 
 
 provider_mapping: dict[AuthProviderType, AuthProvider] = {
@@ -182,4 +193,5 @@ provider_mapping: dict[AuthProviderType, AuthProvider] = {
     AuthProviderType.AMEX: AmericanExpressAuthProvider(),
     AuthProviderType.BARCLAYCARD: BarclaycardAuthProvider(),
     AuthProviderType.HALIFAX: HalifaxAuthProvider(),
+    AuthProviderType.NATWEST: NatWestAuthProvider(),
 }
