@@ -166,23 +166,19 @@ class BarclaycardAuthProvider(TrueLayerAuthProvider):
 
     def get_provider_specific_oauth_request_params(self) -> dict:
         return {"providers": "uk-ob-barclaycard", "scope": self.oauth_scopes}
-    
+
 
 class HalifaxAuthProvider(TrueLayerAuthProvider):
     def __init__(self):
-        super().__init__(
-            "Halifax", AuthProviderType.HALIFAX.value, "halifax.svg"
-        )
+        super().__init__("Halifax", AuthProviderType.HALIFAX.value, "halifax.svg")
 
     def get_provider_specific_oauth_request_params(self) -> dict:
         return {"providers": "uk-ob-halifax", "scope": self.oauth_scopes}
-    
+
 
 class NatWestAuthProvider(TrueLayerAuthProvider):
     def __init__(self):
-        super().__init__(
-            "NatWest", AuthProviderType.NATWEST.value, "natwest.svg"
-        )
+        super().__init__("NatWest", AuthProviderType.NATWEST.value, "natwest.svg")
 
     def get_provider_specific_oauth_request_params(self) -> dict:
         return {"providers": "uk-ob-natwest", "scope": self.oauth_scopes}

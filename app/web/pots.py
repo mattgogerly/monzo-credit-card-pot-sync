@@ -2,15 +2,12 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy.exc import NoResultFound
 
 from app.domain.accounts import MonzoAccount
-from app.domain.settings import Setting
 from app.extensions import db
 from app.models.account_repository import SqlAlchemyAccountRepository
-from app.models.setting_repository import SqlAlchemySettingRepository
 
 pots_bp = Blueprint("pots", __name__)
 
 account_repository = SqlAlchemyAccountRepository(db)
-setting_repository = SqlAlchemySettingRepository(db)
 
 
 @pots_bp.route("/", methods=["GET"])
@@ -22,15 +19,17 @@ def index():
         flash("You need to connect a Monzo account before you can view pots", "error")
         pots = []
 
-    designated_pot_id = setting_repository.get("credit_card_pot_id")
-    return render_template(
-        "pots/index.html", pots=pots, designated_pot_id=designated_pot_id
-    )
+    accounts = account_repository.get_credit_accounts()
+    return render_template("pots/index.html", pots=pots, accounts=accounts)
 
 
 @pots_bp.route("/", methods=["POST"])
 def set_designated_pot():
-    pot_id = request.form["pot_id"]
-    setting_repository.save(Setting("credit_card_pot_id", pot_id))
-    flash("Updated designated credit card pot")
+    account_type = request.form["account_type"]
+    account = account_repository.get(account_type)
+
+    account.pot_id = request.form["pot_id"]
+    account_repository.save(account)
+
+    flash(f"Updated designated credit card pot for {account.type}")
     return redirect(url_for("pots.index"))

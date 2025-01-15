@@ -11,11 +11,19 @@ log = logging.getLogger("account")
 
 
 class Account:
-    def __init__(self, type, access_token=None, refresh_token=None, token_expiry=None):
+    def __init__(
+        self,
+        type,
+        access_token=None,
+        refresh_token=None,
+        token_expiry=None,
+        pot_id=None,
+    ):
         self.type = type
         self.access_token = access_token
         self.refresh_token = refresh_token
         self.token_expiry = token_expiry
+        self.pot_id = pot_id
         self.auth_provider = provider_mapping[AuthProviderType(type)]
 
     def is_token_within_expiry_window(self):
@@ -45,8 +53,10 @@ class Account:
 
 
 class MonzoAccount(Account):
-    def __init__(self, access_token=None, refresh_token=None, token_expiry=None):
-        super().__init__("Monzo", access_token, refresh_token, token_expiry)
+    def __init__(
+        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None
+    ):
+        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id)
 
     def ping(self) -> None:
         r.get(
@@ -120,8 +130,15 @@ class MonzoAccount(Account):
 
 
 class TrueLayerAccount(Account):
-    def __init__(self, type, access_token=None, refresh_token=None, token_expiry=None):
-        super().__init__(type, access_token, refresh_token, token_expiry)
+    def __init__(
+        self,
+        type,
+        access_token=None,
+        refresh_token=None,
+        token_expiry=None,
+        pot_id=None,
+    ):
+        super().__init__(type, access_token, refresh_token, token_expiry, pot_id)
 
     def ping(self) -> None:
         r.get(

@@ -4,21 +4,23 @@ from app.domain.accounts import MonzoAccount, TrueLayerAccount
 
 
 def test_new_monzo_account():
-    account = MonzoAccount("access_token", "refresh_token", 1000)
+    account = MonzoAccount("access_token", "refresh_token", 1000, "pot")
     assert account.type == "Monzo"
     assert account.access_token == "access_token"
     assert account.refresh_token == "refresh_token"
     assert account.token_expiry == 1000
+    assert account.pot_id == "pot"
 
 
 def test_new_truelayer_account():
     account = TrueLayerAccount(
-        "American Express", "access_token", "refresh_token", 1000
+        "American Express", "access_token", "refresh_token", 1000, "pot"
     )
     assert account.type == "American Express"
     assert account.access_token == "access_token"
     assert account.refresh_token == "refresh_token"
     assert account.token_expiry == 1000
+    assert account.pot_id == "pot"
 
 
 def test_is_token_within_expiry_window_true():
