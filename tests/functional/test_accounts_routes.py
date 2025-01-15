@@ -22,3 +22,4 @@ def test_get_add_account_shows_providers(test_client):
     assert b"Monzo" in response.data
     assert b"American Express" in response.data
     assert b"Barclaycard" in response.data
+    assert b"Halifax" in response.data
