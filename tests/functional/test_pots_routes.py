@@ -26,7 +26,9 @@ def test_get_pots_no_account(test_client):
 
 
 def test_post_pots(test_client, requests_mock, seed_data):
-    response = test_client.post("/pots/", data={"pot_id": "pot_123"})
+    response = test_client.post(
+        "/pots/", data={"account_type": "American Express", "pot_id": "pot_123"}
+    )
     assert response.status_code == 302
     assert urlparse(response.location).path == "/pots/"
 

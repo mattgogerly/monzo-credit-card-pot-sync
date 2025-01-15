@@ -15,7 +15,6 @@ def after_create(tbl, conn, **kw) -> None:
             {"key": "monzo_client_secret", "value": ""},
             {"key": "truelayer_client_id", "value": ""},
             {"key": "truelayer_client_secret", "value": ""},
-            {"key": "credit_card_pot_id", "value": ""},
             {"key": "enable_sync", "value": True},
             {"key": "sync_interval_seconds", "value": 120},
         ],

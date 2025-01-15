@@ -16,6 +16,7 @@ class SqlAlchemyAccountRepository:
             access_token=account.access_token,
             refresh_token=account.refresh_token,
             token_expiry=account.token_expiry,
+            pot_id=account.pot_id,
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
@@ -24,6 +25,7 @@ class SqlAlchemyAccountRepository:
             access_token=model.access_token,
             refresh_token=model.refresh_token,
             token_expiry=model.token_expiry,
+            pot_id=model.pot_id,
         )
 
     def get_all(self) -> list[Account]:
@@ -47,7 +49,9 @@ class SqlAlchemyAccountRepository:
         )
         accounts = list(map(self._to_domain, results))
         return [
-            TrueLayerAccount(a.type, a.access_token, a.refresh_token, a.token_expiry)
+            TrueLayerAccount(
+                a.type, a.access_token, a.refresh_token, a.token_expiry, a.pot_id
+            )
             for a in accounts
         ]
 
