@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   monzo-credit-card-pot-sync:
     image: ghcr.io/mattgogerly/monzo-credit-card-pot-sync:latest
