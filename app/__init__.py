@@ -18,6 +18,7 @@ def create_app(test_config=None):
     from .extensions import db, scheduler
     from .models import account as account
     from .models import setting as setting
+    from .models.setting_repository import SqlAlchemySettingRepository
 
     db.init_app(app)
     # TODO move to migrations
@@ -40,9 +41,14 @@ def create_app(test_config=None):
     if app.config["TESTING"]:
         return app
 
+    # get the configured interval for the sync loop
+    with app.app_context():
+        setting_repository = SqlAlchemySettingRepository(db)
+        interval = setting_repository.get("sync_interval_seconds")
+
     scheduler.init_app(app)
     scheduler.add_job(
-        id="sync_balance", func=sync_balance, trigger="interval", seconds=120
+        id="sync_balance", func=sync_balance, trigger="interval", seconds=int(interval)
     )
     scheduler.start()
 

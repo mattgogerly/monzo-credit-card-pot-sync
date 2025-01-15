@@ -20,6 +20,10 @@
             <label for="truelayer_client_secret" class="block mb-2 text-sm font-medium">TrueLayer Client Secret</label>
             <input type="password" name="truelayer_client_secret" id="truelayer_client_secret" placeholder="••••••••" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ settings['truelayer_client_secret'] }}" />
         </div>
+        <div>
+            <label for="sync_interval_seconds" class="block mb-2 text-sm font-medium">Sync Interval (seconds)</label>
+            <input type="number" name="sync_interval_seconds" id="sync_interval_seconds" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ settings['sync_interval_seconds'] }}" />
+        </div>
 
         <label class="inline-flex items-center cursor-pointer">
             <input type="checkbox" name="enable_sync" class="sr-only peer" {% if settings['enable_sync'] %} checked {% endif %} />
