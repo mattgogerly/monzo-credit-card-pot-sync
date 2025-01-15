@@ -52,9 +52,9 @@ This project is a tool to sync the balance of your credit cards and a Monzo pot.
 5. Create an application
 6. Switch to the `Live` environment and add `http://localhost:1337/auth/callback/truelayer` as a redirect URI
 7. Copy the client ID and client secret
-8. Navigate to `https://localhost:1337/settings` and save the Monzo and TrueLayer client IDs and secrets
+8. Navigate to `http://localhost:1337/settings` and save the Monzo and TrueLayer client IDs and secrets
 
-You're all set! Head to `https://localhost:1337/accounts` to connect your Monzo account and credit cards.
+You're all set! Head to `http://localhost:1337/accounts` to connect your Monzo account and credit cards.
 
 ## Docker
 
