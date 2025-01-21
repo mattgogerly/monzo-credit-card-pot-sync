@@ -12,7 +12,11 @@ account_repository = SqlAlchemyAccountRepository(db)
 
 @accounts_bp.route("/", methods=["GET"])
 def index():
-    accounts = account_repository.get_all()
+    # fetch separately so we can always place Monzo first in the list
+    monzo_account = account_repository.get_monzo_account()
+    credit_accounts = account_repository.get_credit_accounts()
+    accounts = monzo_account | credit_accounts
+    
     return render_template("accounts/index.html", accounts=accounts)
 
 
