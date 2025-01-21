@@ -57,7 +57,11 @@ def test_client():
 def seed_data():
     monzo_account = MonzoAccount("access_token", "refresh_token", time() + 10000)
     amex_account = TrueLayerAccount(
-        AuthProviderType.AMEX.value, "access_token", "refresh_token", time()
+        AuthProviderType.AMEX.value,
+        "access_token",
+        "refresh_token",
+        time() + 10000,
+        "pot_id",
     )
 
     account_repository = SqlAlchemyAccountRepository(db)
