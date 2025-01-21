@@ -14,9 +14,9 @@ account_repository = SqlAlchemyAccountRepository(db)
 def index():
     # fetch separately so we can always place Monzo first in the list
     monzo_account = account_repository.get_monzo_account()
-    credit_accounts = account_repository.get_credit_accounts()
-    accounts = credit_accounts.insert(0, monzo_account)
-    
+    accounts = account_repository.get_credit_accounts()
+    accounts.insert(0, monzo_account)
+
     return render_template("accounts/index.html", accounts=accounts)
 
 
