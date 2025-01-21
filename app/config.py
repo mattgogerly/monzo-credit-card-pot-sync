@@ -9,3 +9,4 @@ class Config:
         "DATABASE_URI"
     ) or "sqlite:///" + os.path.join(basedir, "app.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    LOCAL_URL = os.environ.get("POT_SYNC_BASE_URL") or "http://localhost:1337"

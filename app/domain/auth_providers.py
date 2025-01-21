@@ -5,6 +5,7 @@ from urllib import parse
 
 import requests as r
 
+from app.config import Config
 from app.domain.settings import SettingsPrefix
 from app.errors import AuthException
 from app.extensions import db
@@ -126,7 +127,7 @@ class MonzoAuthProvider(AuthProvider):
             "https://api.monzo.com",
             "/oauth2/token",
             "",
-            "http://localhost:1337/auth/callback/monzo",
+            f"{Config.LOCAL_URL}/auth/callback/monzo",
             SettingsPrefix.MONZO.value,
         )
 
@@ -145,7 +146,7 @@ class TrueLayerAuthProvider(AuthProvider):
             "https://auth.truelayer.com",
             "/connect/token",
             "accounts balance cards offline_access",
-            "http://localhost:1337/auth/callback/truelayer",
+            f"{Config.LOCAL_URL}/auth/callback/truelayer",
             SettingsPrefix.TRUELAYER.value,
         )
 
