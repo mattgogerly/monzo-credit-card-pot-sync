@@ -1,6 +1,7 @@
 flask
 flask-apscheduler
 flask-sqlalchemy
+gunicorn
 pytest
 pytest-cov
 pytest-mock
