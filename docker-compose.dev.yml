@@ -1,0 +1,16 @@
+services:
+  monzo-credit-card-pot-sync-dev:
+    image: ghcr.io/mattgogerly/monzo-credit-card-pot-sync:latest
+    container_name: monzo-credit-card-pot-sync
+    command: flask --app app run --host=0.0.0.0 --port=1337
+    restart: always
+    environment:
+      - DATABASE_URI=sqlite:////monzo-credit-card-pot-sync/data/app.db
+      - LOCAL_URL=http://localhost:1337
+    ports:
+      - 1337:1337
+    volumes:
+      - data:/monzo-credit-card-pot-sync/data:rw
+
+volumes:
+  data:
