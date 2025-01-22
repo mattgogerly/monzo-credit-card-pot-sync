@@ -1,9 +1,8 @@
 name: Build and Dockerize
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [ published ]
 
 jobs:
     build:
@@ -40,6 +39,11 @@ jobs:
         - name: Coveralls GitHub Action
           uses: coverallsapp/github-action@v2.3.4
 
+        - name: Extract release version
+          run: |
+            VERSION=${GITHUB_REF_NAME#v}
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+
         - name: Log in to GHCR
           uses: docker/login-action@v3.3.0
           with:
@@ -57,5 +61,5 @@ jobs:
           uses: docker/build-push-action@v6.12.0
           with:
             platforms: linux/amd64,linux/arm64
-            tags: mattgogerly/monzo-credit-card-pot-sync:latest
+            tags: mattgogerly/monzo-credit-card-pot-sync:${{ env.VERSION }}
             push: true
