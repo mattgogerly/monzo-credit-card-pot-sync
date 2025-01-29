@@ -36,6 +36,7 @@ class SqlAlchemyAccountRepository:
         result: AccountModel = (
             self._session.query(AccountModel).filter_by(type="Monzo").one()
         )
+
         account = self._to_domain(result)
         return MonzoAccount(
             account.access_token, account.refresh_token, account.token_expiry
