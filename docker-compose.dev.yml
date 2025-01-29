@@ -11,6 +11,7 @@ services:
       - 1337:1337
     volumes:
       - data:/monzo-credit-card-pot-sync/data:rw
+      - ./app:/monzo-credit-card-pot-sync/app:rw
 
 volumes:
   data:
