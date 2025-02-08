@@ -19,7 +19,10 @@ def test_get_pots(test_client, requests_mock, seed_data):
     assert b"Pot 1" in response.data
 
 
-def test_get_pots_no_account(test_client):
+def test_get_pots_no_account(test_client, mocker):
+    # Mock the account_repository to raise NoResultFound
+    mocker.patch('app.models.account_repository.SqlAlchemyAccountRepository.get_all_monzo_accounts', side_effect=NoResultFound)
+    
     response = test_client.get("/pots/")
     assert response.status_code == 200
     assert b"You need to connect a Monzo account" in response.data

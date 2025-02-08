@@ -23,6 +23,7 @@ def index():
             log.info(f"Retrieving pots for Monzo account {monzo_account.account_id}")
             pots.extend(monzo_account.get_pots())
     except NoResultFound:
+        log.error("No Monzo account found")
         flash("You need to connect a Monzo account before you can view pots", "error")
         pots = []
 
