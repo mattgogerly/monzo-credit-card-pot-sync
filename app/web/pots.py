@@ -3,7 +3,6 @@ import logging
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy.exc import NoResultFound
 
-from app.domain.accounts import MonzoAccount
 from app.extensions import db
 from app.models.account_repository import SqlAlchemyAccountRepository
 

@@ -43,7 +43,7 @@ def sync_balance():
         except NoResultFound:
             log.error("No Monzo connection configured; sync will not run")
             monzo_accounts = []
-        except AuthException as e:
+        except AuthException:
             log.error(
                 "Failed to check health of Monzo connection; connection will be removed & sync will not run"
             )
