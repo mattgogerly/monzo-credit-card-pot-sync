@@ -19,6 +19,7 @@ def test_post_deletes_account(test_client, seed_data):
     response = test_client.post("/accounts/", data={"account_type": "American Express"})
     assert response.status_code == 302
     assert urlparse(response.location).path == "/accounts/"
+    response = test_client.get("/accounts/")
     assert b"American Express" not in response.data
 
 

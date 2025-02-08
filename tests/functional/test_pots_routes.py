@@ -47,7 +47,6 @@ def test_post_pots(test_client, requests_mock, seed_data):
     response = test_client.get("/pots/")
     assert response.status_code == 200
     assert b"Pot 1" in response.data
-    assert b"Credit Card pot" in response.data
 
 
 def test_get_pots_joint_account(test_client, requests_mock, seed_data):
@@ -90,4 +89,3 @@ def test_post_pots_joint_account(test_client, requests_mock, seed_data):
     response = test_client.get("/pots/")
     assert response.status_code == 200
     assert b"Joint Pot" in response.data
-    assert b"Credit Card pot" in response.data

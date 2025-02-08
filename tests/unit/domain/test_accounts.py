@@ -71,7 +71,7 @@ def test_monzo_account_get_account_id_joint(requests_mock):
 
 
 def test_monzo_account_get_pots(requests_mock):
-    account_response = {"accounts": [{"id": "id"}]}
+    account_response = {"accounts": [{"id": "id", "type": "uk_retail"}]}
     requests_mock.get(
         "https://api.monzo.com/accounts", status_code=200, json=account_response
     )
@@ -90,7 +90,7 @@ def test_monzo_account_get_pots(requests_mock):
 
 
 def test_monzo_account_get_pot_balance(requests_mock):
-    account_response = {"accounts": [{"id": "id"}]}
+    account_response = {"accounts": [{"id": "id", "type": "uk_retail"}]}
     requests_mock.get(
         "https://api.monzo.com/accounts", status_code=200, json=account_response
     )
@@ -112,7 +112,7 @@ def test_monzo_account_get_pot_balance(requests_mock):
 
 
 def test_monzo_account_add_to_pot(requests_mock):
-    account_response = {"accounts": [{"id": "id"}]}
+    account_response = {"accounts": [{"id": "id", "type": "uk_retail"}]}
     requests_mock.get(
         "https://api.monzo.com/accounts", status_code=200, json=account_response
     )
@@ -124,7 +124,7 @@ def test_monzo_account_add_to_pot(requests_mock):
 
 
 def test_monzo_account_withdraw_from_pot(requests_mock):
-    account_response = {"accounts": [{"id": "id"}]}
+    account_response = {"accounts": [{"id": "id", "type": "uk_retail"}]}
     requests_mock.get(
         "https://api.monzo.com/accounts", status_code=200, json=account_response
     )
@@ -136,7 +136,7 @@ def test_monzo_account_withdraw_from_pot(requests_mock):
 
 
 def test_monzo_account_send_notification(requests_mock):
-    account_response = {"accounts": [{"id": "id"}]}
+    account_response = {"accounts": [{"id": "id", "type": "uk_retail"}]}
     requests_mock.get(
         "https://api.monzo.com/accounts", status_code=200, json=account_response
     )
