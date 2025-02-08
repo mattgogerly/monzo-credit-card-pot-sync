@@ -67,7 +67,7 @@ class MonzoAccount(Account):
         response = r.get(
             f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
         )
-        return response.json()["accounts"][0]["id"]
+        return response.json()["accounts"][3]["id"]
 
     def get_balance(self) -> int:
         query = parse.urlencode({"account_id": self.get_account_id()})
