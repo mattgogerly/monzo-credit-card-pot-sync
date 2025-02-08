@@ -54,9 +54,10 @@ class Account:
 
 class MonzoAccount(Account):
     def __init__(
-        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None
+        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
     ):
         super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id)
+        self.account_id = account_id
 
     def ping(self) -> None:
         r.get(
@@ -70,6 +71,8 @@ class MonzoAccount(Account):
         return response.json()["accounts"]
 
     def get_account_id(self, index: int = 0) -> str:
+        if self.account_id:
+            return self.account_id
         accounts = self.get_available_accounts()
         return accounts[index]["id"]
 
