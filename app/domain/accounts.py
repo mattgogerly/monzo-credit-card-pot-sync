@@ -54,20 +54,45 @@ class Account:
 
 class MonzoAccount(Account):
     def __init__(
-        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None
+        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
     ):
         super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id)
+        # New: allow selected account_id (could be joint or personal)
+        self.account_id = account_id
 
     def ping(self) -> None:
         r.get(
             f"{self.auth_provider.api_url}/ping/whoami", headers=self.get_auth_header()
         )
 
-    def get_account_id(self) -> str:
+    def _fetch_accounts(self) -> list:
         response = r.get(
             f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
         )
-        return response.json()["accounts"][0]["id"]
+        return response.json()["accounts"]
+
+    def get_authorized_accounts(self) -> list:
+        """Return a list of authorized accounts (personal & joint) with details."""
+        return self._fetch_accounts()
+
+    def get_account_id(self) -> str:
+        """Return the selected account id. If none is set, default to the first account."""
+        if self.account_id:
+            return self.account_id
+        accounts = self._fetch_accounts()
+        if not accounts:
+            raise AuthException("No accounts returned by Monzo API")
+        self.account_id = accounts[0]["id"]
+        return self.account_id
+
+    def get_account_description(self) -> str:
+        """Return the account description for the selected account."""
+        selected = self.get_account_id()
+        accounts = self._fetch_accounts()
+        for account in accounts:
+            if account["id"] == selected:
+                return account.get("description", "")
+        return ""
 
     def get_balance(self) -> int:
         query = parse.urlencode({"account_id": self.get_account_id()})

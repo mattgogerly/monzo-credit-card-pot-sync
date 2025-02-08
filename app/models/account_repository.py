@@ -38,8 +38,15 @@ class SqlAlchemyAccountRepository:
         )
 
         account = self._to_domain(result)
+        # If the AccountModel is extended to include an optional account_id for joint accounts,
+        # pass it into the MonzoAccount constructor. Otherwise, this remains None.
+        selected_account_id = getattr(account, "account_id", None)
         return MonzoAccount(
-            account.access_token, account.refresh_token, account.token_expiry
+            account.access_token,
+            account.refresh_token,
+            account.token_expiry,
+            account.pot_id,
+            account_id=selected_account_id,
         )
 
     def get_credit_accounts(self) -> list[TrueLayerAccount]:

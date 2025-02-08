@@ -17,6 +17,11 @@
     <div id="tab-content w-full">
         {% for account in accounts %}
             <div class="hidden" id="{{ account.type|replace(' ', '') }}" role="tabpanel" aria-labelledby="{{ account.type|replace(' ', '') }}-tab">
+                <!-- Optional: display extra details for Monzo accounts (like joint account description) -->
+                {% if account.type == "Monzo" and account.description %}
+                    <p class="mb-3 text-sm">Authorized account: {{ account.description }}</p>
+                {% endif %}
+
                 <section class="flex flex-row flex-wrap gap-3 justify-center w-full">
                     {% for pot in pots %}
                         <div class="basis-96 p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 dark:bg-gray-800 dark:border-gray-700">
