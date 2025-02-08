@@ -29,7 +29,7 @@ def test_core_flow_successful_no_change_required(
 
     # Mock Monzo account balance call
     requests_mock.get(
-        "https://api.monzo.com/accounts", json={"accounts": [{"id": "acc_id", "type": "uk_retail"}]}
+        "https://api.monzo.com/accounts", json={"accounts": [{"id": "acc_id"}]}
     )
     requests_mock.get(
         "https://api.monzo.com/balance?account_id=acc_id", json={"balance": 100}
@@ -69,7 +69,7 @@ def test_core_flow_successful_deposit(mocker, test_client, requests_mock, seed_d
 
     # Mock Monzo account balance call, returning £1000
     requests_mock.get(
-        "https://api.monzo.com/accounts", json={"accounts": [{"id": "acc_id", "type": "uk_retail"}]}
+        "https://api.monzo.com/accounts", json={"accounts": [{"id": "acc_id"}]}
     )
     requests_mock.get(
         "https://api.monzo.com/balance?account_id=acc_id", json={"balance": 100000}
@@ -115,7 +115,7 @@ def test_core_flow_successful_withdrawal(mocker, test_client, requests_mock, see
 
     # Mock Monzo account balance call
     requests_mock.get(
-        "https://api.monzo.com/accounts", json={"accounts": [{"id": "acc_id", "type": "uk_retail"}]}
+        "https://api.monzo.com/accounts", json={"accounts": [{"id": "acc_id"}]}
     )
     requests_mock.get(
         "https://api.monzo.com/balance?account_id=acc_id", json={"balance": 100}
@@ -161,7 +161,7 @@ def test_core_flow_insufficient_account_balance(
 
     # Mock Monzo account balance call, returning £500
     requests_mock.get(
-        "https://api.monzo.com/accounts", json={"accounts": [{"id": "acc_id", "type": "uk_retail"}]}
+        "https://api.monzo.com/accounts", json={"accounts": [{"id": "acc_id"}]}
     )
     requests_mock.get(
         "https://api.monzo.com/balance?account_id=acc_id", json={"balance": 50000}

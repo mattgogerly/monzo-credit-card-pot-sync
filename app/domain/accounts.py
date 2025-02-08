@@ -53,24 +53,21 @@ class Account:
 
 
 class MonzoAccount(Account):
-    def __init__(self, access_token, refresh_token, token_expiry, pot_id=None, account_type="uk_retail"):
+    def __init__(
+        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None
+    ):
         super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id)
-        self.account_type = account_type  # New field
 
     def ping(self) -> None:
         r.get(
             f"{self.auth_provider.api_url}/ping/whoami", headers=self.get_auth_header()
         )
 
-    def get_account_id(self, account_type: str = "uk_retail") -> str:
+    def get_account_id(self) -> str:
         response = r.get(
             f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
         )
-        accounts = response.json()["accounts"]
-        account = next((acc for acc in accounts if acc.get("type") == account_type), None)
-        if account is None:
-            raise ValueError(f"No account found for type {account_type}")
-        return account["id"]
+        return response.json()["accounts"][0]["id"]
 
     def get_balance(self) -> int:
         query = parse.urlencode({"account_id": self.get_account_id()})
@@ -90,9 +87,7 @@ class MonzoAccount(Account):
 
     def get_pot_balance(self, pot_id: str) -> int:
         pots = self.get_pots()
-        pot = next((p for p in pots if p["id"] == pot_id), None)
-        if pot is None:
-            raise ValueError(f"No pot found with id {pot_id}")
+        pot = next(p for p in pots if p["id"] == pot_id)
         return pot["balance"]
 
     def add_to_pot(self, pot_id: str, amount: int) -> None:

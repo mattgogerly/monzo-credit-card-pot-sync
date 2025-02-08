@@ -11,17 +11,10 @@
         </p>
         <ul class="my-4 space-y-3">
             <li>
-                <form action="{{ monzo_provider.create_oauth_request_url() }}" method="get">
-                    <label for="account_type" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Select Account Type:</label>
-                    <select name="account_type" id="account_type" class="block w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-                        <option value="uk_retail">Personal Account</option>
-                        <option value="uk_retail_joint">Joint Account</option>
-                    </select>
-                    <button type="submit" class="flex items-center p-3 mt-3 text-base font-bold text-gray-900 rounded-lg bg-gray-50 hover:bg-gray-100 group hover:shadow dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white">
-                        <img class="h-6" src="{{ url_for('static', filename='img/') }}{{ monzo_provider.icon_name }}" />
-                        <span class="flex-1 ms-3 whitespace-nowrap">Add Monzo Account</span>
-                    </button>
-                </form>
+                <a href="{{ monzo_provider.create_oauth_request_url() }}" class="flex items-center p-3 text-base font-bold text-gray-900 rounded-lg bg-gray-50 hover:bg-gray-100 group hover:shadow dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white">
+                    <img class="h-6" src="{{ url_for('static', filename='img/') }}{{ monzo_provider.icon_name }}" />
+                    <span class="flex-1 ms-3 whitespace-nowrap">Add Monzo Account</span>
+                </a>
             </li>
         </ul>
     </div>

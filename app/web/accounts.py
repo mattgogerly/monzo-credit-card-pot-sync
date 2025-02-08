@@ -16,8 +16,8 @@ def index():
     accounts = account_repository.get_credit_accounts()
 
     try:
-        monzo_accounts = account_repository.get_all_monzo_accounts()
-        accounts = monzo_accounts + accounts
+        monzo_account = account_repository.get_monzo_account()
+        accounts.insert(0, monzo_account)
     except NoResultFound:
         pass
 
