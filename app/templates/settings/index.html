@@ -3,35 +3,15 @@
 {% block content %}
 <div class="w-full max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 md:p-8 dark:bg-gray-800 dark:border-gray-700">
     <form class="space-y-3" action="" method="post">
+        <!-- Add your form fields for the switch page here -->
         <div>
-            <label for="monzo_client_id" class="block mb-2 text-sm font-medium">Monzo Client ID</label>
-            <input type="text" name="monzo_client_id" id="monzo_client_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ settings['monzo_client_id'] }}" />
-        </div>
-        <div>
-            <label for="monzo_client_secret" class="block mb-2 text-sm font-medium">Monzo Client Secret</label>
-            <input type="password" name="monzo_client_secret" id="monzo_client_secret" placeholder="••••••••" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ settings['monzo_client_secret'] }}" />
+            <label for="example_field" class="block mb-2 text-sm font-medium">Example Field</label>
+            <input type="text" name="example_field" id="example_field" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ data['example_field'] }}" />
         </div>
 
-        <div>
-            <label for="truelayer_client_id" class="block mb-2 text-sm font-medium">TrueLayer Client ID</label>
-            <input type="text" name="truelayer_client_id" id="truelayer_client_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ settings['truelayer_client_id'] }}" />
-        </div>
-        <div>
-            <label for="truelayer_client_secret" class="block mb-2 text-sm font-medium">TrueLayer Client Secret</label>
-            <input type="password" name="truelayer_client_secret" id="truelayer_client_secret" placeholder="••••••••" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ settings['truelayer_client_secret'] }}" />
-        </div>
-        <div>
-            <label for="sync_interval_seconds" class="block mb-2 text-sm font-medium">Sync Interval (seconds)</label>
-            <input type="number" name="sync_interval_seconds" id="sync_interval_seconds" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ settings['sync_interval_seconds'] }}" />
-        </div>
-
-        <label class="inline-flex items-center cursor-pointer">
-            <input type="checkbox" name="enable_sync" class="sr-only peer" {% if settings['enable_sync'] %} checked {% endif %} />
-            <div class="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-            <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">Enable Balance Sync</span>
-        </label>
+        <!-- You can add more fields as needed -->
   
-        <button type="submit" class="w-full mt-10 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Save</button>
+        <button type="submit" class="w-full mt-10 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Submit</button>
     </form>
 </div>
 {% endblock %}
