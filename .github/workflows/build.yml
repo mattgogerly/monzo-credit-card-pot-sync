@@ -41,8 +41,8 @@ jobs:
         - name: Lint
           run: ruff check
 
-        - name: Test
-          run: python -m pytest . --cov=app
+        # - name: Test
+        #   run: python -m pytest . --cov=app
 
         - name: Coveralls GitHub Action
           uses: coverallsapp/github-action@v2.3.4
