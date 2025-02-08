@@ -23,6 +23,21 @@ def index():
 
     return render_template("accounts/index.html", accounts=accounts)
 
+@accounts_bp.route("/switch", methods=["POST"])
+def switch_account():
+    selected_account_id = request.form.get("selected_account_id")
+    if selected_account_id:
+        # Persist this selection.
+        # You might update the MonzoAccount record or set a flag in the session.
+        # For example, using the repository:
+        try:
+            monzo_account = account_repository.get_monzo_account()
+            monzo_account.account_id = selected_account_id
+            account_repository.save(monzo_account)
+            flash("Switched to joint account", "success")
+        except Exception:
+            flash("Error switching account", "error")
+    return redirect(url_for("accounts.index"))
 
 @accounts_bp.route("/add", methods=["GET"])
 def add_account():
