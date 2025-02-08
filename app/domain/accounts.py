@@ -52,13 +52,9 @@ class Account:
         return {"Authorization": f"Bearer {self.access_token}"}
 
 
-class MonzoAccount:
+class MonzoAccount(Account):
     def __init__(self, access_token, refresh_token, token_expiry, pot_id=None, account_type="uk_retail"):
-        self.type = "Monzo"
-        self.access_token = access_token
-        self.refresh_token = refresh_token
-        self.token_expiry = token_expiry
-        self.pot_id = pot_id
+        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id)
         self.account_type = account_type  # New field
 
     def ping(self) -> None:
