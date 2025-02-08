@@ -56,6 +56,7 @@ def test_client():
 @pytest.fixture(scope="function")
 def seed_data():
     monzo_account = MonzoAccount("access_token", "refresh_token", time() + 10000)
+    monzo_joint_account = MonzoAccount("joint_access_token", "joint_refresh_token", time() + 10000)
     amex_account = TrueLayerAccount(
         AuthProviderType.AMEX.value,
         "access_token",
@@ -66,6 +67,7 @@ def seed_data():
 
     account_repository = SqlAlchemyAccountRepository(db)
     account_repository.save(monzo_account)
+    account_repository.save(monzo_joint_account)
     account_repository.save(amex_account)
 
     setting_repository = SqlAlchemySettingRepository(db)

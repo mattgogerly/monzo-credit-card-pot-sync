@@ -7,8 +7,11 @@ from app.models.account import AccountModel
 
 
 class SqlAlchemyAccountRepository:
-    def __init__(self, db: SQLAlchemy) -> None:
-        self._session = db.session
+    def __init__(self, db):
+        self.db = db
+
+    def get_monzo_account(self, account_type="uk_retail"):
+        return self.db.session.query(Account).filter_by(type='Monzo', account_type=account_type).one()
 
     def _to_model(self, account: Account) -> AccountModel:
         return AccountModel(

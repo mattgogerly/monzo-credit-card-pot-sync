@@ -55,11 +55,19 @@ def test_monzo_account_ping_error(requests_mock):
 
 
 def test_monzo_account_get_account_id(requests_mock):
-    response = {"accounts": [{"id": "id"}]}
+    response = {"accounts": [{"id": "id", "type": "uk_retail"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=response)
 
     account = MonzoAccount("access_token", "refresh_token", time() + 1000)
     assert account.get_account_id() == "id"
+
+
+def test_monzo_account_get_account_id_joint(requests_mock):
+    response = {"accounts": [{"id": "id", "type": "uk_retail_joint"}]}
+    requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=response)
+
+    account = MonzoAccount("access_token", "refresh_token", time() + 1000)
+    assert account.get_account_id(account_type="uk_retail_joint") == "id"
 
 
 def test_monzo_account_get_pots(requests_mock):
