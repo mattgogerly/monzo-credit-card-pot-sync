@@ -52,11 +52,95 @@ class Account:
         return {"Authorization": f"Bearer {self.access_token}"}
 
 
-class MonzoAccount(Account):
-    def __init__(
-        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None
-    ):
-        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id)
+class MonzoAccount:
+    def __init__(self, access_token, refresh_token, token_expiry, pot_id=None, account_type="uk_retail"):
+        self.type = "Monzo"
+        self.access_token = access_token
+        self.refresh_token = refresh_token
+        self.token_expiry = token_expiry
+        self.pot_id = pot_id
+        self.account_type = account_type  # New field
+
+    def ping(self) -> None:
+        r.get(
+            f"{self.auth_provider.api_url}/ping/whoami", headers=self.get_auth_header()
+        )
+
+    def get_account_id(self, account_type: str = "uk_retail") -> str:
+        response = r.get(
+            f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
+        )
+        accounts = response.json()["accounts"]
+        account = next(acc for acc in accounts if acc["type"] == account_type)
+        return account["id"]
+
+    def get_balance(self) -> int:
+        query = parse.urlencode({"account_id": self.get_account_id()})
+        response = r.get(
+            f"{self.auth_provider.api_url}/balance?{query}",
+            headers=self.get_auth_header(),
+        )
+        return response.json()["balance"]
+
+    def get_pots(self) -> list[object]:
+        query = parse.urlencode({"current_account_id": self.get_account_id()})
+        response = r.get(
+            f"{self.auth_provider.api_url}/pots?{query}", headers=self.get_auth_header()
+        )
+        pots = response.json()["pots"]
+        return [p for p in pots if not p["deleted"]]
+
+    def get_pot_balance(self, pot_id: str) -> int:
+        pots = self.get_pots()
+        pot = next(p for p in pots if p["id"] == pot_id)
+        return pot["balance"]
+
+    def add_to_pot(self, pot_id: str, amount: int) -> None:
+        data = {
+            "source_account_id": self.get_account_id(),
+            "amount": amount,
+            "dedupe_id": int(time()),
+        }
+        r.put(
+            f"{self.auth_provider.api_url}/pots/{pot_id}/deposit",
+            data=data,
+            headers=self.get_auth_header(),
+        )
+
+    def withdraw_from_pot(self, pot_id: str, amount: int) -> None:
+        data = {
+            "destination_account_id": self.get_account_id(),
+            "amount": amount,
+            "dedupe_id": int(time()),
+        }
+        r.put(
+            f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
+            data=data,
+            headers=self.get_auth_header(),
+        )
+
+    def send_notification(self, title: str, message: str) -> None:
+        body = {
+            "account_id": self.get_account_id(),
+            "type": "basic",
+            "params[image_url]": "https://www.nyan.cat/cats/original.gif",
+            "params[title]": title,
+            "params[body]": message,
+        }
+        r.post(
+            f"{self.auth_provider.api_url}/feed",
+            data=body,
+            headers=self.get_auth_header(),
+        )
+
+
+class TrueLayerAccount:
+    def __init__(self, type, access_token, refresh_token, token_expiry, pot_id=None):
+        self.type = type
+        self.access_token = access_token
+        self.refresh_token = refresh_token
+        self.token_expiry = token_expiry
+        self.pot_id = pot_id
 
     def ping(self) -> None:
         r.get(
