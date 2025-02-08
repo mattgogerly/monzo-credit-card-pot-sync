@@ -3,7 +3,6 @@ from time import time
 
 import pytest
 from sqlalchemy.exc import NoResultFound
-from unittest.mock import patch
 
 from app import create_app
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
