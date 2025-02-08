@@ -67,7 +67,9 @@ class MonzoAccount(Account):
             f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
         )
         accounts = response.json()["accounts"]
-        account = next(acc for acc in accounts if acc.get("type") == account_type)
+        account = next((acc for acc in accounts if acc.get("type") == account_type), None)
+        if account is None:
+            raise ValueError(f"No account found for type {account_type}")
         return account["id"]
 
     def get_balance(self) -> int:
