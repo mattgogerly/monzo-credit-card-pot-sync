@@ -63,36 +63,40 @@ class MonzoAccount(Account):
             f"{self.auth_provider.api_url}/ping/whoami", headers=self.get_auth_header()
         )
 
-    def get_account_id(self) -> str:
+    def get_available_accounts(self) -> list[dict]:
         response = r.get(
             f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
         )
-        return response.json()["accounts"][0]["id"]
+        return response.json()["accounts"]
 
-    def get_balance(self) -> int:
-        query = parse.urlencode({"account_id": self.get_account_id()})
+    def get_account_id(self, index: int = 0) -> str:
+        accounts = self.get_available_accounts()
+        return accounts[index]["id"]
+
+    def get_balance(self, account_index: int = 0) -> int:
+        query = parse.urlencode({"account_id": self.get_account_id(account_index)})
         response = r.get(
             f"{self.auth_provider.api_url}/balance?{query}",
             headers=self.get_auth_header(),
         )
         return response.json()["balance"]
 
-    def get_pots(self) -> list[object]:
-        query = parse.urlencode({"current_account_id": self.get_account_id()})
+    def get_pots(self, account_index: int = 0) -> list[object]:
+        query = parse.urlencode({"current_account_id": self.get_account_id(account_index)})
         response = r.get(
             f"{self.auth_provider.api_url}/pots?{query}", headers=self.get_auth_header()
         )
         pots = response.json()["pots"]
         return [p for p in pots if not p["deleted"]]
 
-    def get_pot_balance(self, pot_id: str) -> int:
-        pots = self.get_pots()
+    def get_pot_balance(self, pot_id: str, account_index: int = 0) -> int:
+        pots = self.get_pots(account_index)
         pot = next(p for p in pots if p["id"] == pot_id)
         return pot["balance"]
 
-    def add_to_pot(self, pot_id: str, amount: int) -> None:
+    def add_to_pot(self, pot_id: str, amount: int, account_index: int = 0) -> None:
         data = {
-            "source_account_id": self.get_account_id(),
+            "source_account_id": self.get_account_id(account_index),
             "amount": amount,
             "dedupe_id": int(time()),
         }
@@ -102,9 +106,9 @@ class MonzoAccount(Account):
             headers=self.get_auth_header(),
         )
 
-    def withdraw_from_pot(self, pot_id: str, amount: int) -> None:
+    def withdraw_from_pot(self, pot_id: str, amount: int, account_index: int = 0) -> None:
         data = {
-            "destination_account_id": self.get_account_id(),
+            "destination_account_id": self.get_account_id(account_index),
             "amount": amount,
             "dedupe_id": int(time()),
         }
@@ -114,9 +118,9 @@ class MonzoAccount(Account):
             headers=self.get_auth_header(),
         )
 
-    def send_notification(self, title: str, message: str) -> None:
+    def send_notification(self, title: str, message: str, account_index: int = 0) -> None:
         body = {
-            "account_id": self.get_account_id(),
+            "account_id": self.get_account_id(account_index),
             "type": "basic",
             "params[image_url]": "https://www.nyan.cat/cats/original.gif",
             "params[title]": title,
