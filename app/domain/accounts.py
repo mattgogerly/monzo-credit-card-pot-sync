@@ -90,7 +90,9 @@ class MonzoAccount(Account):
 
     def get_pot_balance(self, pot_id: str) -> int:
         pots = self.get_pots()
-        pot = next(p for p in pots if p["id"] == pot_id)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if pot is None:
+            raise ValueError(f"No pot found with id {pot_id}")
         return pot["balance"]
 
     def add_to_pot(self, pot_id: str, amount: int) -> None:
