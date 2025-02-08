@@ -61,7 +61,7 @@ jobs:
           run: |
             echo "reponame=${REPO,,}" >>${GITHUB_ENV}
           env:
-            REPO: "${{ github.event.repository.name }}"
+            REPO: "${{ github.event.repository }}"
 
         - name: Build image and push
           uses: docker/build-push-action@v6.12.0
