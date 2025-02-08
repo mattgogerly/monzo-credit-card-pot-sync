@@ -130,33 +130,6 @@ class MonzoAccount(Account):
             headers=self.get_auth_header(),
         )
 
-    def withdraw_from_pot(self, pot_id: str, amount: int) -> None:
-        data = {
-            "destination_account_id": self.get_account_id(),
-            "amount": amount,
-            "dedupe_id": int(time()),
-        }
-        r.put(
-            f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
-            data=data,
-            headers=self.get_auth_header(),
-        )
-
-    def send_notification(self, title: str, message: str) -> None:
-        body = {
-            "account_id": self.get_account_id(),
-            "type": "basic",
-            "params[image_url]": "https://www.nyan.cat/cats/original.gif",
-            "params[title]": title,
-            "params[body]": message,
-        }
-        r.post(
-            f"{self.auth_provider.api_url}/feed",
-            data=body,
-            headers=self.get_auth_header(),
-        )
-
-
 class TrueLayerAccount(Account):
     def __init__(
         self,
