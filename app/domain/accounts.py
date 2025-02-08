@@ -54,52 +54,45 @@ class Account:
 
 class MonzoAccount(Account):
     def __init__(
-        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
+        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None
     ):
         super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id)
-        self.account_id = account_id
 
     def ping(self) -> None:
         r.get(
             f"{self.auth_provider.api_url}/ping/whoami", headers=self.get_auth_header()
         )
 
-    def get_available_accounts(self) -> list[dict]:
+    def get_account_id(self) -> str:
         response = r.get(
             f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
         )
-        return response.json()["accounts"]
+        return response.json()["accounts"][3]["id"]
 
-    def get_account_id(self, index: int = 0) -> str:
-        if self.account_id:
-            return self.account_id
-        accounts = self.get_available_accounts()
-        return accounts[index]["id"]
-
-    def get_balance(self, account_index: int = 0) -> int:
-        query = parse.urlencode({"account_id": self.get_account_id(account_index)})
+    def get_balance(self) -> int:
+        query = parse.urlencode({"account_id": self.get_account_id()})
         response = r.get(
             f"{self.auth_provider.api_url}/balance?{query}",
             headers=self.get_auth_header(),
         )
         return response.json()["balance"]
 
-    def get_pots(self, account_index: int = 0) -> list[object]:
-        query = parse.urlencode({"current_account_id": self.get_account_id(account_index)})
+    def get_pots(self) -> list[object]:
+        query = parse.urlencode({"current_account_id": self.get_account_id()})
         response = r.get(
             f"{self.auth_provider.api_url}/pots?{query}", headers=self.get_auth_header()
         )
         pots = response.json()["pots"]
         return [p for p in pots if not p["deleted"]]
 
-    def get_pot_balance(self, pot_id: str, account_index: int = 0) -> int:
-        pots = self.get_pots(account_index)
+    def get_pot_balance(self, pot_id: str) -> int:
+        pots = self.get_pots()
         pot = next(p for p in pots if p["id"] == pot_id)
         return pot["balance"]
 
-    def add_to_pot(self, pot_id: str, amount: int, account_index: int = 0) -> None:
+    def add_to_pot(self, pot_id: str, amount: int) -> None:
         data = {
-            "source_account_id": self.get_account_id(account_index),
+            "source_account_id": self.get_account_id(),
             "amount": amount,
             "dedupe_id": int(time()),
         }
@@ -109,9 +102,9 @@ class MonzoAccount(Account):
             headers=self.get_auth_header(),
         )
 
-    def withdraw_from_pot(self, pot_id: str, amount: int, account_index: int = 0) -> None:
+    def withdraw_from_pot(self, pot_id: str, amount: int) -> None:
         data = {
-            "destination_account_id": self.get_account_id(account_index),
+            "destination_account_id": self.get_account_id(),
             "amount": amount,
             "dedupe_id": int(time()),
         }
@@ -121,9 +114,9 @@ class MonzoAccount(Account):
             headers=self.get_auth_header(),
         )
 
-    def send_notification(self, title: str, message: str, account_index: int = 0) -> None:
+    def send_notification(self, title: str, message: str) -> None:
         body = {
-            "account_id": self.get_account_id(account_index),
+            "account_id": self.get_account_id(),
             "type": "basic",
             "params[image_url]": "https://www.nyan.cat/cats/original.gif",
             "params[title]": title,
@@ -164,7 +157,7 @@ class TrueLayerAccount(Account):
             f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance",
             headers=self.get_auth_header(),
         )
-        return response.json()["results"][0]["current"]
+        return response.json()["results"][3]["current"]
 
     def get_total_balance(self) -> int:
         total_balance = 0

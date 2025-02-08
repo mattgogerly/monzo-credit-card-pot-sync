@@ -17,33 +17,20 @@ class SqlAlchemyAccountRepository:
             refresh_token=account.refresh_token,
             token_expiry=account.token_expiry,
             pot_id=account.pot_id,
-            account_id=getattr(account, 'account_id', None)  # Handle account_id only for MonzoAccount
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
-        if model.type == "Monzo":
-            return MonzoAccount(
-                model.access_token, model.refresh_token, model.token_expiry, model.pot_id, model.account_id
-            )
-        else:
-            return TrueLayerAccount(
-                model.type, model.access_token, model.refresh_token, model.token_expiry, model.pot_id
-            )
+        return Account(
+            type=model.type,
+            access_token=model.access_token,
+            refresh_token=model.refresh_token,
+            token_expiry=model.token_expiry,
+            pot_id=model.pot_id,
+        )
 
     def get_all(self) -> list[Account]:
         results: list[AccountModel] = self._session.query(AccountModel).all()
         return list(map(self._to_domain, results))
-
-    def get_all_monzo_accounts(self) -> list[MonzoAccount]:
-        results: list[AccountModel] = (
-            self._session.query(AccountModel).filter_by(type="Monzo").all()
-        )
-        return [
-            MonzoAccount(
-                account.access_token, account.refresh_token, account.token_expiry, account.pot_id, account.account_id
-            )
-            for account in results
-        ]
 
     def get_monzo_account(self) -> MonzoAccount:
         result: AccountModel = (
@@ -52,7 +39,7 @@ class SqlAlchemyAccountRepository:
 
         account = self._to_domain(result)
         return MonzoAccount(
-            account.access_token, account.refresh_token, account.token_expiry, account.pot_id, account.account_id
+            account.access_token, account.refresh_token, account.token_expiry
         )
 
     def get_credit_accounts(self) -> list[TrueLayerAccount]:

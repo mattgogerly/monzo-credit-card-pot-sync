@@ -1,5 +1,5 @@
 from urllib.parse import urlparse
-from sqlalchemy.exc import NoResultFound
+
 
 def test_get_pots(test_client, requests_mock, seed_data):
     requests_mock.get(
@@ -15,17 +15,12 @@ def test_get_pots(test_client, requests_mock, seed_data):
         },
     )
     response = test_client.get("/pots/")
-    print(response.data)  # Add this line to print the response data for debugging
     assert response.status_code == 200
     assert b"Pot 1" in response.data
 
 
-def test_get_pots_no_account(test_client, mocker):
-    # Mock the account_repository to raise NoResultFound
-    mocker.patch('app.models.account_repository.SqlAlchemyAccountRepository.get_all_monzo_accounts', side_effect=NoResultFound)
-    
+def test_get_pots_no_account(test_client):
     response = test_client.get("/pots/")
-    print(response.data)  # Add this line to print the response data for debugging
     assert response.status_code == 200
     assert b"You need to connect a Monzo account" in response.data
 
@@ -50,7 +45,6 @@ def test_post_pots(test_client, requests_mock, seed_data):
         },
     )
     response = test_client.get("/pots/")
-    print(response.data)  # Add this line to print the response data for debugging
     assert response.status_code == 200
     assert b"Pot 1" in response.data
     assert b"Credit Card pot" in response.data

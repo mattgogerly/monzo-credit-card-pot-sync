@@ -2,7 +2,6 @@ import os
 from time import time
 
 import pytest
-from sqlalchemy.exc import NoResultFound
 
 from app import create_app
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
@@ -51,14 +50,11 @@ def test_client():
 
     with flask_app.test_client() as testing_client:
         with flask_app.app_context():
-            db.create_all()
             yield testing_client
-            db.session.remove()
-            db.drop_all()
 
 
 @pytest.fixture(scope="function")
-def seed_data(test_client, mocker):
+def seed_data():
     monzo_account = MonzoAccount("access_token", "refresh_token", time() + 10000)
     amex_account = TrueLayerAccount(
         AuthProviderType.AMEX.value,
@@ -81,9 +77,6 @@ def seed_data(test_client, mocker):
     setting_repository.save(
         Setting("truelayer_client_secret", os.getenv("TRUELAYER_SANDBOX_CLIENT_SECRET"))
     )
-
-    # Mock the get_all_monzo_accounts method to raise NoResultFound
-    mocker.patch('app.models.account_repository.SqlAlchemyAccountRepository.get_all_monzo_accounts', side_effect=NoResultFound)
 
 
 @pytest.fixture()
