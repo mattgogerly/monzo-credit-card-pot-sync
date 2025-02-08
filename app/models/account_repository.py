@@ -1,4 +1,4 @@
-from app.domain.accounts import MonzoAccount
+from app.domain.accounts import MonzoAccount, TrueLayerAccount
 from app.models.account import AccountModel
 
 
@@ -26,12 +26,17 @@ class SqlAlchemyAccountRepository:
         self._session.query(AccountModel).filter_by(type=account_type).delete()
         self._session.commit()
 
+    def get_credit_accounts(self) -> list[TrueLayerAccount]:
+        results = self._session.query(AccountModel).filter(AccountModel.type != 'Monzo').all()
+        return [self._to_domain(result) for result in results]
+
     def _to_domain(self, model: AccountModel) -> MonzoAccount:
         return MonzoAccount(
             model.access_token,
             model.refresh_token,
             model.token_expiry,
             model.pot_id,
+            model.account_type,
         )
 
     def _to_model(self, account: MonzoAccount) -> AccountModel:
