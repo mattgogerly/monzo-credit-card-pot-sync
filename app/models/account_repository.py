@@ -1,6 +1,3 @@
-from sqlalchemy import not_
-from sqlalchemy.exc import NoResultFound
-
 from app.domain.accounts import MonzoAccount
 from app.models.account import AccountModel
 
