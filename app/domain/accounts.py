@@ -67,7 +67,7 @@ class MonzoAccount(Account):
         response = r.get(
             f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
         )
-        return response.json()["accounts"][3]["id"]
+        return response.json()["accounts"][0]["id"]
 
     def get_balance(self) -> int:
         query = parse.urlencode({"account_id": self.get_account_id()})
@@ -157,7 +157,7 @@ class TrueLayerAccount(Account):
             f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance",
             headers=self.get_auth_header(),
         )
-        return response.json()["results"][3]["current"]
+        return response.json()["results"][0]["current"]
 
     def get_total_balance(self) -> int:
         total_balance = 0
