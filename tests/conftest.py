@@ -55,8 +55,8 @@ def test_client():
 
 @pytest.fixture(scope="function")
 def seed_data():
-    monzo_account = MonzoAccount("access_token", "refresh_token", time() + 10000)
-    monzo_joint_account = MonzoAccount("joint_access_token", "joint_refresh_token", time() + 10000)
+    monzo_account = MonzoAccount("access_token", "refresh_token", time() + 10000, account_type="uk_retail")
+    monzo_joint_account = MonzoAccount("joint_access_token", "joint_refresh_token", time() + 10000, account_type="uk_retail_joint")
     amex_account = TrueLayerAccount(
         AuthProviderType.AMEX.value,
         "access_token",

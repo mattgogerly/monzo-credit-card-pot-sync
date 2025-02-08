@@ -37,6 +37,7 @@ class SqlAlchemyAccountRepository:
     def _to_model(self, account: MonzoAccount) -> AccountModel:
         return AccountModel(
             type=account.type,
+            account_type=account.account_type,  # New field
             access_token=account.access_token,
             refresh_token=account.refresh_token,
             token_expiry=account.token_expiry,
