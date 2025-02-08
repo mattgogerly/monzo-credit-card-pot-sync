@@ -28,26 +28,28 @@ def sync_balance():
     with scheduler.app.app_context():
         # 1
         try:
-            log.info("Retrieving Monzo connection")
-            monzo_account: MonzoAccount = account_repository.get_monzo_account()
+            log.info("Retrieving Monzo connections")
+            monzo_accounts: list[MonzoAccount] = account_repository.get_all_monzo_accounts()
 
-            log.info("Checking if Monzo access token needs refreshing")
-            if monzo_account.is_token_within_expiry_window():
-                monzo_account.refresh_access_token()
-                account_repository.save(monzo_account)
+            for monzo_account in monzo_accounts:
+                log.info("Checking if Monzo access token needs refreshing")
+                if monzo_account.is_token_within_expiry_window():
+                    monzo_account.refresh_access_token()
+                    account_repository.save(monzo_account)
 
-            log.info("Checking health of Monzo connection")
-            monzo_account.ping()
-            log.info("Monzo connection is healthy")
+                log.info("Checking health of Monzo connection")
+                monzo_account.ping()
+                log.info("Monzo connection is healthy")
         except NoResultFound:
             log.error("No Monzo connection configured; sync will not run")
-            monzo_account = None
-        except AuthException:
+            monzo_accounts = []
+        except AuthException as e:
             log.error(
                 "Failed to check health of Monzo connection; connection will be removed & sync will not run"
             )
-            account_repository.delete(monzo_account.type)
-            monzo_account = None
+            for monzo_account in monzo_accounts:
+                account_repository.delete(monzo_account.type)
+            monzo_accounts = []
 
         log.info("Retrieving credit card connections")
         credit_accounts: list[TrueLayerAccount] = (
@@ -71,7 +73,7 @@ def sync_balance():
                     f"Failed to check health of {credit_account.type} connection; connection will be removed"
                 )
 
-                if monzo_account is not None:
+                for monzo_account in monzo_accounts:
                     monzo_account.send_notification(
                         f"{credit_account.type} Pot Sync Access Expired",
                         "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
@@ -80,7 +82,7 @@ def sync_balance():
                 account_repository.delete(credit_account)
 
         # nothing to sync, so exit now
-        if monzo_account is None or len(credit_accounts) == 0:
+        if not monzo_accounts or len(credit_accounts) == 0:
             log.info(
                 "Either Monzo connection is invalid, or there are no valid credit card connections; exiting sync loop"
             )
@@ -103,11 +105,18 @@ def sync_balance():
 
                 if pot_id not in pot_balance_map:
                     log.info(f"Retrieving balance of credit card pot {pot_id}")
-                    pot_balance = monzo_account.get_pot_balance(pot_id)
-                    pot_balance_map[pot_id] = pot_balance
-                    log.info(
-                        f"Credit card pot {pot_id} balance is £{pot_balance / 100}"
-                    )
+                    for monzo_account in monzo_accounts:
+                        try:
+                            pot_balance = monzo_account.get_pot_balance(pot_id)
+                            pot_balance_map[pot_id] = pot_balance
+                            log.info(
+                                f"Credit card pot {pot_id} balance is £{pot_balance / 100}"
+                            )
+                            break
+                        except NoResultFound:
+                            continue
+                    else:
+                        raise NoResultFound()
             except NoResultFound:
                 log.error(
                     f"No designated credit card pot configured for {credit_account.type}; exiting sync loop"
@@ -127,8 +136,15 @@ def sync_balance():
             # 3a
             try:
                 log.info("Retrieving balance of Monzo account")
-                account_balance = monzo_account.get_balance()
-                log.info(f"Monzo account balance is £{account_balance / 100}")
+                for monzo_account in monzo_accounts:
+                    try:
+                        account_balance = monzo_account.get_balance()
+                        log.info(f"Monzo account balance is £{account_balance / 100}")
+                        break
+                    except AuthException:
+                        continue
+                else:
+                    raise AuthException()
             except AuthException:
                 log.error("Failed to retrieve Monzo account balance; exiting sync loop")
                 return
@@ -145,19 +161,30 @@ def sync_balance():
                         "Monzo account balance is insufficient to sync pot; exiting sync loop"
                     )
                     settings_repository.save(Setting("enable_sync", "False"))
-                    monzo_account.send_notification(
-                        "Balance Insufficient To Sync Credit Card Pot",
-                        "Sync has been disabled. Top up your Monzo account and re-enable to resume syncing with your credit card pot(s)",
-                    )
+                    for monzo_account in monzo_accounts:
+                        monzo_account.send_notification(
+                            "Balance Insufficient To Sync Credit Card Pot",
+                            "Sync has been disabled. Top up your Monzo account and re-enable to resume syncing with your credit card pot(s)",
+                        )
                     return
 
                 log.info(
                     f"Adding £{difference / 100} to credit card pot {pot_id} to sync balance"
                 )
-                monzo_account.add_to_pot(pot_id, difference)
+                for monzo_account in monzo_accounts:
+                    try:
+                        monzo_account.add_to_pot(pot_id, difference)
+                        break
+                    except AuthException:
+                        continue
             else:
                 difference = abs(pot_balance)
                 log.info(
                     f"Withdrawing £{difference / 100} from credit card pot {pot_id} to sync balance"
                 )
-                monzo_account.withdraw_from_pot(pot_id, difference)
+                for monzo_account in monzo_accounts:
+                    try:
+                        monzo_account.withdraw_from_pot(pot_id, difference)
+                        break
+                    except AuthException:
+                        continue

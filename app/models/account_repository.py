@@ -32,6 +32,17 @@ class SqlAlchemyAccountRepository:
         results: list[AccountModel] = self._session.query(AccountModel).all()
         return list(map(self._to_domain, results))
 
+    def get_all_monzo_accounts(self) -> list[MonzoAccount]:
+        results: list[AccountModel] = (
+            self._session.query(AccountModel).filter_by(type="Monzo").all()
+        )
+        return [
+            MonzoAccount(
+                account.access_token, account.refresh_token, account.token_expiry, account.pot_id, account.account_id
+            )
+            for account in results
+        ]
+
     def get_monzo_account(self) -> MonzoAccount:
         result: AccountModel = (
             self._session.query(AccountModel).filter_by(type="Monzo").one()
@@ -39,7 +50,7 @@ class SqlAlchemyAccountRepository:
 
         account = self._to_domain(result)
         return MonzoAccount(
-            account.access_token, account.refresh_token, account.token_expiry
+            account.access_token, account.refresh_token, account.token_expiry, account.pot_id
         )
 
     def get_credit_accounts(self) -> list[TrueLayerAccount]:

@@ -16,11 +16,13 @@ account_repository = SqlAlchemyAccountRepository(db)
 @pots_bp.route("/", methods=["GET"])
 def index():
     try:
-        log.info("Retrieving Monzo account")
-        monzo_account: MonzoAccount = account_repository.get_monzo_account()
+        log.info("Retrieving Monzo accounts")
+        monzo_accounts = account_repository.get_all_monzo_accounts()
 
-        log.info("Retrieving pots for Monzo account")
-        pots = monzo_account.get_pots()
+        pots = []
+        for monzo_account in monzo_accounts:
+            log.info(f"Retrieving pots for Monzo account {monzo_account.account_id}")
+            pots.extend(monzo_account.get_pots())
     except NoResultFound:
         flash("You need to connect a Monzo account before you can view pots", "error")
         pots = []
