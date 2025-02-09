@@ -5,8 +5,8 @@
     <h2 class="text-xl font-bold mb-4">Switch to a Joint Account</h2>
     <form method="POST" action="{{ url_for('accounts.switch_account') }}" class="space-y-4">
         <div>
-            <label for="account_id" class="block font-medium">Select an Account</label>
-            <select id="account_id" name="account_id" class="w-full border rounded p-2">
+            <label for="selected_account_id" class="block font-medium">Select an Account</label>
+            <select id="selected_account_id" name="selected_account_id" class="w-full border rounded p-2">
                 {% for account in accounts %}
                     <option value="{{ account['id'] }}">
                         {{ account['id'] }}{% if account.get('name') %} - {{ account['name'] }}{% endif %}

@@ -23,6 +23,10 @@
                     </form>
                 {% else %}
                     <span class="block mb-2">Using Personal Account</span>
+                    <!-- Add a link to navigate to the switch account page -->
+                    <a href="{{ url_for('accounts.switch_account') }}" class="inline-block mt-2 text-blue-900 dark:text-blue-600 font-medium">
+                        Select Joint Account
+                    </a>
                 {% endif %}
             {% endif %}
         </p>
