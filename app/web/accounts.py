@@ -23,13 +23,14 @@ def index():
 
     return render_template("accounts/index.html", accounts=accounts)
 
+
 @accounts_bp.route("/switch", methods=["GET", "POST"])
 def switch_account():
     # In GET: render the account-switch form listing available accounts
     if request.method == "GET":
         # Use your provider/service to fetch available accounts.
         # For example, assume current_account is your active MonzoAccount:
-        current_account = repository.get("Monzo")
+        current_account = account_repository.get("Monzo")
         available_accounts = current_account._fetch_accounts()
         return render_template("accounts/switch_account.html", accounts=available_accounts)
 
@@ -38,13 +39,14 @@ def switch_account():
         selected_account_id = request.form.get("account_id")
         if selected_account_id:
             # Update the account record
-            account = repository.get("Monzo")
+            account = account_repository.get("Monzo")
             account.account_id = selected_account_id
-            repository.save(account)
+            account_repository.save(account)
             flash("Account switched successfully", "success")
         else:
             flash("No account selected", "error")
         return redirect(url_for("accounts.switch_account"))
+
 
 @accounts_bp.route("/add", methods=["GET"])
 def add_account():
