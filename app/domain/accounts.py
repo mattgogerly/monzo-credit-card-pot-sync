@@ -162,8 +162,10 @@ class TrueLayerAccount(Account):
         refresh_token=None,
         token_expiry=None,
         pot_id=None,
+        account_id=None  # Added optional account_id
     ):
         super().__init__(type, access_token, refresh_token, token_expiry, pot_id)
+        self.account_id = account_id
 
     def ping(self) -> None:
         r.get(
@@ -186,11 +188,10 @@ class TrueLayerAccount(Account):
 
     def get_total_balance(self) -> int:
         total_balance = 0
-
         cards = self.get_cards()
         for card in cards:
             card_id = card["account_id"]
             # multiply by 100 to get balance in minor units of currency
             total_balance += int(self.get_card_balance(card_id) * 100)
-
         return total_balance
+
