@@ -17,6 +17,7 @@ class SqlAlchemyAccountRepository:
             refresh_token=account.refresh_token,
             token_expiry=account.token_expiry,
             pot_id=account.pot_id,
+            account_id=account.account_id  # added for joint account support
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
@@ -26,6 +27,7 @@ class SqlAlchemyAccountRepository:
             refresh_token=model.refresh_token,
             token_expiry=model.token_expiry,
             pot_id=model.pot_id,
+            account_id=model.account_id  # added for joint account support
         )
 
     def get_all(self) -> list[Account]:

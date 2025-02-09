@@ -61,6 +61,28 @@ def test_monzo_account_get_account_id(requests_mock):
     account = MonzoAccount("access_token", "refresh_token", time() + 1000)
     assert account.get_account_id() == "id"
 
+def test_monzo_account_get_pots_joint_account(requests_mock):
+    # If a joint account ID is provided, the get_pots call should use it.
+    account_response = {"accounts": [{"id": "joint_123"}]}
+    requests_mock.get(
+        "https://api.monzo.com/accounts",
+        status_code=200,
+        json=account_response
+    )
+
+    pot_response = {
+        "pots": [{"id": "1", "deleted": False}]
+    }
+    # Note: The URL should include the joint account id if provided.
+    requests_mock.get(
+        "https://api.monzo.com/pots?current_account_id=joint_123",
+        status_code=200,
+        json=pot_response
+    )
+
+    account = MonzoAccount("access_token", "refresh_token", 1000, "pot", account_id="joint_123")
+    pots = account.get_pots()
+    assert len(pots) == 1
 
 def test_monzo_account_get_pots(requests_mock):
     account_response = {"accounts": [{"id": "id"}]}

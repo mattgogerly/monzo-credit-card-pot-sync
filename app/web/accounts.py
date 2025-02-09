@@ -27,9 +27,6 @@ def index():
 def switch_account():
     selected_account_id = request.form.get("selected_account_id")
     if selected_account_id:
-        # Persist this selection.
-        # You might update the MonzoAccount record or set a flag in the session.
-        # For example, using the repository:
         try:
             monzo_account = account_repository.get_monzo_account()
             monzo_account.account_id = selected_account_id

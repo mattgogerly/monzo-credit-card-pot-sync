@@ -30,12 +30,10 @@ def create_app(test_config=None):
     from .web.home import home_bp
     from .web.pots import pots_bp
     from .web.settings import settings_bp
-    from .web.switch import switch_bp
 
     app.register_blueprint(home_bp)
     app.register_blueprint(accounts_bp, url_prefix="/accounts")
     app.register_blueprint(pots_bp, url_prefix="/pots")
-    app.register_blueprint(switch_bp, url_prefix="/switch")
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(settings_bp, url_prefix="/settings")
 

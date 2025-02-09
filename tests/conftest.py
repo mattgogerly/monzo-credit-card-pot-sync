@@ -78,6 +78,32 @@ def seed_data():
         Setting("truelayer_client_secret", os.getenv("TRUELAYER_SANDBOX_CLIENT_SECRET"))
     )
 
+@pytest.fixture(scope="function")
+def seed_data_joint():
+    monzo_account = MonzoAccount(
+        "access_token", "refresh_token", time() + 10000, "pot_id", account_id="joint_123"
+    )
+    amex_account = TrueLayerAccount(
+        AuthProviderType.AMEX.value,
+        "access_token",
+        "refresh_token",
+        time() + 10000,
+        "pot_id",
+    )
+
+    account_repository = SqlAlchemyAccountRepository(db)
+    account_repository.save(monzo_account)
+    account_repository.save(amex_account)
+
+    setting_repository = SqlAlchemySettingRepository(db)
+    setting_repository.save(Setting("monzo_client_id", "monzo_dummy_client_id"))
+    setting_repository.save(Setting("monzo_client_secret", "monzo_dummy_client_secret"))
+    setting_repository.save(
+        Setting("truelayer_client_id", os.getenv("TRUELAYER_SANDBOX_CLIENT_ID"))
+    )
+    setting_repository.save(
+        Setting("truelayer_client_secret", os.getenv("TRUELAYER_SANDBOX_CLIENT_SECRET"))
+    )
 
 @pytest.fixture()
 def barclaycard_sandbox_provider(mocker):
