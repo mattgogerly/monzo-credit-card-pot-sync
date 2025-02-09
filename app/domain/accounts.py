@@ -18,12 +18,14 @@ class Account:
         refresh_token=None,
         token_expiry=None,
         pot_id=None,
+        account_id=None,  # Added optional account_id
     ):
         self.type = type
         self.access_token = access_token
         self.refresh_token = refresh_token
         self.token_expiry = token_expiry
         self.pot_id = pot_id
+        self.account_id = account_id
         self.auth_provider = provider_mapping[AuthProviderType(type)]
 
     def is_token_within_expiry_window(self):
