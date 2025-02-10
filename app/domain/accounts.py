@@ -117,9 +117,13 @@ class MonzoAccount(Account):
         return [p for p in pots if not p["deleted"]]
 
     def get_pot_balance(self, pot_id: str) -> int:
-        pots = self.get_pots()
-        pot = next(p for p in pots if p["id"] == pot_id)
-        return pot["balance"]
+        # Try personal account first, then fallback to joint account if needed.
+        for account_selection in ("personal", "joint"):
+            pots = self.get_pots(account_selection)
+            pot = next((p for p in pots if p["id"] == pot_id), None)
+            if pot is not None:
+                return pot["balance"]
+        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def add_to_pot(self, pot_id: str, amount: int) -> None:
         data = {
