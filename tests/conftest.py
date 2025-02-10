@@ -126,3 +126,34 @@ def barclaycard_sandbox_provider(mocker):
     replaced_provider_mapping = {AuthProviderType.BARCLAYCARD: barclaycard_provider}
     mocker.patch("app.web.auth.provider_mapping", replaced_provider_mapping)
     return barclaycard_provider
+
+
+@pytest.fixture(scope='session')
+def app():
+    app = create_app('testing')
+    with app.app_context():
+        yield app
+
+
+@pytest.fixture(scope='session')
+def db(app):
+    _db.app = app
+    _db.create_all()
+    yield _db
+    _db.drop_all()
+
+
+@pytest.fixture(scope='function')
+def db_session(db):
+    connection = db.engine.connect()
+    transaction = connection.begin()
+    options = dict(bind=connection, binds={})
+    session = db.create_scoped_session(options=options)
+
+    db.session = session
+
+    yield session
+
+    transaction.rollback()
+    connection.close()
+    session.remove()
