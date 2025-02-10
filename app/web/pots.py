@@ -1,10 +1,15 @@
-from flask import Blueprint, request, redirect, url_for, flash
+from flask import Blueprint, request, render_template, redirect, url_for, flash
 from app.models.account_repository import SqlAlchemyAccountRepository
 from app.extensions import db
 from sqlalchemy.orm.exc import NoResultFound
 
 pots_bp = Blueprint('pots', __name__)
-account_repository = SqlAlchemyAccountRepository(db)
+account_repository = SqlAlchemyAccountRepository(db.session)
+
+@pots_bp.route("/", methods=["GET"])
+def index():
+    # Render the index template for the pots blueprint
+    return render_template("pots/index.html")
 
 @pots_bp.route("/set_designated_pot", methods=["POST"])
 def set_designated_pot():
