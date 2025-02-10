@@ -30,7 +30,7 @@ def index():
     
     return render_template("pots/index.html", pots=pots, accounts=accounts, account_type=account_type)
 
-@pots_bp.route("/set_designated_pot", methods=["POST"])
+@pots_bp.route("/", methods=["POST"])
 def set_designated_pot():
     account_type = request.form.get("account_type")
     pot_id = request.form.get("pot_id")
