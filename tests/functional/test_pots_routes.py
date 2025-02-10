@@ -1,5 +1,3 @@
-from urllib.parse import urlparse
-
 def test_get_pots(test_client, requests_mock, seed_data):
     requests_mock.get(
         "https://api.monzo.com/accounts",
