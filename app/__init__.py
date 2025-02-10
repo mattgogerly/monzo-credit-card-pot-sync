@@ -13,8 +13,7 @@ def create_app(test_config=None):
 
     from .core import sync_balance
     from .extensions import db, scheduler
-    from .models import account, setting
-    from .models.setting_repository import SqlAlchemySettingRepository
+    from .models.setting_repository import SqlAlchemySettingRepository  # Removed unused imports
 
     db.init_app(app)
     # Create tables (if migrations are not yet set up)
