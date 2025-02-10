@@ -68,6 +68,7 @@ class MonzoAccount(Account):
         response = r.get(
             f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
         )
+        response.raise_for_status()
         return response.json()["accounts"]
 
     def get_authorized_accounts(self) -> list:
@@ -86,21 +87,28 @@ class MonzoAccount(Account):
                 return account["id"]
         raise AuthException(f"No account found for type: {desired_type}")
 
-    def get_account_description(self) -> str:
+    def get_account_description(self, account_selection="personal") -> str:
         """Return the account description for the selected account."""
-        desired_id = self.get_account_id()  # Using default; can be adapted as needed.
+        desired_id = self.get_account_id(account_selection=account_selection)
         accounts = self._fetch_accounts()
         for account in accounts:
             if account["id"] == desired_id:
                 return account.get("description", "")
         return ""
 
-    def get_balance(self) -> int:
-        query = parse.urlencode({"account_id": self.get_account_id()})
+    def get_balance(self, account_selection="personal") -> int:
+        """
+        Retrieve the balance for the specified account type.
+        :param account_selection: 'personal' for personal account, 'joint' for joint account.
+        :return: Balance in minor units (e.g., pence for GBP).
+        """
+        account_id = self.get_account_id(account_selection=account_selection)
+        query = parse.urlencode({"account_id": account_id})
         response = r.get(
             f"{self.auth_provider.api_url}/balance?{query}",
             headers=self.get_auth_header(),
         )
+        response.raise_for_status()  # Raise an exception for HTTP errors
         return response.json()["balance"]
 
     def get_pots(self, account_selection="personal") -> list:
@@ -113,6 +121,7 @@ class MonzoAccount(Account):
         response = r.get(
             f"{self.auth_provider.api_url}/pots?{query}", headers=self.get_auth_header()
         )
+        response.raise_for_status()
         pots = response.json()["pots"]
         return [p for p in pots if not p["deleted"]]
 
@@ -125,33 +134,39 @@ class MonzoAccount(Account):
                 return pot["balance"]
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
-    def add_to_pot(self, pot_id: str, amount: int) -> None:
+    def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
         data = {
-            "source_account_id": self.get_account_id(),
+            "source_account_id": self.get_account_id(account_selection=account_selection),
             "amount": amount,
-            "dedupe_id": int(time()),
+            "dedupe_id": str(int(time())),  # Ensure dedupe_id is a string
         }
-        r.put(
+        response = r.put(
             f"{self.auth_provider.api_url}/pots/{pot_id}/deposit",
             data=data,
             headers=self.get_auth_header(),
         )
+        if response.status_code != 200:
+            log.error(f"Failed to deposit to pot: {response.json()}")
+            raise Exception(f"Deposit failed: {response.json()}")
 
-    def withdraw_from_pot(self, pot_id: str, amount: int) -> None:
+    def withdraw_from_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
         data = {
-            "destination_account_id": self.get_account_id(),
+            "destination_account_id": self.get_account_id(account_selection=account_selection),
             "amount": amount,
-            "dedupe_id": int(time()),
+            "dedupe_id": str(int(time())),  # Ensure dedupe_id is a string
         }
-        r.put(
+        response = r.put(
             f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
             data=data,
             headers=self.get_auth_header(),
         )
+        if response.status_code != 200:
+            log.error(f"Failed to withdraw from pot: {response.json()}")
+            raise Exception(f"Withdrawal failed: {response.json()}")
 
-    def send_notification(self, title: str, message: str) -> None:
+    def send_notification(self, title: str, message: str, account_selection="personal") -> None:
         body = {
-            "account_id": self.get_account_id(),
+            "account_id": self.get_account_id(account_selection=account_selection),
             "type": "basic",
             "params[image_url]": "https://www.nyan.cat/cats/original.gif",
             "params[title]": title,

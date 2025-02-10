@@ -13,12 +13,6 @@ log = logging.getLogger("core")
 account_repository = SqlAlchemyAccountRepository(db)
 settings_repository = SqlAlchemySettingRepository(db)
 
-# This is the core logic for the application. It's called by the scheduler on an interval.
-# 1. Retrieve Monzo connection and validate account health.
-# 2. For each credit card account:
-#     a. Retrieve the designated pot balance (must be configured)
-#     b. Retrieve the credit card balance and adjust the pot differential.
-# 3. For each pot, verify Monzo account balance and transfer funds as required.
 def sync_balance():
     with scheduler.app.app_context():
         # Step 1: Retrieve and validate Monzo connection
@@ -84,10 +78,12 @@ def sync_balance():
                 if not pot_id:
                     raise NoResultFound(f"No designated credit card pot set for {credit_account.type}")
 
+                account_selection = credit_account.account_selection  # 'personal' or 'joint'
+
                 if pot_id not in pot_balance_map:
                     log.info(f"Retrieving balance for credit card pot {pot_id}")
                     pot_balance = monzo_account.get_pot_balance(pot_id)
-                    pot_balance_map[pot_id] = pot_balance
+                    pot_balance_map[pot_id] = {'balance': pot_balance, 'account_selection': account_selection}
                     log.info(f"Credit card pot {pot_id} balance is £{pot_balance / 100:.2f}")
             except NoResultFound as e:
                 log.error(str(e))
@@ -98,16 +94,19 @@ def sync_balance():
             log.info(f"{credit_account.type} card balance is £{credit_balance / 100:.2f}")
 
             # Adjust the designated pot balance by subtracting the credit card balance
-            pot_balance_map[pot_id] -= credit_balance
+            pot_balance_map[pot_id]['balance'] -= credit_balance
 
         # Step 3: Perform necessary balance adjustments between Monzo account and each pot
-        for pot_id, pot_diff in pot_balance_map.items():
+        for pot_id, pot_info in pot_balance_map.items():
+            pot_diff = pot_info['balance']
+            account_selection = pot_info['account_selection']
+
             try:
-                log.info("Retrieving Monzo account balance")
-                monzo_balance = monzo_account.get_balance()
-                log.info(f"Monzo account balance is £{monzo_balance / 100:.2f}")
+                log.info(f"Retrieving Monzo account balance for {account_selection} account")
+                monzo_balance = monzo_account.get_balance(account_selection=account_selection)
+                log.info(f"Monzo {account_selection} account balance is £{monzo_balance / 100:.2f}")
             except AuthException:
-                log.error("Failed to retrieve Monzo account balance; aborting sync loop")
+                log.error(f"Failed to retrieve Monzo {account_selection} account balance; aborting sync loop")
                 return
 
             log.info(f"Pot {pot_id} balance differential is £{pot_diff / 100:.2f}")
@@ -122,12 +121,13 @@ def sync_balance():
                     monzo_account.send_notification(
                         "Insufficient Funds for Sync",
                         "Sync disabled due to low Monzo balance. Please top up and re-enable sync.",
+                        account_selection=account_selection
                     )
                     return
 
                 log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
-                monzo_account.add_to_pot(pot_id, difference)
+                monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
             else:
                 difference = pot_diff
                 log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
-                monzo_account.withdraw_from_pot(pot_id, difference)
+                monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
