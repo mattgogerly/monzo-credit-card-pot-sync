@@ -12,7 +12,7 @@ from app.domain.auth_providers import (
     MonzoAuthProvider,
 )
 from app.domain.settings import Setting
-from app.extensions import db
+from app.extensions import db as _db
 from app.models.account_repository import SqlAlchemyAccountRepository
 from app.models.setting_repository import SqlAlchemySettingRepository
 
@@ -65,11 +65,11 @@ def seed_data():
         "pot_id",
     )
 
-    account_repository = SqlAlchemyAccountRepository(db)
+    account_repository = SqlAlchemyAccountRepository(_db)
     account_repository.save(monzo_account)
     account_repository.save(amex_account)
 
-    setting_repository = SqlAlchemySettingRepository(db)
+    setting_repository = SqlAlchemySettingRepository(_db)
     setting_repository.save(Setting("monzo_client_id", "monzo_dummy_client_id"))
     setting_repository.save(Setting("monzo_client_secret", "monzo_dummy_client_secret"))
     setting_repository.save(
@@ -93,11 +93,11 @@ def seed_data_joint():
         "pot_id",
     )
 
-    account_repository = SqlAlchemyAccountRepository(db)
+    account_repository = SqlAlchemyAccountRepository(_db)
     account_repository.save(monzo_account)
     account_repository.save(amex_account)
 
-    setting_repository = SqlAlchemySettingRepository(db)
+    setting_repository = SqlAlchemySettingRepository(_db)
     setting_repository.save(Setting("monzo_client_id", "monzo_dummy_client_id"))
     setting_repository.save(Setting("monzo_client_secret", "monzo_dummy_client_secret"))
     setting_repository.save(
@@ -137,10 +137,10 @@ def app():
 
 @pytest.fixture(scope='session')
 def db(app):
-    db.app = app
-    db.create_all()
-    yield db
-    db.drop_all()
+    _db.app = app
+    _db.create_all()
+    yield _db
+    _db.drop_all()
 
 
 @pytest.fixture(scope='function')
