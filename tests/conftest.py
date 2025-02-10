@@ -65,11 +65,11 @@ def seed_data():
         "pot_id",
     )
 
-    account_repository = SqlAlchemyAccountRepository(_db)
+    account_repository = SqlAlchemyAccountRepository(MockDatabase())
     account_repository.save(monzo_account)
     account_repository.save(amex_account)
 
-    setting_repository = SqlAlchemySettingRepository(_db)
+    setting_repository = SqlAlchemySettingRepository(MockDatabase())
     setting_repository.save(Setting("monzo_client_id", "monzo_dummy_client_id"))
     setting_repository.save(Setting("monzo_client_secret", "monzo_dummy_client_secret"))
     setting_repository.save(
@@ -93,11 +93,11 @@ def seed_data_joint():
         "pot_id",
     )
 
-    account_repository = SqlAlchemyAccountRepository(_db)
+    account_repository = SqlAlchemyAccountRepository(MockDatabase())
     account_repository.save(monzo_account)
     account_repository.save(amex_account)
 
-    setting_repository = SqlAlchemySettingRepository(_db)
+    setting_repository = SqlAlchemySettingRepository(MockDatabase())
     setting_repository.save(Setting("monzo_client_id", "monzo_dummy_client_id"))
     setting_repository.save(Setting("monzo_client_secret", "monzo_dummy_client_secret"))
     setting_repository.save(
