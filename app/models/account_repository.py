@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import not_
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 
 from app.domain.accounts import Account, MonzoAccount, TrueLayerAccount
 from app.models.account import AccountModel
@@ -64,11 +64,13 @@ class SqlAlchemyAccountRepository:
     def get(self, type: str) -> Account:
         try:
             result: AccountModel = (
-                self._session.query(AccountModel).filter_by(type=type).one()
+                self._session.query(AccountModel).filter_by(type=type).one_or_none()
             )
-        except NoResultFound:
-            raise NoResultFound(f"No account found for type: {type}")
-        return self._to_domain(result)
+            if result is None:
+                raise NoResultFound(f"No account found for type: {type}")
+            return self._to_domain(result)
+        except MultipleResultsFound:
+            raise MultipleResultsFound(f"Multiple accounts found for type: {type}")
 
     def save(self, account: Account) -> None:
         model = self._to_model(account)
