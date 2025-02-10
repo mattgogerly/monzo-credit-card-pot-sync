@@ -19,6 +19,7 @@ class Account:
         token_expiry=None,
         pot_id=None,
         account_id=None,
+        account_selection="personal"  # Add account_selection with default value
     ):
         self.type = type
         self.access_token = access_token
@@ -26,6 +27,7 @@ class Account:
         self.token_expiry = token_expiry
         self.pot_id = pot_id
         self.account_id = account_id
+        self.account_selection = account_selection  # Initialize account_selection
         self.auth_provider = provider_mapping[AuthProviderType(type)]
 
     def is_token_within_expiry_window(self):
@@ -54,10 +56,10 @@ class Account:
 
 class MonzoAccount(Account):
     def __init__(
-        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
+        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None, account_selection="personal"
     ):
         # Pass all parameters directly to the parent class
-        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id, account_id)
+        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id, account_id, account_selection)
 
     def ping(self) -> None:
         r.get(
@@ -188,8 +190,9 @@ class TrueLayerAccount(Account):
         token_expiry=None,
         pot_id=None,
         account_id=None,
+        account_selection="personal"  # Add account_selection with default value
     ):
-        super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id)
+        super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id, account_selection)
 
     def ping(self) -> None:
         r.get(
