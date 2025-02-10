@@ -1,37 +1,30 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="w-full max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 md:p-8 dark:bg-gray-800 dark:border-gray-700">
-    <form class="space-y-3" action="" method="post">
-        <div>
-            <label for="monzo_client_id" class="block mb-2 text-sm font-medium">Monzo Client ID</label>
-            <input type="text" name="monzo_client_id" id="monzo_client_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ data['monzo_client_id'] }}" />
-        </div>
-        <div>
-            <label for="monzo_client_secret" class="block mb-2 text-sm font-medium">Monzo Client Secret</label>
-            <input type="password" name="monzo_client_secret" id="monzo_client_secret" placeholder="••••••••" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ data['monzo_client_secret'] }}" />
-        </div>
+<section class="flex-col w-full text-center">
+    {% if accounts|length == 0 %}
+        <p>Add a credit card to choose which pot to sync with</p>
+    {% endif %}
 
-        <div>
-            <label for="truelayer_client_id" class="block mb-2 text-sm font-medium">TrueLayer Client ID</label>
-            <input type="text" name="truelayer_client_id" id="truelayer_client_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ data['truelayer_client_id'] }}" />
-        </div>
-        <div>
-            <label for="truelayer_client_secret" class="block mb-2 text-sm font-medium">TrueLayer Client Secret</label>
-            <input type="password" name="truelayer_client_secret" id="truelayer_client_secret" placeholder="••••••••" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ data['truelayer_client_secret'] }}" />
-        </div>
-        <div>
-            <label for="sync_interval_seconds" class="block mb-2 text-sm font-medium">Sync Interval (seconds)</label>
-            <input type="number" name="sync_interval_seconds" id="sync_interval_seconds" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ data['sync_interval_seconds'] }}" />
-        </div>
+    <ul class="flex flex-wrap justify-center mb-5 text-base font-semibold text-center" data-tabs-toggle="#tab-content" data-tabs-inactive-classes="text-white dark:text-white">
+        {% for account in accounts %}
+            <li class="me-2" role="presentation">
+                <button class="inline-block p-4 border-b-2 rounded-t-lg" id="{{ account.type|replace(' ', '') }}-tab" data-tabs-target="#{{ account.type|replace(' ', '') }}" type="button" role="tab" aria-controls="{{ account.type|replace(' ', '') }}" aria-selected="false">
+                    {{ account.type }}
+                </button>
+            </li>
+        {% endfor %}
+    </ul>
 
-        <label class="inline-flex items-center cursor-pointer">
-            <input type="checkbox" name="enable_sync" class="sr-only peer" {% if data['enable_sync'] %} checked {% endif %} />
-            <div class="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-            <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">Enable Balance Sync</span>
-        </label>
-  
-        <button type="submit" class="w-full mt-10 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Save</button>
-    </form>
-</div>
+    <div id="tab-content">
+        {% for account in accounts %}
+            <div class="hidden" id="{{ account.type|replace(' ', '') }}" role="tabpanel" aria-labelledby="{{ account.type|replace(' ', '') }}-tab">
+                {% if account.description %}
+                    <p class="mb-3 text-sm">Authorized account: {{ account.description }}</p>
+                {% endif %}
+                <!-- Add more content here if needed -->
+            </div>
+        {% endfor %}
+    </div>
+</section>
 {% endblock %}

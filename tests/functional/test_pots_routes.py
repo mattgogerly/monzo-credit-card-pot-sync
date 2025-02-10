@@ -1,4 +1,5 @@
 from urllib.parse import urlparse
+from app.models.account import AccountModel
 
 def test_get_pots(test_client, requests_mock, seed_data):
     requests_mock.get(
@@ -22,7 +23,23 @@ def test_get_pots_no_account(test_client):
     assert response.status_code == 200
     assert b"You need to connect a Monzo account" in response.data
 
-def test_post_pots(test_client, requests_mock, seed_data):
+def test_post_pots(test_client, requests_mock, db_session):
+    # Ensure only one account of each type is created
+    db_session.query(AccountModel).delete()
+    db_session.commit()
+
+    # Create a credit account in the database
+    credit_account = AccountModel(
+        type="American Express",
+        access_token="test_access_token",
+        refresh_token="test_refresh_token",
+        token_expiry=1234567890,
+        pot_id=None,
+        account_id="test_account_id"
+    )
+    db_session.add(credit_account)
+    db_session.commit()
+
     # Submit a request to set the designated pot for a given credit card account
     response = test_client.post(
         "/pots/", data={"account_type": "American Express", "pot_id": "pot_123"}
