@@ -4,7 +4,7 @@ from app.extensions import db
 from sqlalchemy.orm.exc import NoResultFound
 
 pots_bp = Blueprint('pots', __name__)
-account_repository = SqlAlchemyAccountRepository(db.session)
+account_repository = SqlAlchemyAccountRepository(db)
 
 @pots_bp.route("/", methods=["GET"])
 def index():
