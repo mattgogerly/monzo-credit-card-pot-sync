@@ -148,9 +148,9 @@ def db_session(db):
     connection = db.engine.connect()
     transaction = connection.begin()
     options = dict(bind=connection, binds={})
-    session = db.create_scoped_session(options=options)
+    session = _db.create_scoped_session(options=options)
 
-    db.session = session
+    _db.session = session
 
     yield session
 
