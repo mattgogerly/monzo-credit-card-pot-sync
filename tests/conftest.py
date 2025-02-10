@@ -17,6 +17,11 @@ from app.models.account_repository import SqlAlchemyAccountRepository
 from app.models.setting_repository import SqlAlchemySettingRepository
 
 
+class MockDatabase:
+    def __init__(self):
+        self.session = None
+
+
 @pytest.fixture
 def monzo_provider():
     return MonzoAuthProvider()
@@ -29,7 +34,7 @@ def amex_provider():
 
 @pytest.fixture
 def setting_repository(mocker):
-    repository = SqlAlchemySettingRepository(_db)
+    repository = SqlAlchemySettingRepository(MockDatabase())
     mocker.patch.object(repository, "get", return_value="setting_value")
     mocker.patch("app.domain.auth_providers.repository", repository)
     return repository
@@ -50,7 +55,7 @@ def test_client():
 
 
 @pytest.fixture(scope="function")
-def seed_data(db_session):
+def seed_data():
     monzo_account = MonzoAccount("access_token", "refresh_token", time() + 10000)
     amex_account = TrueLayerAccount(
         AuthProviderType.AMEX.value,
@@ -60,11 +65,11 @@ def seed_data(db_session):
         "pot_id",
     )
 
-    account_repository = SqlAlchemyAccountRepository(db_session)
+    account_repository = SqlAlchemyAccountRepository(MockDatabase())
     account_repository.save(monzo_account)
     account_repository.save(amex_account)
 
-    setting_repository = SqlAlchemySettingRepository(db_session)
+    setting_repository = SqlAlchemySettingRepository(MockDatabase())
     setting_repository.save(Setting("monzo_client_id", "monzo_dummy_client_id"))
     setting_repository.save(Setting("monzo_client_secret", "monzo_dummy_client_secret"))
     setting_repository.save(
@@ -76,7 +81,7 @@ def seed_data(db_session):
 
 
 @pytest.fixture(scope="function")
-def seed_data_joint(db_session):
+def seed_data_joint():
     monzo_account = MonzoAccount(
         "access_token", "refresh_token", time() + 10000, "pot_id", account_id="joint_123"
     )
@@ -88,11 +93,11 @@ def seed_data_joint(db_session):
         "pot_id",
     )
 
-    account_repository = SqlAlchemyAccountRepository(db_session)
+    account_repository = SqlAlchemyAccountRepository(MockDatabase())
     account_repository.save(monzo_account)
     account_repository.save(amex_account)
 
-    setting_repository = SqlAlchemySettingRepository(db_session)
+    setting_repository = SqlAlchemySettingRepository(MockDatabase())
     setting_repository.save(Setting("monzo_client_id", "monzo_dummy_client_id"))
     setting_repository.save(Setting("monzo_client_secret", "monzo_dummy_client_secret"))
     setting_repository.save(
@@ -121,39 +126,3 @@ def barclaycard_sandbox_provider(mocker):
     replaced_provider_mapping = {AuthProviderType.BARCLAYCARD: barclaycard_provider}
     mocker.patch("app.web.auth.provider_mapping", replaced_provider_mapping)
     return barclaycard_provider
-
-
-@pytest.fixture(scope='session')
-def app():
-    test_config = {
-        "TESTING": True,
-        "SQLALCHEMY_DATABASE_URI": "sqlite://",
-        "SECRET_KEY": "testing",
-    }
-    app = create_app(test_config)
-    with app.app_context():
-        yield app
-
-
-@pytest.fixture(scope='session')
-def db(app):
-    _db.app = app
-    _db.create_all()
-    yield _db
-    _db.drop_all()
-
-
-@pytest.fixture(scope='function')
-def db_session(db):
-    connection = db.engine.connect()
-    transaction = connection.begin()
-    options = dict(bind=connection, binds={})
-    session = _db.create_scoped_session(options=options)
-
-    _db.session = session
-
-    yield session
-
-    transaction.rollback()
-    connection.close()
-    session.remove()
