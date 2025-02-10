@@ -30,14 +30,19 @@ def index():
     
     return render_template("pots/index.html", pots=pots, accounts=accounts, account_type=account_type)
 
-@pots_bp.route("/", methods=["POST"])
+@pots_bp.route("/set_designated_pot", methods=["POST"])
 def set_designated_pot():
     account_type = request.form.get("account_type")
     pot_id = request.form.get("pot_id")
-    
-    account = account_repository.get(account_type)
-    account.pot_id = pot_id
-    account_repository.save(account)
+    selected_account_type = request.form.get("selected_account_type")
 
-    flash(f"Updated designated credit card pot for {account.type}")
-    return redirect(url_for("pots.index"))
+    try:
+        account = account_repository.get_by_type(account_type)
+        account.pot_id = pot_id
+        account.account_selection = selected_account_type
+        account_repository.save(account)
+        flash(f"Updated designated credit card pot for {account.type}")
+    except NoResultFound:
+        flash(f"Account of type {account_type} not found", "error")
+
+    return redirect(url_for("pots.index", account=selected_account_type))

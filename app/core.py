@@ -79,7 +79,7 @@ def sync_balance():
                     raise NoResultFound(f"No designated credit card pot set for {credit_account.type}")
 
                 # Determine account selection based on account type
-                account_selection = monzo_account.get_account_type(pot_id)
+                account_selection = credit_account.account_selection
 
                 if pot_id not in pot_balance_map:
                     log.info(f"Retrieving balance for credit card pot {pot_id}")

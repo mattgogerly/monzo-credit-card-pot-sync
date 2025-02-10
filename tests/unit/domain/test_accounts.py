@@ -46,7 +46,6 @@ def test_monzo_account_get_account_id(requests_mock):
     account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
     assert account.get_account_id() == "id"
 
-
 def test_monzo_account_get_pots_joint_account(requests_mock):
     # When testing for joint accounts, update mocked response to include the joint type.
     account_response = {"accounts": [{"id": "joint_123", "type": "uk_retail_joint", "currency": "GBP"}]}
@@ -60,7 +59,6 @@ def test_monzo_account_get_pots_joint_account(requests_mock):
     pots = account.get_pots("joint")
     assert pots == [{"id": "1", "deleted": False}]
 
-
 def test_monzo_account_get_pots(requests_mock):
     account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
@@ -73,7 +71,6 @@ def test_monzo_account_get_pots(requests_mock):
     pots = account.get_pots()
     # Only non-deleted pots should be returned.
     assert pots == [{"id": "1", "deleted": False}]
-
 
 def test_monzo_account_get_pot_balance(requests_mock):
     account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
@@ -91,7 +88,6 @@ def test_monzo_account_get_pot_balance(requests_mock):
     account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
     assert account.get_pot_balance("1") == 500
 
-
 def test_monzo_account_add_to_pot(requests_mock):
     account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
@@ -101,7 +97,6 @@ def test_monzo_account_add_to_pot(requests_mock):
     account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
     account.add_to_pot("1", 500)
 
-
 def test_monzo_account_withdraw_from_pot(requests_mock):
     account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
@@ -110,7 +105,6 @@ def test_monzo_account_withdraw_from_pot(requests_mock):
 
     account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
     account.withdraw_from_pot("1", 500)
-
 
 def test_monzo_account_send_notification(requests_mock):
     account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
@@ -156,7 +150,13 @@ def test_truelayer_account_get_total_balance(requests_mock):
     balance_response_two = {"results": [{"account_id": "2", "current": 750}]}
     requests_mock.get("https://api.truelayer.com/data/v1/cards/2/balance", status_code=200, json=balance_response_two)
 
-    account = TrueLayerAccount("American Express", "access_token", "refresh_token", time() + 1000)
-    # Total balance is 500 + 750 = 1250 pounds,
+    pending_transactions_response_one = {"results": [{"amount": 5}]}
+    requests_mock.get("https://api.truelayer.com/data/v1/cards/1/transactions/pending", status_code=200, json=pending_transactions_response_one)
+
+    pending_transactions_response_two = {"results": [{"amount": 10}]}
+    requests_mock.get("https://api.truelayer.com/data/v1/cards/2/transactions/pending", status_code=200, json=pending_transactions_response_two)
+
+    account = TrueLayerAccount("American Express", "access_token", "refresh_token", time() + 1000, account_id="1")
+    # Total balance is 500 + 750 + 5 + 10 = 1265 pounds,
     # multiplied by 100 to convert into pence.
-    assert account.get_total_balance() == 125000
+    assert account.get_total_balance() == 126500
