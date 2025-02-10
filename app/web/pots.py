@@ -26,4 +26,4 @@ def set_designated_pot():
     except NoResultFound:
         flash(f"Account of type {account_type} not found", "error")
 
-    return redirect(url_for("pots.index", account=selected_account_type))
+    return redirect(url_for("pots.index"))
