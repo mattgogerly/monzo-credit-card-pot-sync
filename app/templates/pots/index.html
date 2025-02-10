@@ -2,16 +2,6 @@
 
 {% block content %}
 <section class="flex-col w-full text-center">
-
-    <!-- Dropdown to select account type -->
-    <div class="mb-4">
-        <label for="account_switcher" class="font-medium">Select Account:</label>
-        <select id="account_switcher" class="border rounded p-2" onchange="window.location='{{ url_for('pots.index') }}?account=' + this.value">
-            <option value="personal" {% if account_type == 'personal' %}selected{% endif %}>Personal Account</option>
-            <option value="joint" {% if account_type == 'joint' %}selected{% endif %}>Joint Account</option>
-        </select>
-    </div>
-
     {% if accounts|length == 0 %}
         <p>Add a credit card to choose which pot to sync with</p>
     {% endif %}
@@ -32,6 +22,15 @@
                 {% if account.description %}
                     <p class="mb-3 text-sm">Authorized account: {{ account.description }}</p>
                 {% endif %}
+
+                <!-- Account-specific drop-down for selecting Personal or Joint -->
+                <div class="mb-4">
+                    <label for="account_switcher_{{ account.type|replace(' ', '') }}" class="font-medium">Select Account:</label>
+                    <select id="account_switcher_{{ account.type|replace(' ', '') }}" class="border rounded p-2 bg-transparent" onchange="window.location='{{ url_for('pots.index') }}?account=' + this.value">
+                        <option value="personal" {% if account_type == 'personal' or account_type is not defined %}selected{% endif %}>Personal Account</option>
+                        <option value="joint" {% if account_type == 'joint' %}selected{% endif %}>Joint Account</option>
+                    </select>
+                </div>
 
                 <section class="flex flex-row flex-wrap gap-3 justify-center w-full">
                     {% for pot in pots %}

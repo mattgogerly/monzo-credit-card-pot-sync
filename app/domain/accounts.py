@@ -74,22 +74,24 @@ class MonzoAccount(Account):
         """Return a list of authorized accounts (both personal and joint) with details."""
         return self._fetch_accounts()
 
-    def get_account_id(self) -> str:
-        """Return the selected account id. If none is set, default to the first available account."""
-        if self.account_id:
-            return self.account_id
+    def get_account_id(self, account_selection="personal") -> str:
+        """
+        Return the account id for the desired account type.
+        Defaults to personal ('uk_retail') and uses 'uk_retail_joint' for joint accounts.
+        """
+        desired_type = "uk_retail_joint" if account_selection == "joint" else "uk_retail"
         accounts = self._fetch_accounts()
-        if not accounts:
-            raise AuthException("No accounts returned by Monzo API")
-        self.account_id = accounts[0]["id"]
-        return self.account_id
+        for account in accounts:
+            if account["type"] == desired_type:
+                return account["id"]
+        raise AuthException(f"No account found for type: {desired_type}")
 
     def get_account_description(self) -> str:
         """Return the account description for the selected account."""
-        selected = self.get_account_id()
+        desired_id = self.get_account_id()  # Using default; can be adapted as needed.
         accounts = self._fetch_accounts()
         for account in accounts:
-            if account["id"] == selected:
+            if account["id"] == desired_id:
                 return account.get("description", "")
         return ""
 
@@ -101,8 +103,13 @@ class MonzoAccount(Account):
         )
         return response.json()["balance"]
 
-    def get_pots(self) -> list[object]:
-        query = parse.urlencode({"current_account_id": self.get_account_id()})
+    def get_pots(self, account_selection="personal") -> list:
+        """
+        Get pots based on the selected account type.
+        By default, uses the personal account; for joint, pass account_selection="joint".
+        """
+        current_account_id = self.get_account_id(account_selection)
+        query = parse.urlencode({"current_account_id": current_account_id})
         response = r.get(
             f"{self.auth_provider.api_url}/pots?{query}", headers=self.get_auth_header()
         )
@@ -170,7 +177,7 @@ class TrueLayerAccount(Account):
             f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header()
         )
 
-    def get_cards(self) -> list[object]:
+    def get_cards(self) -> list:
         response = r.get(
             f"{self.auth_provider.api_url}/data/v1/cards",
             headers=self.get_auth_header(),

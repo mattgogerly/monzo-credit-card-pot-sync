@@ -9,15 +9,6 @@
             <span class="flex-1 ms-3 whitespace-nowrap">{{ account.type }}</span>
         </h5>
         <p class="text-sm font-normal">
-            {% if account.type == "Monzo" %}
-                {% if account.account_id %}
-                    <span class="block mb-2">Account ID in use: {{ account.account_id }}</span>
-                {% else %}
-                    <span class="block mb-2">Using Personal Account</span>
-                {% endif %}
-            {% endif %}
-        </p>
-        <p class="text-sm font-normal">
             <form action="" method="post">
                 <input name="account_type" id="account_type" type="text" value="{{ account.type }}" hidden />
                 <button type="submit" class="flex items-center pt-2 text-red-900 dark:text-red-600">

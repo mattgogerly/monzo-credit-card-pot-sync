@@ -18,9 +18,8 @@ def index():
     try:
         log.info(f"Retrieving Monzo account for {account_type} account")
         monzo_account: MonzoAccount = account_repository.get_monzo_account()
-        # Joint or personal are now managed based on per–credit-card settings;
-        # no additional adjustments are made here.
-        pots = monzo_account.get_pots()
+        # Pass the account type to get_pots so that the joint account is used when selected
+        pots = monzo_account.get_pots(account_type)
     except NoResultFound:
         flash("You need to connect a Monzo account before you can view pots", "error")
         pots = []
