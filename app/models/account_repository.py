@@ -64,13 +64,11 @@ class SqlAlchemyAccountRepository:
     def get(self, type: str) -> Account:
         try:
             result: AccountModel = (
-                self._session.query(AccountModel).filter_by(type=type).one_or_none()
+                self._session.query(AccountModel).filter_by(type=type).one()
             )
-            if result is None:
-                raise NoResultFound(f"No account found for type: {type}")
-            return self._to_domain(result)
-        except MultipleResultsFound:
-            raise MultipleResultsFound(f"Multiple accounts found for type: {type}")
+        except NoResultFound:
+            raise NoResultFound(f"No account found for type: {type}")
+        return self._to_domain(result)
 
     def save(self, account: Account) -> None:
         model = self._to_model(account)
