@@ -1,229 +1,134 @@
 import logging
-from time import time
-from urllib import parse
+from sqlalchemy.exc import NoResultFound
 
-import requests as r
-
-from app.domain.auth_providers import AuthProviderType, provider_mapping
+from app.domain.accounts import MonzoAccount, TrueLayerAccount
+from app.domain.settings import Setting
 from app.errors import AuthException
+from app.extensions import db, scheduler
+from app.models.account_repository import SqlAlchemyAccountRepository
+from app.models.setting_repository import SqlAlchemySettingRepository
 
-log = logging.getLogger("account")
+log = logging.getLogger("core")
 
+account_repository = SqlAlchemyAccountRepository(db)
+settings_repository = SqlAlchemySettingRepository(db)
 
-class Account:
-    def __init__(
-        self,
-        type,
-        access_token=None,
-        refresh_token=None,
-        token_expiry=None,
-        pot_id=None,
-        account_id=None,
-    ):
-        self.type = type
-        self.access_token = access_token
-        self.refresh_token = refresh_token
-        self.token_expiry = token_expiry
-        self.pot_id = pot_id
-        self.account_id = account_id
-        self.auth_provider = provider_mapping[AuthProviderType(type)]
-
-    def is_token_within_expiry_window(self):
-        # Returns True if the token expires in the next two minutes or has already expired.
-        return self.token_expiry - int(time()) <= 120
-
-    def refresh_access_token(self):
-        log.info(f"{self.type} access token is within expiry window, refreshing tokens")
+def sync_balance():
+    with scheduler.app.app_context():
+        # Step 1: Retrieve and validate Monzo connection
         try:
-            tokens = self.auth_provider.refresh_access_token(self.refresh_token)
-            self.access_token = tokens["access_token"]
-            self.refresh_token = tokens["refresh_token"]
-            self.token_expiry = int(time()) + tokens["expires_in"]
-            log.info(
-                f"Successfully refreshed {self.type} access token, new expiry time is {self.token_expiry}"
-            )
-        except KeyError as e:
-            raise AuthException(e)
-        except AuthException as e:
-            log.error(f"Failed to refresh access token for {self.type}")
-            raise e
+            log.info("Retrieving Monzo connection")
+            monzo_account: MonzoAccount = account_repository.get_monzo_account()
 
-    def get_auth_header(self):
-        return {"Authorization": f"Bearer {self.access_token}"}
+            log.info("Checking if Monzo access token needs refreshing")
+            if monzo_account.is_token_within_expiry_window():
+                monzo_account.refresh_access_token()
+                account_repository.save(monzo_account)
 
+            log.info("Pinging Monzo connection to verify health")
+            monzo_account.ping()
+            log.info("Monzo connection is healthy")
+        except NoResultFound:
+            log.error("No Monzo connection configured; sync will not run")
+            monzo_account = None
+        except AuthException:
+            log.error("Monzo connection authentication failed; deleting configuration and aborting sync")
+            account_repository.delete(monzo_account.type)
+            monzo_account = None
 
-class MonzoAccount(Account):
-    def __init__(
-        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
-    ):
-        # Pass all parameters directly to the parent class
-        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id, account_id)
+        log.info("Retrieving credit card connections")
+        credit_accounts: list[TrueLayerAccount] = account_repository.get_credit_accounts()
+        log.info(f"Retrieved {len(credit_accounts)} credit card connection(s)")
 
-    def ping(self) -> None:
-        r.get(
-            f"{self.auth_provider.api_url}/ping/whoami", headers=self.get_auth_header()
-        )
+        for credit_account in credit_accounts:
+            try:
+                log.info(f"Checking if {credit_account.type} access token needs refreshing")
+                if credit_account.is_token_within_expiry_window():
+                    credit_account.refresh_access_token()
+                    account_repository.save(credit_account)
 
-    def _fetch_accounts(self) -> list:
-        response = r.get(
-            f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
-        )
-        response.raise_for_status()
-        return response.json()["accounts"]
+                log.info(f"Pinging {credit_account.type} connection to verify health")
+                credit_account.ping()
+                log.info(f"{credit_account.type} connection is healthy")
+            except AuthException:
+                log.error(f"Authentication failed for {credit_account.type}; deleting connection")
+                if monzo_account is not None:
+                    monzo_account.send_notification(
+                        f"{credit_account.type} Pot Sync Access Expired",
+                        "Reconnect the account(s) on your portal to resume syncing.",
+                    )
+                account_repository.delete(credit_account)
 
-    def get_authorized_accounts(self) -> list:
-        """Return a list of authorized accounts (both personal and joint) with details."""
-        return self._fetch_accounts()
+        # Exit early if critical connections are missing
+        if monzo_account is None or len(credit_accounts) == 0:
+            log.info("Missing Monzo connection or credit card connections; skipping sync loop")
+            return
 
-    def get_account_id(self, account_selection="personal") -> str:
-        """
-        Return the account id for the desired account type.
-        Defaults to personal ('uk_retail') and uses 'uk_retail_joint' for joint accounts.
-        """
-        desired_type = "uk_retail_joint" if account_selection == "joint" else "uk_retail"
-        accounts = self._fetch_accounts()
-        for account in accounts:
-            if account["type"] == desired_type:
-                return account["id"]
-        raise AuthException(f"No account found for type: {desired_type}")
+        # Check if sync is enabled from settings
+        if not settings_repository.get("enable_sync"):
+            log.info("Balance sync is disabled in settings; skipping sync loop")
+            return
 
-    def get_account_description(self, account_selection="personal") -> str:
-        """Return the account description for the selected account."""
-        desired_id = self.get_account_id(account_selection=account_selection)
-        accounts = self._fetch_accounts()
-        for account in accounts:
-            if account["id"] == desired_id:
-                return account.get("description", "")
-        return ""
+        # Step 2: Calculate balance differentials for each designated credit card pot
+        pot_balance_map = {}
 
-    def get_balance(self, account_selection="personal") -> int:
-        """
-        Retrieve the balance for the specified account type.
-        :param account_selection: 'personal' for personal account, 'joint' for joint account.
-        :return: Balance in minor units (e.g., pence for GBP).
-        """
-        account_id = self.get_account_id(account_selection=account_selection)
-        query = parse.urlencode({"account_id": account_id})
-        response = r.get(
-            f"{self.auth_provider.api_url}/balance?{query}",
-            headers=self.get_auth_header(),
-        )
-        response.raise_for_status()  # Raise an exception for HTTP errors
-        return response.json()["balance"]
+        for credit_account in credit_accounts:
+            try:
+                pot_id = credit_account.pot_id
+                if not pot_id:
+                    raise NoResultFound(f"No designated credit card pot set for {credit_account.type}")
 
-    def get_pots(self, account_selection="personal") -> list:
-        """
-        Get pots based on the selected account type.
-        By default, uses the personal account; for joint, pass account_selection="joint".
-        """
-        current_account_id = self.get_account_id(account_selection)
-        query = parse.urlencode({"current_account_id": current_account_id})
-        response = r.get(
-            f"{self.auth_provider.api_url}/pots?{query}", headers=self.get_auth_header()
-        )
-        response.raise_for_status()
-        pots = response.json()["pots"]
-        return [p for p in pots if not p["deleted"]]
+                # Determine account selection based on account type
+                account_selection = monzo_account.get_account_type(pot_id)
 
-    def get_pot_balance(self, pot_id: str) -> int:
-        # Try personal account first, then fallback to joint account if needed.
-        for account_selection in ("personal", "joint"):
-            pots = self.get_pots(account_selection)
-            pot = next((p for p in pots if p["id"] == pot_id), None)
-            if pot is not None:
-                return pot["balance"]
-        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
+                if pot_id not in pot_balance_map:
+                    log.info(f"Retrieving balance for credit card pot {pot_id}")
+                    pot_balance = monzo_account.get_pot_balance(pot_id)
+                    pot_balance_map[pot_id] = {'balance': pot_balance, 'account_selection': account_selection}
+                    log.info(f"Credit card pot {pot_id} balance is £{pot_balance / 100:.2f}")
+            except NoResultFound as e:
+                log.error(str(e))
+                return
 
-    def get_account_type(self, pot_id: str) -> str:
-        """
-        Retrieve the account type (personal or joint) for the given pot ID.
-        """
-        for account_selection in ("personal", "joint"):
-            pots = self.get_pots(account_selection)
-            if any(p["id"] == pot_id for p in pots):
-                return account_selection
-        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
+            log.info(f"Retrieving balance for {credit_account.type} credit card")
+            credit_balance = credit_account.get_total_balance()
+            log.info(f"{credit_account.type} card balance is £{credit_balance / 100:.2f}")
 
-    def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        data = {
-            "source_account_id": self.get_account_id(account_selection=account_selection),
-            "amount": amount,
-            "dedupe_id": str(int(time())),  # Ensure dedupe_id is a string
-        }
-        response = r.put(
-            f"{self.auth_provider.api_url}/pots/{pot_id}/deposit",
-            data=data,
-            headers=self.get_auth_header(),
-        )
-        if response.status_code != 200:
-            log.error(f"Failed to deposit to pot: {response.json()}")
-            raise Exception(f"Deposit failed: {response.json()}")
+            # Adjust the designated pot balance by subtracting the credit card balance
+            pot_balance_map[pot_id]['balance'] -= credit_balance
 
-    def withdraw_from_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        data = {
-            "destination_account_id": self.get_account_id(account_selection=account_selection),
-            "amount": amount,
-            "dedupe_id": str(int(time())),  # Ensure dedupe_id is a string
-        }
-        response = r.put(
-            f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
-            data=data,
-            headers=self.get_auth_header(),
-        )
-        if response.status_code != 200:
-            log.error(f"Failed to withdraw from pot: {response.json()}")
-            raise Exception(f"Withdrawal failed: {response.json()}")
+        # Step 3: Perform necessary balance adjustments between Monzo account and each pot
+        for pot_id, pot_info in pot_balance_map.items():
+            pot_diff = pot_info['balance']
+            account_selection = pot_info['account_selection']
 
-    def send_notification(self, title: str, message: str, account_selection="personal") -> None:
-        body = {
-            "account_id": self.get_account_id(account_selection=account_selection),
-            "type": "basic",
-            "params[image_url]": "https://www.nyan.cat/cats/original.gif",
-            "params[title]": title,
-            "params[body]": message,
-        }
-        r.post(
-            f"{self.auth_provider.api_url}/feed",
-            data=body,
-            headers=self.get_auth_header(),
-        )
+            try:
+                log.info(f"Retrieving Monzo account balance for {account_selection} account")
+                monzo_balance = monzo_account.get_balance(account_selection=account_selection)
+                log.info(f"Monzo {account_selection} account balance is £{monzo_balance / 100:.2f}")
+            except AuthException:
+                log.error(f"Failed to retrieve Monzo {account_selection} account balance; aborting sync loop")
+                return
 
+            log.info(f"Pot {pot_id} balance differential is £{pot_diff / 100:.2f}")
 
-class TrueLayerAccount(Account):
-    def __init__(
-        self,
-        type,
-        access_token=None,
-        refresh_token=None,
-        token_expiry=None,
-        pot_id=None,
-        account_id=None,
-    ):
-        super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id)
+            if pot_diff == 0:
+                log.info("No balance difference; no action required")
+            elif pot_diff < 0:
+                difference = abs(pot_diff)
+                if monzo_balance < difference:
+                    log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
+                    settings_repository.save(Setting("enable_sync", "False"))
+                    monzo_account.send_notification(
+                        "Insufficient Funds for Sync",
+                        "Sync disabled due to low Monzo balance. Please top up and re-enable sync.",
+                        account_selection=account_selection
+                    )
+                    return
 
-    def ping(self) -> None:
-        r.get(
-            f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header()
-        )
-
-    def get_cards(self) -> list:
-        response = r.get(
-            f"{self.auth_provider.api_url}/data/v1/cards",
-            headers=self.get_auth_header(),
-        )
-        return response.json()["results"]
-
-    def get_card_balance(self, card_id: str) -> int:
-        response = r.get(
-            f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance",
-            headers=self.get_auth_header(),
-        )
-        return response.json()["results"][0]["current"]
-
-    def get_total_balance(self) -> int:
-        total_balance = 0
-        cards = self.get_cards()
-        for card in cards:
-            card_id = card["account_id"]
-            total_balance += int(self.get_card_balance(card_id) * 100)
-        return total_balance
+                log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
+                monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
+            else:
+                difference = pot_diff
+                log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
+                monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
