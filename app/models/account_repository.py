@@ -19,7 +19,8 @@ class SqlAlchemyAccountRepository:
             refresh_token=account.refresh_token,
             token_expiry=account.token_expiry,
             pot_id=account.pot_id,
-            account_id=account.account_id
+            account_id=account.account_id,
+            account_selection=account.account_selection
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
@@ -29,7 +30,8 @@ class SqlAlchemyAccountRepository:
             refresh_token=model.refresh_token,
             token_expiry=model.token_expiry,
             pot_id=model.pot_id,
-            account_id=model.account_id
+            account_id=model.account_id,
+            account_selection=model.account_selection
         )
 
     def get_all(self) -> list[Account]:
@@ -46,7 +48,8 @@ class SqlAlchemyAccountRepository:
             account.refresh_token,
             account.token_expiry,
             account.pot_id,
-            account_id=account.account_id
+            account_id=account.account_id,
+            account_selection=account.account_selection
         )
 
     def get_credit_accounts(self) -> list[TrueLayerAccount]:
@@ -58,7 +61,7 @@ class SqlAlchemyAccountRepository:
         accounts = list(map(self._to_domain, results))
         return [
             TrueLayerAccount(
-                a.type, a.access_token, a.refresh_token, a.token_expiry, a.pot_id
+                a.type, a.access_token, a.refresh_token, a.token_expiry, a.pot_id, a.account_selection
             )
             for a in accounts
         ]
@@ -78,7 +81,10 @@ class SqlAlchemyAccountRepository:
 
     def save(self, account: Account) -> None:
         model = self._to_model(account)
-        self._session.merge(model)
+        existing_account = self._session.query(AccountModel).filter_by(type=account.type).first()
+        if existing_account:
+            self._session.delete(existing_account)
+        self._session.add(model)
         self._session.commit()
 
     def delete(self, type: str) -> None:
