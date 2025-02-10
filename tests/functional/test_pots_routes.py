@@ -1,4 +1,16 @@
-def test_post_pots(test_client, requests_mock):
+def test_post_pots(test_client, requests_mock, db_session):
+    # Create a credit account in the database
+    credit_account = AccountModel(
+        type="credit",
+        access_token="test_access_token",
+        refresh_token="test_refresh_token",
+        token_expiry=1234567890,
+        pot_id=None,
+        account_id="test_account_id"
+    )
+    db_session.add(credit_account)
+    db_session.commit()
+
     # Mock necessary external calls
     requests_mock.get("https://api.monzo.com/ping/whoami")
     requests_mock.get("https://api.truelayer.com/data/v1/me")
