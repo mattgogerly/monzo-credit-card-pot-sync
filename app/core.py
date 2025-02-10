@@ -1,4 +1,5 @@
 import logging
+from sqlalchemy.exc import NoResultFound
 
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
 from app.domain.settings import Setting
