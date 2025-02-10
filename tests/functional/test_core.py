@@ -1,4 +1,3 @@
-from time import time
 from app.core import sync_balance
 
 def test_core_flow_successful_no_change_required(mocker, test_client, requests_mock, seed_data):

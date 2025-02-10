@@ -1,7 +1,6 @@
 from time import time
 from urllib import parse
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
-from app.errors import AuthException
 
 def test_new_monzo_account():
     account = MonzoAccount("access_token", "refresh_token", 1000, "pot")
