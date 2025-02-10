@@ -65,24 +65,30 @@
 </section>
 
 <script>
-    // When the page loads, restore the saved dropdown values
-    document.addEventListener("DOMContentLoaded", function(){
+    document.addEventListener("DOMContentLoaded", function() {
+        const defaultAccount = "personal";  // Default to "personal" if nothing is saved
+        const storageKey = "selectedAccount_global"; // Use a consistent key for global selection
+        let savedAccountType = localStorage.getItem(storageKey) || defaultAccount;
+
+        // Check if the URL already has the account parameter
+        let currentUrl = new URL(window.location.href);
+        let currentAccount = currentUrl.searchParams.get("account");
+
+        if (!currentAccount) {
+            // If no account type is in the URL, redirect to the saved one
+            currentUrl.searchParams.set("account", savedAccountType);
+            window.location.replace(currentUrl.href); // Use replace to avoid back button issues
+        }
+
+        // Ensure dropdown selections reflect the saved choice
         const selects = document.querySelectorAll("select[id^='account_switcher_']");
         selects.forEach(function(select) {
-            // The key uses the account identifier from the select's id value
-            const accountKey = select.id.replace("account_switcher_", "");
-            const storageKey = "selectedAccount_" + accountKey;
-            const savedValue = localStorage.getItem(storageKey);
-            if(savedValue) {
-                select.value = savedValue;
-            }
-            // Add event listener for change events on this dropdown
-            select.addEventListener("change", function(){
+            select.value = savedAccountType;
+            select.addEventListener("change", function() {
                 localStorage.setItem(storageKey, this.value);
-                // Update the URL query parameter "account" to reflect the selection
-                let currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set("account", this.value);
-                window.location.href = currentUrl.href;
+                let updatedUrl = new URL(window.location.href);
+                updatedUrl.searchParams.set("account", this.value);
+                window.location.href = updatedUrl.href; // Navigate to update the URL
             });
         });
     });
