@@ -224,6 +224,9 @@ class TrueLayerAccount(Account):
         """
         Retrieve pending transactions for the account.
         """
+        if not self.account_id:
+            raise ValueError("Account ID is not set.")
+        
         response = r.get(
             f"{self.auth_provider.api_url}/data/v1/cards/{self.account_id}/transactions/pending",
             headers=self.get_auth_header(),
