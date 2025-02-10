@@ -137,10 +137,10 @@ def app():
 
 @pytest.fixture(scope='session')
 def db(app):
-    _db.app = app
-    _db.create_all()
-    yield _db
-    _db.drop_all()
+    db.app = app
+    db.create_all()
+    yield db
+    db.drop_all()
 
 
 @pytest.fixture(scope='function')
