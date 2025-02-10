@@ -67,7 +67,7 @@ class SqlAlchemyAccountRepository:
                 self._session.query(AccountModel).filter_by(type=type).one()
             )
         except NoResultFound:
-            raise NoResultFound(id)
+            raise NoResultFound(f"No account found for type: {type}")
         return self._to_domain(result)
 
     def save(self, account: Account) -> None:
