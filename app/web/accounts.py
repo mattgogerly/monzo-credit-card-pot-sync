@@ -14,7 +14,6 @@ account_repository = SqlAlchemyAccountRepository(db)
 def index():
     # fetch separately so we can always place Monzo first in the list
     accounts = account_repository.get_credit_accounts()
-
     try:
         monzo_account = account_repository.get_monzo_account()
         accounts.insert(0, monzo_account)
@@ -22,29 +21,6 @@ def index():
         pass
 
     return render_template("accounts/index.html", accounts=accounts)
-
-
-@accounts_bp.route("/switch", methods=["GET", "POST"])
-def switch_account():
-    # In GET: render the account-switch form listing available accounts
-    if request.method == "GET":
-        # Assume current_account is your active MonzoAccount:
-        current_account = account_repository.get("Monzo")
-        available_accounts = current_account._fetch_accounts()
-        return render_template("accounts/switch_account.html", accounts=available_accounts)
-
-    # In POST: update the account_id based on selection
-    elif request.method == "POST":
-        selected_account_id = request.form.get("selected_account_id")
-        if selected_account_id:
-            # Update the account record
-            account = account_repository.get("Monzo")
-            account.account_id = selected_account_id
-            account_repository.save(account)
-            flash("Account switched successfully", "success")
-        else:
-            flash("No account selected", "error")
-        return redirect(url_for("accounts.index"))
 
 
 @accounts_bp.route("/add", methods=["GET"])

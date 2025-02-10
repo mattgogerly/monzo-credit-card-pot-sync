@@ -1,5 +1,4 @@
 import logging
-
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy.exc import NoResultFound
 
@@ -12,33 +11,33 @@ pots_bp = Blueprint("pots", __name__)
 log = logging.getLogger("pots")
 account_repository = SqlAlchemyAccountRepository(db)
 
-
 @pots_bp.route("/", methods=["GET"])
 def index():
+    # Use query parameter "account" to determine display mode, defaulting to personal
+    account_type = request.args.get("account", "personal")
     try:
-        log.info("Retrieving Monzo account")
+        log.info(f"Retrieving Monzo account for {account_type} account")
         monzo_account: MonzoAccount = account_repository.get_monzo_account()
-
-        log.info("Retrieving pots for Monzo account")
+        # Joint or personal are now managed based on per–credit-card settings;
+        # no additional adjustments are made here.
         pots = monzo_account.get_pots()
     except NoResultFound:
         flash("You need to connect a Monzo account before you can view pots", "error")
         pots = []
 
     log.info(f"Retrieved {len(pots)} pots from Monzo")
-
     log.info("Retrieving credit card accounts")
     accounts = account_repository.get_credit_accounts()
     
-    return render_template("pots/index.html", pots=pots, accounts=accounts)
-
+    return render_template("pots/index.html", pots=pots, accounts=accounts, account_type=account_type)
 
 @pots_bp.route("/", methods=["POST"])
 def set_designated_pot():
-    account_type = request.form["account_type"]
+    account_type = request.form.get("account_type")
+    pot_id = request.form.get("pot_id")
+    
     account = account_repository.get(account_type)
-
-    account.pot_id = request.form["pot_id"]
+    account.pot_id = pot_id
     account_repository.save(account)
 
     flash(f"Updated designated credit card pot for {account.type}")

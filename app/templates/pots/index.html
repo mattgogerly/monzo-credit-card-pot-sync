@@ -2,23 +2,34 @@
 
 {% block content %}
 <section class="flex-col w-full text-center">
+
+    <!-- Dropdown to select account type -->
+    <div class="mb-4">
+        <label for="account_switcher" class="font-medium">Select Account:</label>
+        <select id="account_switcher" class="border rounded p-2" onchange="window.location='{{ url_for('pots.index') }}?account=' + this.value">
+            <option value="personal" {% if account_type == 'personal' %}selected{% endif %}>Personal Account</option>
+            <option value="joint" {% if account_type == 'joint' %}selected{% endif %}>Joint Account</option>
+        </select>
+    </div>
+
     {% if accounts|length == 0 %}
-        Add a credit card to choose which pot to sync with
+        <p>Add a credit card to choose which pot to sync with</p>
     {% endif %}
 
     <ul class="flex flex-wrap justify-center mb-5 text-base font-semibold text-center" data-tabs-toggle="#tab-content" data-tabs-inactive-classes="text-white dark:text-white">
         {% for account in accounts %}
             <li class="me-2" role="presentation">
-                <button class="inline-block p-4 border-b-2 rounded-t-lg" id="{{ account.type|replace(' ', '') }}-tab" data-tabs-target="#{{ account.type|replace(' ', '') }}" type="button" role="tab" aria-controls="{{ account.type|replace(' ', '') }}" aria-selected="false">{{ account.type }}</button>
+                <button class="inline-block p-4 border-b-2 rounded-t-lg" id="{{ account.type|replace(' ', '') }}-tab" data-tabs-target="#{{ account.type|replace(' ', '') }}" type="button" role="tab" aria-controls="{{ account.type|replace(' ', '') }}" aria-selected="false">
+                    {{ account.type }}
+                </button>
             </li>
         {% endfor %}
     </ul>
 
-    <div id="tab-content w-full">
+    <div id="tab-content">
         {% for account in accounts %}
             <div class="hidden" id="{{ account.type|replace(' ', '') }}" role="tabpanel" aria-labelledby="{{ account.type|replace(' ', '') }}-tab">
-                <!-- Optional: display extra details for Monzo accounts (like joint account description) -->
-                {% if account.type == "Monzo" and account.description %}
+                {% if account.description %}
                     <p class="mb-3 text-sm">Authorized account: {{ account.description }}</p>
                 {% endif %}
 
@@ -37,10 +48,12 @@
                                         <span class="ms-1 text-md font-medium">Credit Card pot</span>
                                     </h5>
                                 {% else %}
-                                    <form action="" method="post">
-                                        <input name="account_type" id="account_type" type="text" value="{{ account['type'] }}" hidden />
-                                        <input name="pot_id" id="pot_id" type="text" value="{{ pot['id'] }}" hidden />
-                                        <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Set as Credit Card pot</button>
+                                    <form action="{{ url_for('pots.set_designated_pot') }}" method="post">
+                                        <input name="account_type" id="account_type" type="hidden" value="{{ account.type }}" />
+                                        <input name="pot_id" id="pot_id" type="hidden" value="{{ pot['id'] }}" />
+                                        <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                                            Set as Credit Card pot
+                                        </button>
                                     </form>
                                 {% endif %}
                             </p>

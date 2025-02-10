@@ -1,6 +1,5 @@
 from urllib.parse import urlparse
 
-
 def test_settings_get(test_client, seed_data):
     response = test_client.get("/settings/")
     assert response.status_code == 200
@@ -11,7 +10,6 @@ def test_settings_get(test_client, seed_data):
     assert b"TrueLayer Client Secret" in response.data
     assert b"Sync Interval" in response.data
     assert b"Enable Balance Sync" in response.data
-
 
 def test_settings_post(test_client, seed_data):
     response = test_client.post("/settings/", data={"monzo_client_id": "123"})

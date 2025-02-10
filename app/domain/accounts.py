@@ -18,7 +18,7 @@ class Account:
         refresh_token=None,
         token_expiry=None,
         pot_id=None,
-        account_id=None,  # Added optional account_id
+        account_id=None,
     ):
         self.type = type
         self.access_token = access_token
@@ -29,18 +29,16 @@ class Account:
         self.auth_provider = provider_mapping[AuthProviderType(type)]
 
     def is_token_within_expiry_window(self):
-        # returns True if the token expires in the next two minutes, or has already expired
+        # Returns True if the token expires in the next two minutes or has already expired.
         return self.token_expiry - int(time()) <= 120
 
     def refresh_access_token(self):
         log.info(f"{self.type} access token is within expiry window, refreshing tokens")
-
         try:
             tokens = self.auth_provider.refresh_access_token(self.refresh_token)
             self.access_token = tokens["access_token"]
             self.refresh_token = tokens["refresh_token"]
             self.token_expiry = int(time()) + tokens["expires_in"]
-
             log.info(
                 f"Successfully refreshed {self.type} access token, new expiry time is {self.token_expiry}"
             )
@@ -58,9 +56,8 @@ class MonzoAccount(Account):
     def __init__(
         self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
     ):
-        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id)
-        # New: allow selected account_id (could be joint or personal)
-        self.account_id = account_id
+        # Pass all parameters directly to the parent class
+        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id, account_id)
 
     def ping(self) -> None:
         r.get(
@@ -74,11 +71,11 @@ class MonzoAccount(Account):
         return response.json()["accounts"]
 
     def get_authorized_accounts(self) -> list:
-        """Return a list of authorized accounts (personal & joint) with details."""
+        """Return a list of authorized accounts (both personal and joint) with details."""
         return self._fetch_accounts()
 
     def get_account_id(self) -> str:
-        """Return the selected account id. If none is set, default to the first account."""
+        """Return the selected account id. If none is set, default to the first available account."""
         if self.account_id:
             return self.account_id
         accounts = self._fetch_accounts()
@@ -164,10 +161,9 @@ class TrueLayerAccount(Account):
         refresh_token=None,
         token_expiry=None,
         pot_id=None,
-        account_id=None  # Added optional account_id
+        account_id=None,
     ):
-        super().__init__(type, access_token, refresh_token, token_expiry, pot_id)
-        self.account_id = account_id
+        super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id)
 
     def ping(self) -> None:
         r.get(
@@ -193,7 +189,5 @@ class TrueLayerAccount(Account):
         cards = self.get_cards()
         for card in cards:
             card_id = card["account_id"]
-            # multiply by 100 to get balance in minor units of currency
             total_balance += int(self.get_card_balance(card_id) * 100)
         return total_balance
-

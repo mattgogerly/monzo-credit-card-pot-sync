@@ -15,6 +15,5 @@ def after_create(target, connection, **kw):
             {"key": "truelayer_client_secret", "value": ""},
             {"key": "enable_sync", "value": "True"},
             {"key": "sync_interval_seconds", "value": "120"},
-            {"key": "selected_account_id", "value": ""},  # Add this line
         ],
     )

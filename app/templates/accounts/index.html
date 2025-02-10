@@ -11,22 +11,9 @@
         <p class="text-sm font-normal">
             {% if account.type == "Monzo" %}
                 {% if account.account_id %}
-                    <span class="block mb-2">Joint Account in use: {{ account.account_id }}</span>
-                    <form action="{{ url_for('accounts.switch_account') }}" method="post">
-                        <input type="hidden" name="selected_account_id" value="{{ account.account_id }}">
-                        <button type="submit" class="flex items-center pt-2 text-blue-900 dark:text-blue-600">
-                            <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 12h20M12 2l10 10-10 10"/>
-                            </svg>
-                            <span class="flex-1 ms-1 text-md font-medium">Switch to Joint Account</span>
-                        </button>
-                    </form>
+                    <span class="block mb-2">Account ID in use: {{ account.account_id }}</span>
                 {% else %}
                     <span class="block mb-2">Using Personal Account</span>
-                    <!-- Add a link to navigate to the switch account page -->
-                    <a href="{{ url_for('accounts.switch_account') }}" class="inline-block mt-2 text-blue-900 dark:text-blue-600 font-medium">
-                        Select Joint Account
-                    </a>
                 {% endif %}
             {% endif %}
         </p>

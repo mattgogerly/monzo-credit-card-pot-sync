@@ -66,16 +66,13 @@ def test_handle_oauth_code_callback(setting_repository, requests_mock, monzo_pro
         "expires_in": 3600,
     }
     requests_mock.post(monzo_provider.get_token_url(), status_code=200, json=response)
-
     tokens = monzo_provider.handle_oauth_code_callback("code")
     assert tokens["access_token"] == "test_access_token"
     assert tokens["refresh_token"] == "test_refresh_token"
     assert tokens["expires_in"] == 3600
 
 
-def test_handle_oauth_code_callback_error(
-    setting_repository, requests_mock, monzo_provider
-):
+def test_handle_oauth_code_callback_error(setting_repository, requests_mock, monzo_provider):
     requests_mock.post(monzo_provider.get_token_url(), status_code=500)
     with pytest.raises(AuthException, match="No access token returned"):
         monzo_provider.refresh_access_token("test_refresh_token")
@@ -96,7 +93,6 @@ def test_refresh_access_token(setting_repository, requests_mock, monzo_provider)
         "expires_in": 3600,
     }
     requests_mock.post(monzo_provider.get_token_url(), status_code=200, json=response)
-
     tokens = monzo_provider.refresh_access_token("test_refresh_token")
     assert tokens["access_token"] == "test_access_token"
     assert tokens["refresh_token"] == "test_refresh_token"
@@ -121,6 +117,4 @@ def test_get_american_express_provider_specific_oauth_request_params(amex_provid
 
 def test_provider_mapping():
     assert isinstance(provider_mapping[AuthProviderType.MONZO], MonzoAuthProvider)
-    assert isinstance(
-        provider_mapping[AuthProviderType.AMEX], AmericanExpressAuthProvider
-    )
+    assert isinstance(provider_mapping[AuthProviderType.AMEX], AmericanExpressAuthProvider)

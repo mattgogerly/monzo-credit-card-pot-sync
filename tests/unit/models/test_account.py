@@ -1,6 +1,5 @@
 from app.models.account import AccountModel
 
-
 def test_account_model_creation():
     account = AccountModel(
         type="test_type",
@@ -16,7 +15,6 @@ def test_account_model_creation():
     assert account.refresh_token == "test_refresh_token"
     assert account.token_expiry == 1234567890
     assert account.pot_id == "test_pot_id"
-
 
 def test_account_model_optional_account_id():
     account = AccountModel(
