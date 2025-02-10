@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import not_
-from sqlalchemy.exc import NoResultFound, MultipleResultsFound
+from sqlalchemy.exc import NoResultFound
 
 from app.domain.accounts import Account, MonzoAccount, TrueLayerAccount
 from app.models.account import AccountModel
