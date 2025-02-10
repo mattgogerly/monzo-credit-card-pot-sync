@@ -17,11 +17,6 @@ from app.models.account_repository import SqlAlchemyAccountRepository
 from app.models.setting_repository import SqlAlchemySettingRepository
 
 
-class MockDatabase:
-    def __init__(self):
-        self.session = None
-
-
 @pytest.fixture
 def monzo_provider():
     return MonzoAuthProvider()
@@ -34,7 +29,7 @@ def amex_provider():
 
 @pytest.fixture
 def setting_repository(mocker):
-    repository = SqlAlchemySettingRepository(MockDatabase())
+    repository = SqlAlchemySettingRepository(_db)
     mocker.patch.object(repository, "get", return_value="setting_value")
     mocker.patch("app.domain.auth_providers.repository", repository)
     return repository
@@ -55,7 +50,7 @@ def test_client():
 
 
 @pytest.fixture(scope="function")
-def seed_data():
+def seed_data(db_session):
     monzo_account = MonzoAccount("access_token", "refresh_token", time() + 10000)
     amex_account = TrueLayerAccount(
         AuthProviderType.AMEX.value,
@@ -65,11 +60,11 @@ def seed_data():
         "pot_id",
     )
 
-    account_repository = SqlAlchemyAccountRepository(MockDatabase())
+    account_repository = SqlAlchemyAccountRepository(db_session)
     account_repository.save(monzo_account)
     account_repository.save(amex_account)
 
-    setting_repository = SqlAlchemySettingRepository(MockDatabase())
+    setting_repository = SqlAlchemySettingRepository(db_session)
     setting_repository.save(Setting("monzo_client_id", "monzo_dummy_client_id"))
     setting_repository.save(Setting("monzo_client_secret", "monzo_dummy_client_secret"))
     setting_repository.save(
@@ -81,7 +76,7 @@ def seed_data():
 
 
 @pytest.fixture(scope="function")
-def seed_data_joint():
+def seed_data_joint(db_session):
     monzo_account = MonzoAccount(
         "access_token", "refresh_token", time() + 10000, "pot_id", account_id="joint_123"
     )
@@ -93,11 +88,11 @@ def seed_data_joint():
         "pot_id",
     )
 
-    account_repository = SqlAlchemyAccountRepository(MockDatabase())
+    account_repository = SqlAlchemyAccountRepository(db_session)
     account_repository.save(monzo_account)
     account_repository.save(amex_account)
 
-    setting_repository = SqlAlchemySettingRepository(MockDatabase())
+    setting_repository = SqlAlchemySettingRepository(db_session)
     setting_repository.save(Setting("monzo_client_id", "monzo_dummy_client_id"))
     setting_repository.save(Setting("monzo_client_secret", "monzo_dummy_client_secret"))
     setting_repository.save(
