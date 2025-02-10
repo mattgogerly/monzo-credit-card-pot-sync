@@ -23,10 +23,10 @@ def test_get_pots_no_account(test_client):
     assert response.status_code == 200
     assert b"You need to connect a Monzo account" in response.data
 
-def test_post_pots(test_client, requests_mock, db_session):
+def test_post_pots(test_client, requests_mock, seed_data):
     # Ensure only one account of each type is created
-    db_session.query(AccountModel).delete()
-    db_session.commit()
+    AccountModel.query.delete()
+    db.session.commit()
 
     # Create a credit account in the database
     credit_account = AccountModel(
@@ -37,8 +37,8 @@ def test_post_pots(test_client, requests_mock, db_session):
         pot_id=None,
         account_id="test_account_id"
     )
-    db_session.add(credit_account)
-    db_session.commit()
+    db.session.add(credit_account)
+    db.session.commit()
 
     # Submit a request to set the designated pot for a given credit card account
     response = test_client.post(
