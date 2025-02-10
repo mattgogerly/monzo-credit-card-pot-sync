@@ -220,10 +220,27 @@ class TrueLayerAccount(Account):
         )
         return response.json()["results"][0]["current"]
 
+    def get_pending_transactions(self) -> list:
+        """
+        Retrieve pending transactions for the account.
+        """
+        response = r.get(
+            f"{self.auth_provider.api_url}/data/v1/cards/{self.account_id}/transactions/pending",
+            headers=self.get_auth_header(),
+        )
+        response.raise_for_status()
+        return response.json()["results"]
+
     def get_total_balance(self) -> int:
         total_balance = 0
         cards = self.get_cards()
         for card in cards:
             card_id = card["account_id"]
             total_balance += int(self.get_card_balance(card_id) * 100)
+        
+        # Include pending transactions in the total balance
+        pending_transactions = self.get_pending_transactions()
+        for transaction in pending_transactions:
+            total_balance += int(transaction["amount"] * 100)
+        
         return total_balance
