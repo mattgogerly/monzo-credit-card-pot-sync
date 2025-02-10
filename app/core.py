@@ -10,7 +10,7 @@ from app.models.setting_repository import SqlAlchemySettingRepository
 
 log = logging.getLogger("core")
 
-account_repository = SqlAlchemyAccountRepository(db.session)
+account_repository = SqlAlchemyAccountRepository(db)
 settings_repository = SqlAlchemySettingRepository(db.session)
 
 def sync_balance():

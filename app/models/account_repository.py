@@ -10,7 +10,7 @@ log = logging.getLogger("account_repository")
 
 class SqlAlchemyAccountRepository:
     def __init__(self, db: SQLAlchemy) -> None:
-        self._session = db.session
+        self._db = db
 
     def _to_model(self, account: Account) -> AccountModel:
         return AccountModel(
@@ -35,12 +35,12 @@ class SqlAlchemyAccountRepository:
         )
 
     def get_all(self) -> list[Account]:
-        results: list[AccountModel] = self._session.query(AccountModel).all()
+        results: list[AccountModel] = self._db.session.query(AccountModel).all()
         return list(map(self._to_domain, results))
 
     def get_monzo_account(self) -> MonzoAccount:
         result: AccountModel = (
-            self._session.query(AccountModel).filter_by(type="Monzo").one()
+            self._db.session.query(AccountModel).filter_by(type="Monzo").one()
         )
         account = self._to_domain(result)
         return MonzoAccount(
@@ -54,7 +54,7 @@ class SqlAlchemyAccountRepository:
 
     def get_credit_accounts(self) -> list[TrueLayerAccount]:
         results: list[AccountModel] = (
-            self._session.query(AccountModel)
+            self._db.session.query(AccountModel)
             .filter(not_(AccountModel.type.contains("Monzo")))
             .all()
         )
@@ -69,7 +69,7 @@ class SqlAlchemyAccountRepository:
     def get(self, type: str) -> Account:
         try:
             result: AccountModel = (
-                self._session.query(AccountModel).filter_by(type=type).one()
+                self._db.session.query(AccountModel).filter_by(type=type).one()
             )
         except MultipleResultsFound:
             log.error(f"Multiple accounts found for type {type}; expected only one.")
@@ -81,12 +81,12 @@ class SqlAlchemyAccountRepository:
 
     def save(self, account: Account) -> None:
         model = self._to_model(account)
-        existing_account = self._session.query(AccountModel).filter_by(type=account.type).first()
+        existing_account = self._db.session.query(AccountModel).filter_by(type=account.type).first()
         if existing_account:
-            self._session.delete(existing_account)
-        self._session.add(model)
-        self._session.commit()
+            self._db.session.delete(existing_account)
+        self._db.session.add(model)
+        self._db.session.commit()
 
     def delete(self, type: str) -> None:
-        self._session.query(AccountModel).filter_by(type=type).delete()
-        self._session.commit()
+        self._db.session.query(AccountModel).filter_by(type=type).delete()
+        self._db.session.commit()
