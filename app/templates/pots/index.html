@@ -26,7 +26,7 @@
                 <!-- Account-specific drop-down for selecting Personal or Joint -->
                 <div class="mb-4">
                     <label for="account_switcher_{{ account.type|replace(' ', '') }}" class="font-medium">Select Account:</label>
-                    <select id="account_switcher_{{ account.type|replace(' ', '') }}" class="border rounded p-2 bg-transparent" onchange="window.location='{{ url_for('pots.index') }}?account=' + this.value">
+                    <select id="account_switcher_{{ account.type|replace(' ', '') }}" class="border rounded p-2 bg-transparent">
                         <option value="personal" {% if account_type == 'personal' or account_type is not defined %}selected{% endif %}>Personal Account</option>
                         <option value="joint" {% if account_type == 'joint' %}selected{% endif %}>Joint Account</option>
                     </select>
@@ -63,4 +63,28 @@
         {% endfor %}
     </div>
 </section>
+
+<script>
+    // When the page loads, restore the saved dropdown values
+    document.addEventListener("DOMContentLoaded", function(){
+        const selects = document.querySelectorAll("select[id^='account_switcher_']");
+        selects.forEach(function(select) {
+            // The key uses the account identifier from the select's id value
+            const accountKey = select.id.replace("account_switcher_", "");
+            const storageKey = "selectedAccount_" + accountKey;
+            const savedValue = localStorage.getItem(storageKey);
+            if(savedValue) {
+                select.value = savedValue;
+            }
+            // Add event listener for change events on this dropdown
+            select.addEventListener("change", function(){
+                localStorage.setItem(storageKey, this.value);
+                // Update the URL query parameter "account" to reflect the selection
+                let currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set("account", this.value);
+                window.location.href = currentUrl.href;
+            });
+        });
+    });
+</script>
 {% endblock %}
