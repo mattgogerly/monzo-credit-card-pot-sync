@@ -39,7 +39,7 @@ def test_post_pots(test_client, requests_mock):
 
     # Perform the POST request to set the designated pot
     response = test_client.post(
-        "/set_designated_pot",
+        "/pots/set_designated_pot",
         data={
             "account_type": "credit",
             "pot_id": "pot_id",
