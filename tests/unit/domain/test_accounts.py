@@ -1,6 +1,7 @@
 from time import time
-
+from urllib import parse
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
+from app.errors import AuthException
 
 def test_new_monzo_account():
     account = MonzoAccount("access_token", "refresh_token", 1000, "pot")
@@ -41,37 +42,42 @@ def test_monzo_account_ping_error(requests_mock):
     account.ping()
 
 def test_monzo_account_get_account_id(requests_mock):
-    response = {"accounts": [{"id": "id"}]}
+    response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=response)
-    account = MonzoAccount("access_token", "refresh_token", time() + 1000)
+    account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
     assert account.get_account_id() == "id"
 
+
 def test_monzo_account_get_pots_joint_account(requests_mock):
-    # When a joint account id is provided, the query should include it.
-    account_response = {"accounts": [{"id": "joint_123"}]}
+    # When testing for joint accounts, update mocked response to include the joint type.
+    account_response = {"accounts": [{"id": "joint_123", "type": "uk_retail_joint", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
 
     pot_response = {"pots": [{"id": "1", "deleted": False}]}
-    requests_mock.get("https://api.monzo.com/pots?current_account_id=joint_123", status_code=200, json=pot_response)
+    req_url = f"https://api.monzo.com/pots?{parse.urlencode({'current_account_id': 'joint_123'})}"
+    requests_mock.get(req_url, status_code=200, json=pot_response)
 
-    account = MonzoAccount("access_token", "refresh_token", 1000, "pot", account_id="joint_123")
-    pots = account.get_pots()
-    assert len(pots) == 1
+    account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000, "pot", account_id="joint_123")
+    pots = account.get_pots("joint")
+    assert pots == [{"id": "1", "deleted": False}]
+
 
 def test_monzo_account_get_pots(requests_mock):
-    account_response = {"accounts": [{"id": "id"}]}
+    account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
 
     pot_response = {"pots": [{"id": "1", "deleted": False}, {"id": "2", "deleted": True}]}
-    requests_mock.get("https://api.monzo.com/pots?current_account_id=id", status_code=200, json=pot_response)
+    req_url = f"https://api.monzo.com/pots?{parse.urlencode({'current_account_id': 'id'})}"
+    requests_mock.get(req_url, status_code=200, json=pot_response)
 
-    account = MonzoAccount("access_token", "refresh_token", time() + 1000)
+    account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
     pots = account.get_pots()
     # Only non-deleted pots should be returned.
-    assert len(pots) == 1
+    assert pots == [{"id": "1", "deleted": False}]
+
 
 def test_monzo_account_get_pot_balance(requests_mock):
-    account_response = {"accounts": [{"id": "id"}]}
+    account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
 
     pot_response = {
@@ -80,36 +86,40 @@ def test_monzo_account_get_pot_balance(requests_mock):
             {"id": "2", "deleted": True},
         ]
     }
-    requests_mock.get("https://api.monzo.com/pots?current_account_id=id", status_code=200, json=pot_response)
+    req_url = f"https://api.monzo.com/pots?{parse.urlencode({'current_account_id': 'id'})}"
+    requests_mock.get(req_url, status_code=200, json=pot_response)
 
-    account = MonzoAccount("access_token", "refresh_token", time() + 1000)
+    account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
     assert account.get_pot_balance("1") == 500
 
+
 def test_monzo_account_add_to_pot(requests_mock):
-    account_response = {"accounts": [{"id": "id"}]}
+    account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
 
     requests_mock.put("https://api.monzo.com/pots/1/deposit", status_code=200)
 
-    account = MonzoAccount("access_token", "refresh_token", time() + 1000)
+    account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
     account.add_to_pot("1", 500)
 
+
 def test_monzo_account_withdraw_from_pot(requests_mock):
-    account_response = {"accounts": [{"id": "id"}]}
+    account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
 
     requests_mock.put("https://api.monzo.com/pots/1/withdraw", status_code=200)
 
-    account = MonzoAccount("access_token", "refresh_token", time() + 1000)
+    account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
     account.withdraw_from_pot("1", 500)
 
+
 def test_monzo_account_send_notification(requests_mock):
-    account_response = {"accounts": [{"id": "id"}]}
+    account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
 
     requests_mock.post("https://api.monzo.com/feed", status_code=200)
 
-    account = MonzoAccount("access_token", "refresh_token", time() + 1000)
+    account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
     account.send_notification("title", "message")
 
 def test_truelayer_account_ping(requests_mock):
