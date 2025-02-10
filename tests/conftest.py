@@ -130,7 +130,12 @@ def barclaycard_sandbox_provider(mocker):
 
 @pytest.fixture(scope='session')
 def app():
-    app = create_app('testing')
+    test_config = {
+        "TESTING": True,
+        "SQLALCHEMY_DATABASE_URI": "sqlite://",
+        "SECRET_KEY": "testing",
+    }
+    app = create_app(test_config)
     with app.app_context():
         yield app
 
