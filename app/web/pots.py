@@ -1,6 +1,6 @@
 import logging
 from flask import Blueprint, flash, redirect, render_template, request, url_for
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 
 from app.domain.accounts import MonzoAccount
 from app.extensions import db
@@ -36,10 +36,17 @@ def set_designated_pot():
     pot_id = request.form.get("pot_id")
     selected_account_type = request.form.get("selected_account_type")
 
-    account = account_repository.get(account_type)
-    account.pot_id = pot_id
-    account.account_selection = selected_account_type  # Update the account selection
-    account_repository.save(account)
+    try:
+        account = account_repository.get(account_type)
+        account.pot_id = pot_id
+        account.account_selection = selected_account_type  # Update the account selection
+        account_repository.save(account)
+        flash(f"Designated pot for {account_type} set successfully.", "success")
+    except MultipleResultsFound:
+        flash(f"Multiple accounts found for type {account_type}; expected only one.", "error")
+    except NoResultFound:
+        flash(f"No account found for type {account_type}.", "error")
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "error")
 
-    flash(f"Updated designated credit card pot for {account.type}")
     return redirect(url_for("pots.index"))

@@ -1,5 +1,5 @@
 import logging
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
 from app.domain.settings import Setting
@@ -10,8 +10,8 @@ from app.models.setting_repository import SqlAlchemySettingRepository
 
 log = logging.getLogger("core")
 
-account_repository = SqlAlchemyAccountRepository(db)
-settings_repository = SqlAlchemySettingRepository(db)
+account_repository = SqlAlchemyAccountRepository(db.session)
+settings_repository = SqlAlchemySettingRepository(db.session)
 
 def sync_balance():
     with scheduler.app.app_context():
