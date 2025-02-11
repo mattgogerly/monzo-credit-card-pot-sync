@@ -201,6 +201,11 @@ class TrueLayerAccount(Account):
     ):
         super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id)
 
+    def ping(self) -> None:
+        r.get(
+            f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header()
+        )
+
     def get_cards(self) -> list:
         response = r.get(
             f"{self.auth_provider.api_url}/data/v1/cards",
