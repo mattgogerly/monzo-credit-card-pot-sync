@@ -35,7 +35,7 @@ def sync_balance():
             account_repository.delete(monzo_account.type)
             monzo_account = None
 
-        log.info("Retrieving credit card connections")
+       log.info("Retrieving credit card connections")
         credit_accounts: list[TrueLayerAccount] = account_repository.get_credit_accounts()
         log.info(f"Retrieved {len(credit_accounts)} credit card connection(s)")
 
