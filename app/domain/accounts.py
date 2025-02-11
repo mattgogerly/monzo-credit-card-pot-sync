@@ -241,4 +241,4 @@ class TrueLayerAccount(Account):
             total_balance += balance  # Keep all balances in the sum
 
         print(f"Total balance calculated: {total_balance}")
-        return int(total_balance * 100)
+        return int(total_balance * 100)  # Convert balance to pence
