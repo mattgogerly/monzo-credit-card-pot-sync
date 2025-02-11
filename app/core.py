@@ -93,8 +93,25 @@ def sync_balance():
             credit_balance = credit_account.get_total_balance()
             log.info(f"{credit_account.type} card balance is £{credit_balance / 100:.2f}")
 
-            # Adjust the designated pot balance by subtracting the credit card balance
-            pot_balance_map[pot_id]['balance'] -= credit_balance
+            # Retrieve pending transactions if applicable (AMEX case)
+            pending_amount = 0
+            if credit_account.type == "AMEX":
+                pending_transactions = credit_account.get_pending_transactions(credit_account.account_id)
+
+                if not isinstance(pending_transactions, list):
+                    log.warning(f"Unexpected pending transactions format for {credit_account.type}: {pending_transactions}")
+                    pending_transactions = []
+
+                pending_amount = sum(txn for txn in pending_transactions if isinstance(txn, (int, float)))
+
+                log.info(f"{credit_account.type} Card - Pending Transactions: £{pending_amount / 100:.2f}")
+
+            # Adjusted balance includes pending transactions
+            adjusted_balance = credit_balance + pending_amount
+            log.info(f"{credit_account.type} Card - Adjusted Balance (including pending): £{adjusted_balance / 100:.2f}")
+
+            # Adjust the designated pot balance by subtracting the adjusted credit card balance
+            pot_balance_map[pot_id]['balance'] -= adjusted_balance
 
         # Step 3: Perform necessary balance adjustments between Monzo account and each pot
         for pot_id, pot_info in pot_balance_map.items():
