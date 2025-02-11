@@ -117,18 +117,26 @@ def sync_balance():
             elif pot_diff < 0:
                 difference = abs(pot_diff)
                 if monzo_balance < difference:
-                    log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
-                    settings_repository.save(Setting("enable_sync", "False"))
+                    log.warning(f"Insufficient funds in Monzo account (£{monzo_balance / 100:.2f}); skipping deposit.")
                     monzo_account.send_notification(
                         "Insufficient Funds for Sync",
-                        "Sync disabled due to low Monzo balance. Please top up and re-enable sync.",
+                        "Not enough funds in Monzo account to sync with the credit card pot.",
                         account_selection=account_selection
                     )
-                    return
+                    continue  # Skip this transaction instead of failing the whole sync process
 
                 log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
                 monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
             else:
                 difference = pot_diff
-                log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
-                monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
+                try:
+                    log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
+                    monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
+                except Exception as e:
+                    error_msg = str(e)
+                    if "insufficient_funds" in error_msg:
+                        log.warning(f"Not enough funds in pot {pot_id} to withdraw £{difference / 100:.2f}; skipping.")
+                        continue  # Skip withdrawal instead of failing the entire sync
+                    else:
+                        log.error(f"Unexpected error while withdrawing from pot {pot_id}: {error_msg}")
+                         raise  # Only crash on unknown errors
