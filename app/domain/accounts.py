@@ -214,29 +214,29 @@ class TrueLayerAccount(Account):
         return response.json()["results"]
 
     def get_card_balance(self, card_id: str) -> int:
-    response = r.get(
-        f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance",
-        headers=self.get_auth_header(),
-    )
-    data = response.json()["results"][0]
+        response = r.get(
+            f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance",
+            headers=self.get_auth_header(),
+        )
+        data = response.json()["results"][0]
 
-    # Extract necessary values
-    credit_limit = data.get("credit_limit")
-    available = data.get("available")
-    current_balance = data.get("current")  # Keeping 'current' as a reference
+        # Extract necessary values
+        credit_limit = data.get("credit_limit")
+        available = data.get("available")
+        current_balance = data.get("current")  # Keeping 'current' as a reference
 
-    if credit_limit is not None and available is not None:
-        # Calculate balance including pending transactions
-        true_balance = int((credit_limit - available) * 100)
-    elif current_balance is not None:
-        # Fallback to 'current' if required fields are missing
-        true_balance = int(current_balance * 100)
-        log.warning(f"Using 'current' balance for card {card_id} due to missing 'credit_limit' or 'available'")
-    else:
-        log.error(f"Missing balance data for card {card_id}: {data}")
-        raise KeyError(f"Missing balance fields in response: {data}")
+        if credit_limit is not None and available is not None:
+            # Calculate balance including pending transactions
+            true_balance = int((credit_limit - available) * 100)
+        elif current_balance is not None:
+            # Fallback to 'current' if required fields are missing
+            true_balance = int(current_balance * 100)
+            log.warning(f"Using 'current' balance for card {card_id} due to missing 'credit_limit' or 'available'")
+        else:
+            log.error(f"Missing balance data for card {card_id}: {data}")
+            raise KeyError(f"Missing balance fields in response: {data}")
 
-    return true_balance
+        return true_balance
 
     def get_total_balance(self) -> int:
         total_balance = 0
