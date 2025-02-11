@@ -205,11 +205,11 @@ class TrueLayerAccount(Account):
         response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance", headers=self.get_auth_header())
         return response.json()["results"][0]["current"]
 
-    def get_pending_transactions(self, card_id: str) -> float:
+    def get_pending_transactions(self, card_id: str) -> list:
         response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending", headers=self.get_auth_header())
         response.raise_for_status()
         transactions = response.json()["results"]
-        return sum(t["amount"] for t in transactions) if transactions else 0.0
+        return [txn["amount"] for txn in transactions] if transactions else []
 
     def get_total_balance(self) -> int:
         total_balance = 0.0
