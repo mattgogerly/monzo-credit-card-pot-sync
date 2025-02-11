@@ -218,12 +218,17 @@ class TrueLayerAccount(Account):
             f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance",
             headers=self.get_auth_header(),
         )
-        return response.json()["results"][0]["current"]
+        data = response.json()["results"][0]
+    
+        # Compute balance including pending transactions
+        true_balance = int((data["credit_limit"] - data["available"]) * 100)
+    
+        return true_balance
 
     def get_total_balance(self) -> int:
         total_balance = 0
         cards = self.get_cards()
         for card in cards:
             card_id = card["account_id"]
-            total_balance += int(self.get_card_balance(card_id) * 100)
+            total_balance += self.get_card_balance(card_id)
         return total_balance
