@@ -226,7 +226,7 @@ class TrueLayerAccount(Account):
                 print(f"Current Balance: {balance}")
                 print(f"Pending Transactions: {pending_amount}")
 
-               balance += pending_amount  # Adjust for pending transactions
+                balance += pending_amount  # Adjust for pending transactions
 
             if balance < 0:
                 print(f"Card {card_id} has a negative balance ({balance}); treating as a payment/refund.")
