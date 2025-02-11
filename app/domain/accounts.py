@@ -215,6 +215,7 @@ class TrueLayerAccount(Account):
         return response.json()["results"]
 
     def get_card_balance(self, card_id: str) -> int:
+        # Fetch card balance
         response = r.get(
             f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance",
             headers=self.get_auth_header(),
@@ -241,9 +242,7 @@ class TrueLayerAccount(Account):
             log.error(f"Missing balance data for card {card_id}: {data}")
             raise KeyError(f"Missing balance fields in response: {data}")
 
-        return true_balance
-
-    def get_pending_balance(self, card_id: str) -> int:
+        # Fetch pending transactions
         url = f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending"
         headers = self.get_auth_header()
         log.info(f"Fetching pending transactions from {url} with headers {headers}")
@@ -258,7 +257,8 @@ class TrueLayerAccount(Account):
         except ValueError:
             pending_transactions = []
         pending_balance = sum(txn["amount"] for txn in pending_transactions)
-        return pending_balance
+
+        return true_balance + pending_balance
 
     def get_total_balance(self) -> int:
         total_balance = 0
