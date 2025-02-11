@@ -155,6 +155,7 @@ def test_truelayer_account_get_pending_transactions(requests_mock):
     assert pending_amount == 150
 
 def test_truelayer_account_get_total_balance(requests_mock):
+    # Mock the response for cards (AMEX and VISA)
     cards_response = {
         "results": [
             {"account_id": "1", "provider": {"display_name": "AMEX"}},  # AMEX Card (should include pending)
@@ -162,25 +163,29 @@ def test_truelayer_account_get_total_balance(requests_mock):
         ]
     }
     requests_mock.get("https://api.truelayer.com/data/v1/cards", status_code=200, json=cards_response)
-
+    
+    # Mock the response for balances
     balance_response_one = {"results": [{"account_id": "1", "current": 500}]}
     requests_mock.get("https://api.truelayer.com/data/v1/cards/1/balance", status_code=200, json=balance_response_one)
-
+    
     balance_response_two = {"results": [{"account_id": "2", "current": 750}]}
     requests_mock.get("https://api.truelayer.com/data/v1/cards/2/balance", status_code=200, json=balance_response_two)
-
+    
     # Mock pending transactions (ONLY for AMEX card)
     pending_response_one = {"results": [{"amount": 100}, {"amount": 50}]}  # AMEX should include these
     requests_mock.get("https://api.truelayer.com/data/v1/cards/1/transactions/pending", status_code=200, json=pending_response_one)
-
+    
     # Non-AMEX card (should be ignored)
     pending_response_two = {"results": [{"amount": 200}, {"amount": 100}]}
     requests_mock.get("https://api.truelayer.com/data/v1/cards/2/transactions/pending", status_code=200, json=pending_response_two)
-
+    
+    # Create an instance of TrueLayerAccount
     account = TrueLayerAccount("American Express", "access_token", "refresh_token", time() + 1000)
 
-    # Only AMEX card includes pending transactions
-    # Card 1 (AMEX): 500 (balance) + 150 (pending) = 650
-    # Card 2 (VISA): 750 (balance) (pending ignored) = 750
-    # Total balance = 650 + 750 = 1400
+    # Total balance calculation:
+    # AMEX card: 500 (balance) + 150 (pending) = 650
+    # VISA card: 750 (balance) (pending ignored) = 750
+    # Total balance = 650 + 750 = 1400 (in pence, so 1400 * 100 = 140000)
+    
+    # Assert that the total balance is calculated correctly
     assert account.get_total_balance() == 140000  # Total in pence (multiplied by 100)
