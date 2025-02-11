@@ -39,16 +39,6 @@ def add_account():
         credit_providers=credit_providers,
     )
 
-@accounts_bp.route("/switch", methods=["POST"])
-def switch_account():
-    selected_account_id = request.form.get("selected_account_id")
-    try:
-        account = account_repository.get_by_id(selected_account_id)
-        account_repository.switch_account(account)
-        flash("Switched account successfully")
-    except NoResultFound:
-        flash("Account not found", "error")
-    return redirect(url_for("accounts.index"))
 
 @accounts_bp.route("/", methods=["POST"])
 def delete_account():

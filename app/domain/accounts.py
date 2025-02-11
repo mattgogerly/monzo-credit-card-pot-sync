@@ -19,7 +19,6 @@ class Account:
         token_expiry=None,
         pot_id=None,
         account_id=None,
-        account_selection="personal"  # Add account_selection with default value
     ):
         self.type = type
         self.access_token = access_token
@@ -27,7 +26,6 @@ class Account:
         self.token_expiry = token_expiry
         self.pot_id = pot_id
         self.account_id = account_id
-        self.account_selection = account_selection  # Initialize account_selection
         self.auth_provider = provider_mapping[AuthProviderType(type)]
 
     def is_token_within_expiry_window(self):
@@ -56,10 +54,10 @@ class Account:
 
 class MonzoAccount(Account):
     def __init__(
-        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None, account_selection="personal"
+        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
     ):
         # Pass all parameters directly to the parent class
-        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id, account_id, account_selection)
+        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id, account_id)
 
     def ping(self) -> None:
         r.get(
@@ -136,6 +134,16 @@ class MonzoAccount(Account):
                 return pot["balance"]
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
+    def get_account_type(self, pot_id: str) -> str:
+        """
+        Retrieve the account type (personal or joint) for the given pot ID.
+        """
+        for account_selection in ("personal", "joint"):
+            pots = self.get_pots(account_selection)
+            if any(p["id"] == pot_id for p in pots):
+                return account_selection
+        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
+
     def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
         data = {
             "source_account_id": self.get_account_id(account_selection=account_selection),
@@ -190,9 +198,8 @@ class TrueLayerAccount(Account):
         token_expiry=None,
         pot_id=None,
         account_id=None,
-        account_selection="personal"  # Add account_selection with default value
     ):
-        super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id, account_selection)
+        super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id)
 
     def ping(self) -> None:
         r.get(
@@ -213,27 +220,10 @@ class TrueLayerAccount(Account):
         )
         return response.json()["results"][0]["current"]
 
-    def get_pending_transactions(self, card_id: str) -> list:
-        """
-        Retrieve pending transactions for the card.
-        """
-        response = r.get(
-            f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending",
-            headers=self.get_auth_header(),
-        )
-        response.raise_for_status()
-        return response.json()["results"]
-
     def get_total_balance(self) -> int:
         total_balance = 0
         cards = self.get_cards()
         for card in cards:
             card_id = card["account_id"]
             total_balance += int(self.get_card_balance(card_id) * 100)
-            
-            # Include pending transactions in the total balance
-            pending_transactions = self.get_pending_transactions(card_id)
-            for transaction in pending_transactions:
-                total_balance += int(transaction["amount"] * 100)
-        
         return total_balance
