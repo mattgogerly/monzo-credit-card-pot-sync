@@ -214,65 +214,34 @@ class TrueLayerAccount(Account):
         response.raise_for_status()
         return response.json()["results"]
 
-    def get_card_balance(self, card_id: str) -> int:
-        # Fetch card balance
+    def get_card_balance(self, card_id: str) -> float:
         response = r.get(
             f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance",
             headers=self.get_auth_header(),
         )
+        return response.json()["results"][0]["current"]
+
+    def get_pending_transactions(self, card_id: str) -> float:
+        response = r.get(
+            f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions?pending=true",
+            headers=self.get_auth_header(),
+        )
         response.raise_for_status()
-        data = response.json()["results"][0]
-
-        log.info(f"Full JSON response for card {card_id} balance: {data}")
-
-        credit_limit = data.get("credit_limit")
-        available = data.get("available")
-        current_balance = data.get("current")
-
-        if credit_limit is not None and available is not None:
-            true_balance = int((credit_limit - available) * 100)
-        elif current_balance is not None:
-            true_balance = int(current_balance * 100)
-            log.warning(f"Using 'current' balance for card {card_id} due to missing 'credit_limit' or 'available'")
-        else:
-            log.error(f"Missing balance data for card {card_id}: {data}")
-            raise KeyError(f"Missing balance fields in response: {data}")
-
-        # Fetch card details to check provider
-        card_details_url = f"{self.auth_provider.api_url}/data/v1/cards/{card_id}"
-        card_response = r.get(card_details_url, headers=self.get_auth_header())
-        card_response.raise_for_status()
-        card_data = card_response.json()["results"][0]
-
-        provider_name = card_data["provider"]["display_name"]
-        log.info(f"Card {card_id} provider: {provider_name}")
-
-        # Only fetch pending transactions if the provider is AMEX
-        pending_balance = 0
-        if provider_name.upper() == "AMEX":
-            url = f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending"
-            headers = self.get_auth_header()
-            log.info(f"Fetching pending transactions from {url} with headers {headers}")
-            response = r.get(url, headers=headers)
-            log.info(f"Response status code: {response.status_code}")
-            log.info(f"Response content: {response.content}")
-
-            if response.status_code == 403:
-                log.warning("403 Forbidden error retrieving pending transactions. Using 0 as a fallback.")
-            else:
-                response.raise_for_status()
-                try:
-                    pending_transactions = response.json().get("results", [])
-                    log.info(f"Full JSON response for pending transactions: {pending_transactions}")
-                    pending_balance = sum(txn["amount"] for txn in pending_transactions)
-                except ValueError:
-                    log.error("Error parsing pending transactions JSON response")
-        
-        return true_balance + pending_balance
-
+        transactions = response.json()["results"]
+        return sum(t["amount"] for t in transactions) if transactions else 0.0
 
     def get_total_balance(self) -> int:
-        """Returns total balance across all cards, including pending transactions."""
-        total_balance = sum(self.get_card_balance(card["account_id"]) for card in self.get_cards())
-        log.info(f"Total balance across all cards (pence): {total_balance}")
-        return total_balance
+        total_balance = 0.0
+        cards = self.get_cards()
+        
+        for card in cards:
+            card_id = card["account_id"]
+            balance = self.get_card_balance(card_id)
+            
+            if card.get("provider", {}).get("display_name") == "AMEX":
+                pending_amount = self.get_pending_transactions(card_id)
+                balance += pending_amount
+                
+            total_balance += balance
+        
+        return int(total_balance * 100)
