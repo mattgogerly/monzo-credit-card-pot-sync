@@ -90,6 +90,10 @@ def sync_balance():
                 log.error(str(e))
                 return
 
+            log.info(f"Retrieving pending transaction balance for {credit_account.type} credit card")
+            pending_credit_balance = credit_account.get_pending_balance()
+            log.info(f"{credit_account.type} card pending balance is £{pending_credit_balance / 100:.2f}")
+
             log.info(f"Retrieving balance for {credit_account.type} credit card")
             credit_balance = credit_account.get_total_balance()
             log.info(f"{credit_account.type} card balance is £{credit_balance / 100:.2f}")
