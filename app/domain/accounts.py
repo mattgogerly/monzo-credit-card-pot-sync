@@ -203,12 +203,16 @@ class TrueLayerAccount(Account):
 
     def get_card_balance(self, card_id: str) -> float:
         response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance", headers=self.get_auth_header())
-        return response.json()["results"][0]["current"]
+        response.raise_for_status()
+        data = response.json()["results"][0]
+        log.info(f"Full JSON response for card {card_id} balance: {data}")
+        return data["current"]
 
     def get_pending_transactions(self, card_id: str) -> list:
         response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending", headers=self.get_auth_header())
         response.raise_for_status()
         transactions = response.json()["results"]
+        log.info(f"Full JSON response for pending transactions: {transactions}")
         return [txn["amount"] for txn in transactions] if transactions else []
 
     def get_total_balance(self) -> int:
@@ -222,9 +226,9 @@ class TrueLayerAccount(Account):
             if card.get("provider", {}).get("display_name") == "AMEX":
                 pending_transactions = self.get_pending_transactions(card_id)
 
-                print(f"Card ID: {card_id}")
-                print(f"Current Balance: {balance}")
-                print(f"Pending Transactions (Raw): {pending_transactions}")
+                log.info(f"Card ID: {card_id}")
+                log.info(f"Current Balance: {balance}")
+                log.info(f"Pending Transactions (Raw): {pending_transactions}")
 
                 # Separate charges and payments/refunds
                 pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
@@ -232,13 +236,13 @@ class TrueLayerAccount(Account):
 
                 adjusted_balance = balance + pending_charges + pending_payments
 
-                print(f"Pending Charges: {pending_charges}")
-                print(f"Pending Payments: {pending_payments}")
-                print(f"Adjusted Balance: {adjusted_balance}")
+                log.info(f"Pending Charges: {pending_charges}")
+                log.info(f"Pending Payments: {pending_payments}")
+                log.info(f"Adjusted Balance: {adjusted_balance}")
 
                 balance = adjusted_balance  # Update balance with correct pending transaction handling
 
             total_balance += balance  # Keep all balances in the sum
 
-        print(f"Total balance calculated: {total_balance}")
+        log.info(f"Total balance calculated: {total_balance}")
         return int(total_balance * 100)  # Convert balance to pence
