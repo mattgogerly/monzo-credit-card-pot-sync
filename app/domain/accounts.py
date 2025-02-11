@@ -211,6 +211,7 @@ class TrueLayerAccount(Account):
             f"{self.auth_provider.api_url}/data/v1/cards",
             headers=self.get_auth_header(),
         )
+        response.raise_for_status()
         return response.json()["results"]
 
     def get_card_balance(self, card_id: str) -> int:
@@ -218,7 +219,11 @@ class TrueLayerAccount(Account):
             f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance",
             headers=self.get_auth_header(),
         )
+        response.raise_for_status()
         data = response.json()["results"][0]
+
+        # Log the full JSON response for debugging
+        log.info(f"Full JSON response for card {card_id} balance: {data}")
 
         # Extract necessary values
         credit_limit = data.get("credit_limit")
@@ -237,6 +242,23 @@ class TrueLayerAccount(Account):
             raise KeyError(f"Missing balance fields in response: {data}")
 
         return true_balance
+
+    def get_pending_balance(self, card_id: str) -> int:
+        url = f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending"
+        headers = self.get_auth_header()
+        log.info(f"Fetching pending transactions from {url} with headers {headers}")
+        response = r.get(url, headers=headers)
+        log.info(f"Response status code: {response.status_code}")
+        log.info(f"Response content: {response.content}")
+        response.raise_for_status()
+        try:
+            pending_transactions = response.json().get("results", [])
+            # Log the full JSON response for debugging
+            log.info(f"Full JSON response for pending transactions: {pending_transactions}")
+        except ValueError:
+            pending_transactions = []
+        pending_balance = sum(txn["amount"] for txn in pending_transactions)
+        return pending_balance
 
     def get_total_balance(self) -> int:
         total_balance = 0
