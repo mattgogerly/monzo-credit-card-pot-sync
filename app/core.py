@@ -115,45 +115,47 @@ def sync_balance():
 
         # Step 3: Perform necessary balance adjustments between Monzo account and each pot
         for pot_id, pot_info in pot_balance_map.items():
-            pot_diff = pot_info['balance']
-            account_selection = pot_info['account_selection']
+                pot_diff = pot_info['balance']
+                account_selection = pot_info['account_selection']
 
-            try:
-                log.info(f"Retrieving Monzo account balance for {account_selection} account")
-                monzo_balance = monzo_account.get_balance(account_selection=account_selection)
-                log.info(f"Monzo {account_selection} account balance is £{monzo_balance / 100:.2f}")
-            except AuthException:
-                log.error(f"Failed to retrieve Monzo {account_selection} account balance; aborting sync loop")
-                return
-
-            log.info(f"Pot {pot_id} balance differential is £{pot_diff / 100:.2f}")
-
-            if pot_diff == 0:
-                log.info("No balance difference; no action required")
-            elif pot_diff < 0:
-                difference = abs(pot_diff)
-                if monzo_balance < difference:
-                    log.warning(f"Insufficient funds in Monzo account (£{monzo_balance / 100:.2f}); skipping deposit.")
-                    monzo_account.send_notification(
-                        "Insufficient Funds for Sync",
-                        "Not enough funds in Monzo account to sync with the credit card pot.",
-                        account_selection=account_selection
-                    )
-                    continue  # Skip this transaction instead of failing the whole sync process
-
-                log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
-                monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
-            else:
-                difference = pot_diff
                 try:
-                    log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
-                    monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
-                except Exception as e:
-                    error_msg = str(e)
-                    if "insufficient_funds" in error_msg:
-                        log.warning(f"Not enough funds in pot {pot_id} to withdraw £{difference / 100:.2f}; skipping.")
-                        continue  # Skip withdrawal instead of failing the entire sync
-                    else:
-                        log.error(f"Unexpected error while withdrawing from pot {pot_id}: {error_msg}")
-                         
-                        raise  # Only crash on unknown errors
+                        log.info(f"Retrieving Monzo account balance for {account_selection} account")
+                        monzo_balance = monzo_account.get_balance(account_selection=account_selection)
+                        log.info(f"Monzo {account_selection} account balance is £{monzo_balance / 100:.2f}")
+                except AuthException:
+                        log.error(f"Failed to retrieve Monzo {account_selection} account balance; aborting sync loop")
+                        return
+
+                log.info(f"Pot {pot_id} balance differential is £{pot_diff / 100:.2f}")
+
+                if pot_diff == 0:
+                        log.info("No balance difference; no action required")
+                elif pot_diff < 0:
+                        # Negative pot_diff means we should deposit into the account
+                        difference = abs(pot_diff)
+                        if monzo_balance < difference:
+                                log.warning(f"Insufficient funds in Monzo account (£{monzo_balance / 100:.2f}); skipping deposit.")
+                                monzo_account.send_notification(
+                                        "Insufficient Funds for Sync",
+                                        "Not enough funds in Monzo account to sync with the credit card pot.",
+                                        account_selection=account_selection
+                                )
+                                continue  # Skip this transaction instead of failing the whole sync process
+
+                        log.info(f"Depositing £{difference / 100:.2f} into Monzo account from pot {pot_id}")
+                        monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
+
+                else:
+                        # Positive pot_diff means we should withdraw from the pot
+                        difference = pot_diff
+                        try:
+                                log.info(f"Withdrawing £{difference / 100:.2f} from Monzo account to pot {pot_id}")
+                                monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
+                        except Exception as e:
+                                error_msg = str(e)
+                                if "insufficient_funds" in error_msg:
+                                        log.warning(f"Not enough funds in pot {pot_id} to withdraw £{difference / 100:.2f}; skipping.")
+                                        continue  # Skip withdrawal instead of failing the entire sync
+                                else:
+                                        log.error(f"Unexpected error while withdrawing from pot {pot_id}: {error_msg}")
+                                        raise  # Only crash on unknown errors
