@@ -91,7 +91,7 @@ def sync_balance():
 
             log.info(f"Retrieving balance for {credit_account.type} credit card")
             # Log the full JSON response from the balance endpoint
-            balance_response = credit_account.get_balance(credit_account.account_id)
+            balance_response = credit_account.get_card_balance(credit_account.account_id)
             log.info(f"{credit_account.type} card balance response: {balance_response}")  # Log raw response
 
             credit_balance = balance_response.get("balance", 0)  # Assuming balance is inside the response JSON
