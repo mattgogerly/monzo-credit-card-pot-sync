@@ -234,7 +234,7 @@ class TrueLayerAccount(Account):
                 pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
                 pending_payments = sum(txn for txn in pending_transactions if txn < 0)  # Payments decrease balance
 
-                adjusted_balance = balance + pending_charges + pending_payments
+                adjusted_balance = balance + pending_charges - pending_payments
 
                 log.info(f"Pending Charges: {pending_charges}")
                 log.info(f"Pending Payments: {pending_payments}")
