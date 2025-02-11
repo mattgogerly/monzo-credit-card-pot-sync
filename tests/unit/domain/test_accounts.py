@@ -152,7 +152,7 @@ def test_truelayer_account_get_pending_transactions(requests_mock):
 
     account = TrueLayerAccount("American Express", "access_token", "refresh_token", time() + 1000)
     pending_amount = account.get_pending_transactions("1")
-    assert pending_amount == 150
+    assert pending_amount == [100, 50]
 
 def test_truelayer_account_get_total_balance(requests_mock):
     # Mock the response for cards (AMEX and VISA)
