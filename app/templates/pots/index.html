@@ -69,7 +69,9 @@
     document.addEventListener("DOMContentLoaded", function() {
         const defaultAccount = "personal";  // Default to "personal" if nothing is saved
         const storageKey = "selectedAccount_global"; // Use a consistent key for global selection
+        const tabStorageKey = "activeTab"; // Key for storing the active tab
         let savedAccountType = localStorage.getItem(storageKey) || defaultAccount;
+        let savedTab = localStorage.getItem(tabStorageKey);
 
         // Check if the URL already has the account parameter
         let currentUrl = new URL(window.location.href);
@@ -90,6 +92,22 @@
                 let updatedUrl = new URL(window.location.href);
                 updatedUrl.searchParams.set("account", this.value);
                 window.location.href = updatedUrl.href; // Navigate to update the URL
+            });
+        });
+
+        // Restore the active tab
+        if (savedTab) {
+            const activeTabButton = document.querySelector(`#${savedTab}-tab`);
+            if (activeTabButton) {
+                activeTabButton.click();
+            }
+        }
+
+        // Save the active tab when a tab is clicked
+        const tabButtons = document.querySelectorAll("[data-tabs-target]");
+        tabButtons.forEach(function(button) {
+            button.addEventListener("click", function() {
+                localStorage.setItem(tabStorageKey, this.getAttribute("data-tabs-target").substring(1));
             });
         });
     });
