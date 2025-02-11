@@ -139,4 +139,5 @@ def sync_balance():
                         continue  # Skip withdrawal instead of failing the entire sync
                     else:
                         log.error(f"Unexpected error while withdrawing from pot {pot_id}: {error_msg}")
-                         raise  # Only crash on unknown errors
+                         
+                        raise  # Only crash on unknown errors
