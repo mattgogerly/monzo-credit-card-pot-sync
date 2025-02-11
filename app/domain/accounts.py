@@ -214,24 +214,31 @@ class TrueLayerAccount(Account):
     def get_total_balance(self) -> int:
         total_balance = 0.0
         cards = self.get_cards()
-    
+
         for card in cards:
             card_id = card["account_id"]
             balance = self.get_card_balance(card_id)
-        
+
             if card.get("provider", {}).get("display_name") == "AMEX":
-                pending_amount = self.get_pending_transactions(card_id)
+                pending_transactions = self.get_pending_transactions(card_id)
 
                 print(f"Card ID: {card_id}")
                 print(f"Current Balance: {balance}")
-                print(f"Pending Transactions: {pending_amount}")
+                print(f"Pending Transactions (Raw): {pending_transactions}")
 
-                balance += pending_amount  # Adjust for pending transactions
+                # Separate charges and payments/refunds
+                pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
+                pending_payments = sum(txn for txn in pending_transactions if txn < 0)  # Payments decrease balance
 
-            if balance < 0:
-                print(f"Card {card_id} has a negative balance ({balance}); treating as a payment/refund.")
-        
-            total_balance += max(balance, 0)  # Only add positive balances to avoid misinterpretation
+                adjusted_balance = balance + pending_charges + pending_payments
+
+                print(f"Pending Charges: {pending_charges}")
+                print(f"Pending Payments: {pending_payments}")
+                print(f"Adjusted Balance: {adjusted_balance}")
+
+                balance = adjusted_balance  # Update balance with correct pending transaction handling
+
+            total_balance += balance  # Keep all balances in the sum
 
         print(f"Total balance calculated: {total_balance}")
         return int(total_balance * 100)
