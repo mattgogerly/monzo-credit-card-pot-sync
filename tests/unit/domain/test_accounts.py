@@ -146,8 +146,21 @@ def test_truelayer_account_get_card_balance(requests_mock):
     account = TrueLayerAccount("American Express", "access_token", "refresh_token", time() + 1000)
     assert account.get_card_balance("1") == 500
 
+def test_truelayer_account_get_pending_transactions(requests_mock):
+    response = {"results": [{"amount": 100}, {"amount": 50}]}
+    requests_mock.get("https://api.truelayer.com/data/v1/cards/1/transactions/pending", status_code=200, json=response)
+
+    account = TrueLayerAccount("American Express", "access_token", "refresh_token", time() + 1000)
+    pending_amount = account.get_pending_transactions("1")
+    assert pending_amount == 150
+
 def test_truelayer_account_get_total_balance(requests_mock):
-    cards_response = {"results": [{"account_id": "1"}, {"account_id": "2"}]}
+    cards_response = {
+        "results": [
+            {"account_id": "1", "provider": {"display_name": "AMEX"}},  # AMEX Card (should include pending)
+            {"account_id": "2", "provider": {"display_name": "VISA"}}  # Non-AMEX (should NOT include pending)
+        ]
+    }
     requests_mock.get("https://api.truelayer.com/data/v1/cards", status_code=200, json=cards_response)
 
     balance_response_one = {"results": [{"account_id": "1", "current": 500}]}
@@ -156,7 +169,18 @@ def test_truelayer_account_get_total_balance(requests_mock):
     balance_response_two = {"results": [{"account_id": "2", "current": 750}]}
     requests_mock.get("https://api.truelayer.com/data/v1/cards/2/balance", status_code=200, json=balance_response_two)
 
+    # Mock pending transactions (ONLY for AMEX card)
+    pending_response_one = {"results": [{"amount": 100}, {"amount": 50}]}  # AMEX should include these
+    requests_mock.get("https://api.truelayer.com/data/v1/cards/1/transactions/pending", status_code=200, json=pending_response_one)
+
+    # Non-AMEX card (should be ignored)
+    pending_response_two = {"results": [{"amount": 200}, {"amount": 100}]}
+    requests_mock.get("https://api.truelayer.com/data/v1/cards/2/transactions/pending", status_code=200, json=pending_response_two)
+
     account = TrueLayerAccount("American Express", "access_token", "refresh_token", time() + 1000)
-    # Total balance is 500 + 750 = 1250 pounds,
-    # multiplied by 100 to convert into pence.
-    assert account.get_total_balance() == 125000
+
+    # Only AMEX card includes pending transactions
+    # Card 1 (AMEX): 500 (balance) + 150 (pending) = 650
+    # Card 2 (VISA): 750 (balance) (pending ignored) = 750
+    # Total balance = 650 + 750 = 1400
+    assert account.get_total_balance() == 140000  # Total in pence (multiplied by 100)
