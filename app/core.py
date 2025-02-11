@@ -90,29 +90,25 @@ def sync_balance():
                 return
 
             log.info(f"Retrieving balance for {credit_account.type} credit card")
-            # Log the full JSON response from the balance endpoint
-            balance_response = credit_account.get_card_balance(credit_account.account_id)
-            log.info(f"{credit_account.type} card balance response: {balance_response}")  # Log raw response
-
-            credit_balance = balance_response.get("balance", 0)  # Assuming balance is inside the response JSON
+            credit_balance = credit_account.get_total_balance()
             log.info(f"{credit_account.type} card balance is £{credit_balance / 100:.2f}")
 
             # Retrieve pending transactions if applicable (AMEX case)
             pending_amount = 0
             if credit_account.type == "AMEX":
-                # Log the raw response from the /transactions/pending endpoint
-                pending_transactions_response = credit_account.get_pending_transactions(credit_account.account_id)
-                log.info(f"{credit_account.type} Pending Transactions response: {pending_transactions_response}")  # Log raw response
-                
-                if not isinstance(pending_transactions_response, list):
-                    log.warning(f"Unexpected pending transactions format for {credit_account.type}: {pending_transactions_response}")
-                    pending_transactions_response = []
+                pending_transactions = credit_account.get_pending_transactions(credit_account.account_id)
 
+                if not isinstance(pending_transactions, list):
+                    log.warning(f"Unexpected pending transactions format for {credit_account.type}: {pending_transactions}")
+                    pending_transactions = []
+
+                log.info(f"{credit_account.type} Pending Transactions List: {pending_transactions}")  # Log all pending transactions
+                
                 # Debugging: print each individual transaction
-                for txn in pending_transactions_response:
+                for txn in pending_transactions:
                     log.info(f"Pending transaction: £{txn / 100:.2f}")  # Log each pending transaction with detailed amounts
                 
-                pending_amount = sum(txn for txn in pending_transactions_response if isinstance(txn, (int, float)))
+                pending_amount = sum(txn for txn in pending_transactions if isinstance(txn, (int, float)))
 
                 log.info(f"{credit_account.type} Card - Pending Transactions Total: £{pending_amount / 100:.2f}")
 
@@ -120,13 +116,13 @@ def sync_balance():
             adjusted_balance = credit_balance + pending_amount
             log.info(f"{credit_account.type} Card - Adjusted Balance (including pending): £{adjusted_balance / 100:.2f}")
 
-        # Adjust the designated pot balance based on the adjusted credit card balance
-        # If the credit card balance is positive (money owed), subtract it from the pot
-        # If the credit card balance is negative (money available), add it to the pot
-        if adjusted_balance > 0:
-            pot_balance_map[pot_id]['balance'] -= adjusted_balance  # Subtract from the pot
-        else:
-            pot_balance_map[pot_id]['balance'] += abs(adjusted_balance)  # Add to the pot if it's a credit
+            # Adjust the designated pot balance based on the adjusted credit card balance
+            # If the credit card balance is positive (money owed), subtract it from the pot
+            # If the credit card balance is negative (money available), add it to the pot
+            if adjusted_balance > 0:
+                pot_balance_map[pot_id]['balance'] -= adjusted_balance  # Subtract from the pot
+            else:
+                pot_balance_map[pot_id]['balance'] += abs(adjusted_balance)  # Add to the pot if it's a credit
 
         # Step 3: Perform necessary balance adjustments between Monzo account and each pot
         for pot_id, pot_info in pot_balance_map.items():
