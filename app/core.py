@@ -102,9 +102,19 @@ def sync_balance():
                     log.warning(f"Unexpected pending transactions format for {credit_account.type}: {pending_transactions}")
                     pending_transactions = []
 
+                log.info(f"{credit_account.type} Pending Transactions List: {pending_transactions}")  # Log all pending transactions
+                
+                # Debugging: print each individual transaction
+                for txn in pending_transactions:
+                    log.info(f"Pending transaction: £{txn / 100:.2f}")  # Log each pending transaction with detailed amounts
+                
                 pending_amount = sum(txn for txn in pending_transactions if isinstance(txn, (int, float)))
 
-                log.info(f"{credit_account.type} Card - Pending Transactions: £{pending_amount / 100:.2f}")
+                log.info(f"{credit_account.type} Card - Pending Transactions Total: £{pending_amount / 100:.2f}")
+
+            # Adjusted balance includes pending transactions
+            adjusted_balance = credit_balance + pending_amount
+            log.info(f"{credit_account.type} Card - Adjusted Balance (including pending): £{adjusted_balance / 100:.2f}")
 
             # Adjusted balance includes pending transactions
             adjusted_balance = credit_balance + pending_amount
