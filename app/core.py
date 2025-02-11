@@ -2,7 +2,6 @@ import logging
 from sqlalchemy.exc import NoResultFound
 
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
-from app.domain.settings import Setting
 from app.errors import AuthException
 from app.extensions import db, scheduler
 from app.models.account_repository import SqlAlchemyAccountRepository
