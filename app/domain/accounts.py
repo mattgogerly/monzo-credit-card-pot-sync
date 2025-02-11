@@ -201,11 +201,6 @@ class TrueLayerAccount(Account):
     ):
         super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id)
 
-    def ping(self) -> None:
-        r.get(
-            f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header()
-        )
-
     def get_cards(self) -> list:
         response = r.get(
             f"{self.auth_provider.api_url}/data/v1/cards",
@@ -238,32 +233,41 @@ class TrueLayerAccount(Account):
             log.error(f"Missing balance data for card {card_id}: {data}")
             raise KeyError(f"Missing balance fields in response: {data}")
 
-        # Fetch pending transactions
-        url = f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending"
-        headers = self.get_auth_header()
-        log.info(f"Fetching pending transactions from {url} with headers {headers}")
-        response = r.get(url, headers=headers)
-        log.info(f"Response status code: {response.status_code}")
-        log.info(f"Response content: {response.content}")
+        # Fetch card details to check provider
+        card_details_url = f"{self.auth_provider.api_url}/data/v1/cards/{card_id}"
+        card_response = r.get(card_details_url, headers=self.get_auth_header())
+        card_response.raise_for_status()
+        card_data = card_response.json()["results"][0]
 
-        if response.status_code == 403:
-            log.warning("403 Forbidden error retrieving pending transactions. Using 0 as a fallback.")
-            pending_balance = 0
-        else:
-            response.raise_for_status()
-            try:
-                pending_transactions = response.json().get("results", [])
-                log.info(f"Full JSON response for pending transactions: {pending_transactions}")
-            except ValueError:
-                pending_transactions = []
-            pending_balance = sum(txn["amount"] for txn in pending_transactions)
+        provider_name = card_data["provider"]["display_name"]
+        log.info(f"Card {card_id} provider: {provider_name}")
 
+        # Only fetch pending transactions if the provider is AMEX
+        pending_balance = 0
+        if provider_name.upper() == "AMEX":
+            url = f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending"
+            headers = self.get_auth_header()
+            log.info(f"Fetching pending transactions from {url} with headers {headers}")
+            response = r.get(url, headers=headers)
+            log.info(f"Response status code: {response.status_code}")
+            log.info(f"Response content: {response.content}")
+
+            if response.status_code == 403:
+                log.warning("403 Forbidden error retrieving pending transactions. Using 0 as a fallback.")
+            else:
+                response.raise_for_status()
+                try:
+                    pending_transactions = response.json().get("results", [])
+                    log.info(f"Full JSON response for pending transactions: {pending_transactions}")
+                    pending_balance = sum(txn["amount"] for txn in pending_transactions)
+                except ValueError:
+                    log.error("Error parsing pending transactions JSON response")
+        
         return true_balance + pending_balance
 
+
     def get_total_balance(self) -> int:
-        total_balance = 0
-        cards = self.get_cards()
-        for card in cards:
-            card_id = card["account_id"]
-            total_balance += self.get_card_balance(card_id)
+        """Returns total balance across all cards, including pending transactions."""
+        total_balance = sum(self.get_card_balance(card["account_id"]) for card in self.get_cards())
+        log.info(f"Total balance across all cards (pence): {total_balance}")
         return total_balance
