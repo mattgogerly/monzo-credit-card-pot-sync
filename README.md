@@ -54,8 +54,7 @@ This project is a tool to sync the balance of your credit cards and a Monzo pot.
 6. Switch to the `Live` environment and add `http://localhost:1337/auth/callback/truelayer` as a redirect URI
 7. Copy the client ID and client secret
 8. Navigate to `http://localhost:1337/settings` and save the Monzo and TrueLayer client IDs and secrets
-
-You're all set! Head to `http://localhost:1337/accounts` to connect your Monzo account and credit cards.
+9. When prompted, accept the notification from Monzo to allow the application API access.
 
 ## Docker
 
@@ -65,7 +64,17 @@ Releases are also published as container images on GitHub Container Registry.
    ```bash
    docker compose up -d
    ```
-2. Open your browser and navigate to `http://localhost:1337`
+
+### Using a Reverse Proxy
+
+If you are using a reverse proxy, set the environment variable `POT_SYNC_LOCAL_URL` in your Docker Compose file or Docker run command to the external URL of your application. For example:
+
+```yaml
+environment:
+  - POT_SYNC_LOCAL_URL=https://subdomain.fulldomain.com
+```
+
+When setting up Monzo or TrueLayer redirect URLs, use the URL that was set in the `POT_SYNC_LOCAL_URL` variable to enable the accounts to successfully link.
 
 ## License
 
