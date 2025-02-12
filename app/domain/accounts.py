@@ -229,32 +229,20 @@ class TrueLayerAccount(Account):
                 pending_transactions = self.get_pending_transactions(card_id)
 
                 # Separate charges and payments/refunds
-                pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
-                pending_payments = sum(txn for txn in pending_transactions if txn < 0)  # Payments decrease balance
+                pending_charges = math.ceil(sum(txn for txn in pending_transactions if txn > 0) * 100) / 100
+                pending_payments = math.ceil(sum(txn for txn in pending_transactions if txn < 0) * 100) / 100
 
-                adjusted_balance = balance + pending_charges
+                pending_balance = pending_charges + pending_payments
+
+                adjusted_balance = balance + pending_balance
 
                 log.info(f"Current Balance (Excluding Pending Transactions): £{balance:.2f}")
                 log.info(f"Pending Charges: £{pending_charges:.2f}")
                 log.info(f"Pending Payments: £{pending_payments:.2f}")
+                log.info(f"Pending Balance: £{pending_balance:.2f}")
                 log.info(f"Total Balance: £{adjusted_balance:.2f}")
 
                 balance = adjusted_balance
-
-            #elif provider == "BARCLAYCARD":
-                #pending_transactions = self.get_pending_transactions(card_id)
-                
-                #log.info(f"Current Balance: £{balance:.2f}")
-
-                # Find credits and subtract their absolute values from the balance
-                #pending_credits = sum(abs(txn) for txn in pending_transactions if txn < 0)  # Payments decrease balance
-
-                #log.info(f"Current Balance: £{balance:.2f}")
-                #log.info(f"Pending Credits: £{pending_credits:.2f}")
-
-                #balance -= pending_credits  # Deduct credits from balance
-
-                #log.info(f"Total Balance: £{balance:.2f}")
 
             total_balance += balance
 
