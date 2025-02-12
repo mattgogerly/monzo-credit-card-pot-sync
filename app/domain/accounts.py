@@ -252,11 +252,11 @@ class TrueLayerAccount(Account):
                 log.info(f"Current Balance (Excluding Pending Transactions): £{balance}")
                 log.info(f"Pending Charges: £{pending_charges}")
                 log.info(f"Pending Credits: £{pending_credits}")
-                log.info(f"Total Balance: £{adjusted_balance:.2f}}")
+                log.info(f"Total Balance: £{adjusted_balance:.2f}")
 
                 balance = adjusted_balance
 
             total_balance += balance
 
-        log.info(f"Total balance calculated: £{total_balance * 100:.2f}}")
+        log.info(f"Total balance calculated: £{total_balance * 100:.2f}")
         return int(total_balance * 100)  # Convert balance to pence
