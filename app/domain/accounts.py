@@ -233,9 +233,10 @@ class TrueLayerAccount(Account):
 
                 adjusted_balance = balance + pending_charges
 
-                log.info(f"Pending Charges: {pending_charges}")
-                log.info(f"Pending Payments: {pending_payments}")
-                log.info(f"Adjusted Balance: {adjusted_balance}")
+                log.info(f"Current Balance (Before Credit Adjustment): £{balance}")
+                log.info(f"Pending Charges: £{pending_charges}")
+                log.info(f"Pending Payments: £{pending_payments}")
+                log.info(f"Adjusted Balance: £{adjusted_balance}")
 
                 balance = adjusted_balance
 
@@ -243,14 +244,17 @@ class TrueLayerAccount(Account):
                 pending_transactions = self.get_pending_transactions(card_id)
                 
                 # Find credits and subtract their absolute values from the balance
-                pending_credits = sum(abs(txn) for txn in pending_transactions if txn < 0)
+                pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
+                pending_credits = sum(abs(txn) for txn in pending_transactions if txn < 0)  # Payments decrease balance
 
-                log.info(f"Current Balance (Before Credit Adjustment): {balance}")
-                log.info(f"Pending Credits: {pending_credits}")
+                log.info(f"Current Balance (Before Credit Adjustment): £{balance}")
+                log.info(f"Pending Credits: £{pending_credits}")
+                log.info(f"Pending Payments: £{pending_payments}")
+                log.info(f"Pending Charges: £{pending_charges}")
 
                 balance -= pending_credits  # Deduct credits from balance
 
-                log.info(f"Adjusted Balance (After Credit Adjustment): {balance}")
+                log.info(f"Adjusted Balance (After Credit Adjustment): £{balance / 100:.2f}")
 
             total_balance += balance
 
