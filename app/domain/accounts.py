@@ -245,7 +245,7 @@ class TrueLayerAccount(Account):
 
                 # Find credits and subtract their absolute values from the balance
                 pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
-                pending_credits = sum(txn) for txn in pending_transactions if txn < 0)  # Payments decrease balance
+                pending_credits = sum(txn for txn in pending_transactions if txn < 0)  # Payments decrease balance
 
                 adjusted_balance = balance - pending_credits
 
