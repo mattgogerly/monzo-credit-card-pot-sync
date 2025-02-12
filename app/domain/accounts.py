@@ -214,30 +214,45 @@ class TrueLayerAccount(Account):
         return [txn["amount"] for txn in transactions] if transactions else []
 
     def get_total_balance(self) -> int:
-        total_balance = 0.0
-        cards = self.get_cards()
+    total_balance = 0.0
+    cards = self.get_cards()
 
-        for card in cards:
-            card_id = card["account_id"]
-            balance = self.get_card_balance(card_id)
+    for card in cards:
+        card_id = card["account_id"]
+        balance = self.get_card_balance(card_id)
+        provider = card.get("provider", {}).get("display_name")
 
-            if card.get("provider", {}).get("display_name") == "AMEX":
-                pending_transactions = self.get_pending_transactions(card_id)
+        if provider == "AMEX":
+            pending_transactions = self.get_pending_transactions(card_id)
 
-                log.info(f"Current Balance: {balance}")
+            log.info(f"Current Balance: {balance}")
 
-                # Separate charges and payments/refunds
-                pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
-                pending_payments = sum(txn for txn in pending_transactions if txn < 0)  # Payments decrease balance
+            # Separate charges and payments/refunds
+            pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
+            pending_payments = sum(txn for txn in pending_transactions if txn < 0)  # Payments decrease balance
 
-                adjusted_balance = balance + pending_charges
+            adjusted_balance = balance + pending_charges
 
-                log.info(f"Pending Charges: {pending_charges}")
-                log.info(f"Pending Payments: {pending_payments}")
-                log.info(f"Adjusted Balance: {adjusted_balance}")
+            log.info(f"Pending Charges: {pending_charges}")
+            log.info(f"Pending Payments: {pending_payments}")
+            log.info(f"Adjusted Balance: {adjusted_balance}")
 
-                balance = adjusted_balance
-            total_balance += balance
+            balance = adjusted_balance
 
-        log.info(f"Total balance calculated: {total_balance}")
-        return int(total_balance * 100)  # Convert balance to pence
+        elif provider == "BARCLAYCARD":
+            pending_transactions = self.get_pending_transactions(card_id)
+            
+            # Find credits and subtract their absolute values from the balance
+            pending_credits = sum(abs(txn) for txn in pending_transactions if txn < 0)
+
+            log.info(f"Current Balance (Before Credit Adjustment): {balance}")
+            log.info(f"Pending Credits: {pending_credits}")
+
+            balance -= pending_credits  # Deduct credits from balance
+
+            log.info(f"Adjusted Balance (After Credit Adjustment): {balance}")
+
+        total_balance += balance
+
+    log.info(f"Total balance calculated: {total_balance}")
+    return int(total_balance * 100)  # Convert balance to pence
