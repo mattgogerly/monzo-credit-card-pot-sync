@@ -244,13 +244,11 @@ class TrueLayerAccount(Account):
                 log.info(f"Current Balance: £{balance:.2f}")
 
                 # Find credits and subtract their absolute values from the balance
-                pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
                 pending_credits = sum(txn for txn in pending_transactions if txn < 0)  # Payments decrease balance
 
                 adjusted_balance = balance - pending_credits
 
-                log.info(f"Current Balance (Excluding Pending Transactions): £{balance:.2f}")
-                log.info(f"Pending Charges: £{pending_charges:.2f}")
+                log.info(f"Current Balance: £{balance:.2f}")
                 log.info(f"Pending Credits: £{pending_credits:.2f}")
                 log.info(f"Total Balance: £{adjusted_balance:.2f}")
 
