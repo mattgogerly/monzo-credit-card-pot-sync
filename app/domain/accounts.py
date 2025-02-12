@@ -222,7 +222,7 @@ class TrueLayerAccount(Account):
             balance = self.get_card_balance(card_id)
             provider = card.get("provider", {}).get("display_name")
 
-            if provider == "AMEX":
+            if provider in ["AMEX", "BARCLAYS"]:
                 pending_transactions = self.get_pending_transactions(card_id)
 
                 # Separate charges and payments/refunds
@@ -238,20 +238,20 @@ class TrueLayerAccount(Account):
 
                 balance = adjusted_balance
 
-            elif provider == "BARCLAYCARD":
-                pending_transactions = self.get_pending_transactions(card_id)
+            #elif provider == "BARCLAYCARD":
+                #pending_transactions = self.get_pending_transactions(card_id)
                 
-                log.info(f"Current Balance: £{balance:.2f}")
+                #log.info(f"Current Balance: £{balance:.2f}")
 
                 # Find credits and subtract their absolute values from the balance
-                pending_credits = sum(abs(txn) for txn in pending_transactions if txn < 0)  # Payments decrease balance
+                #pending_credits = sum(abs(txn) for txn in pending_transactions if txn < 0)  # Payments decrease balance
 
-                log.info(f"Current Balance: £{balance:.2f}")
-                log.info(f"Pending Credits: £{pending_credits:.2f}")
+                #log.info(f"Current Balance: £{balance:.2f}")
+                #log.info(f"Pending Credits: £{pending_credits:.2f}")
 
-                balance -= pending_credits  # Deduct credits from balance
+                #balance -= pending_credits  # Deduct credits from balance
 
-                log.info(f"Total Balance: £{balance:.2f}")
+                #log.info(f"Total Balance: £{balance:.2f}")
 
             total_balance += balance
 
