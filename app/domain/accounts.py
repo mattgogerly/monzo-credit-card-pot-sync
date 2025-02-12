@@ -222,7 +222,7 @@ class TrueLayerAccount(Account):
             balance = self.get_card_balance(card_id)
             provider = card.get("provider", {}).get("display_name")
 
-            if provider in ["AMEX", "BARCLAYS"]:
+            if provider in ["AMEX", "BARCLAYCARD"]:
                 pending_transactions = self.get_pending_transactions(card_id)
 
                 # Separate charges and payments/refunds
