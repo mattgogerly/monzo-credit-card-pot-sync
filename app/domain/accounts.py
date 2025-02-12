@@ -258,5 +258,5 @@ class TrueLayerAccount(Account):
 
             total_balance += balance
 
-        log.info(f"Total balance calculated: £{total_balance * 100:.2f}")
+        log.info(f"Total balance calculated: £{total_balance:.2f}")
         return int(total_balance * 100)  # Convert balance to pence
