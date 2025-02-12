@@ -190,45 +190,40 @@ class MonzoAccount(Account):
 
 
 class TrueLayerAccount(Account):
-    def __init__(self, type, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None):
+    def __init__(
+        self,
+        type,
+        access_token=None,
+        refresh_token=None,
+        token_expiry=None,
+        pot_id=None,
+        account_id=None,
+    ):
         super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id)
 
     def ping(self) -> None:
-        r.get(f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header())
+        r.get(
+            f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header()
+        )
 
     def get_cards(self) -> list:
-        response = r.get(f"{self.auth_provider.api_url}/data/v1/cards", headers=self.get_auth_header())
-        response.raise_for_status()
+        response = r.get(
+            f"{self.auth_provider.api_url}/data/v1/cards",
+            headers=self.get_auth_header(),
+        )
         return response.json()["results"]
 
-    def get_card_balance(self, card_id: str) -> float:
-        response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance", headers=self.get_auth_header())
+    def get_card_balance(self, card_id: str) -> int:
+        response = r.get(
+            f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance",
+            headers=self.get_auth_header(),
+        )
         return response.json()["results"][0]["current"]
 
-    def get_pending_transactions(self, card_id: str) -> float:
-        response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending", headers=self.get_auth_header())
-        response.raise_for_status()
-        transactions = response.json()["results"]
-        return sum(t["amount"] for t in transactions) if transactions else 0.0
-
     def get_total_balance(self) -> int:
-        total_balance = 0.0
+        total_balance = 0
         cards = self.get_cards()
-        
         for card in cards:
             card_id = card["account_id"]
-            balance = self.get_card_balance(card_id)
-            
-            if card.get("provider", {}).get("display_name") == "AMEX":
-                pending_amount = self.get_pending_transactions(card_id)
-                
-                print(f"Card ID: {card_id}")
-                print(f"Current Balance: {balance}")
-                print(f"Pending Transactions: {pending_amount}")
-                
-                balance += pending_amount
-
-            total_balance += balance
-
-        print(f"Total balance calculated: {total_balance}")
-        return int(total_balance * 100)
+            total_balance += int(self.get_card_balance(card_id) * 100)
+        return total_balance
