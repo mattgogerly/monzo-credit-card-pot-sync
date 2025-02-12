@@ -89,7 +89,7 @@ def sync_balance():
                 log.error(str(e))
                 return
 
-           log.info(f"Retrieving balance for {credit_account.type} credit card")
+            log.info(f"Retrieving balance for {credit_account.type} credit card")
             credit_balance = credit_account.get_total_balance()
             log.info(f"{credit_account.type} card balance is £{credit_balance / 100:.2f}")
 

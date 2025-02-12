@@ -205,14 +205,12 @@ class TrueLayerAccount(Account):
         response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance", headers=self.get_auth_header())
         response.raise_for_status()
         data = response.json()["results"][0]
-        log.info(f"Full JSON response for card {card_id} balance: {data}")
         return data["current"]
 
     def get_pending_transactions(self, card_id: str) -> list:
         response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending", headers=self.get_auth_header())
         response.raise_for_status()
         transactions = response.json()["results"]
-        log.info(f"Full JSON response for pending transactions: {transactions}")
         return [txn["amount"] for txn in transactions] if transactions else []
 
     def get_total_balance(self) -> int:
@@ -226,9 +224,7 @@ class TrueLayerAccount(Account):
             if card.get("provider", {}).get("display_name") == "AMEX":
                 pending_transactions = self.get_pending_transactions(card_id)
 
-                log.info(f"Card ID: {card_id}")
                 log.info(f"Current Balance: {balance}")
-                log.info(f"Pending Transactions (Raw): {pending_transactions}")
 
                 # Add all pending transactions to the balance
                 total_balance += balance + sum(pending_transactions)
