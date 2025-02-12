@@ -225,36 +225,36 @@ class TrueLayerAccount(Account):
             if provider == "AMEX":
                 pending_transactions = self.get_pending_transactions(card_id)
 
-                log.info(f"Current Balance: {balance}")
-
                 # Separate charges and payments/refunds
                 pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
                 pending_payments = sum(txn for txn in pending_transactions if txn < 0)  # Payments decrease balance
 
                 adjusted_balance = balance + pending_charges
 
-                log.info(f"Current Balance (Before Credit Adjustment): £{balance}")
+                log.info(f"Current Balance (Excluding Pending Transactions): £{balance}")
                 log.info(f"Pending Charges: £{pending_charges}")
                 log.info(f"Pending Payments: £{pending_payments}")
-                log.info(f"Adjusted Balance: £{adjusted_balance}")
+                log.info(f"Total Balance: £{adjusted_balance}")
 
                 balance = adjusted_balance
 
             elif provider == "BARCLAYCARD":
                 pending_transactions = self.get_pending_transactions(card_id)
                 
+                log.info(f"Current Balance: £{balance}")
+
                 # Find credits and subtract their absolute values from the balance
                 pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
                 pending_credits = sum(abs(txn) for txn in pending_transactions if txn < 0)  # Payments decrease balance
 
-                log.info(f"Current Balance (Before Credit Adjustment): £{balance}")
-                log.info(f"Pending Credits: £{pending_credits}")
-                log.info(f"Pending Payments: £{pending_payments}")
+                log.info(f"Current Balance (Excluding Pending Transactions): £{balance}")
                 log.info(f"Pending Charges: £{pending_charges}")
+                log.info(f"Pending Credits: £{pending_credits}")
+                log.info(f"Total Balance: £{adjusted_balance}")
 
-                balance -= pending_credits  # Deduct credits from balance
+                adjusted_balance -= pending_credits  # Deduct credits from balance
 
-                log.info(f"Adjusted Balance (After Credit Adjustment): £{balance / 100:.2f}")
+                balance = adjusted_balance
 
             total_balance += balance
 
