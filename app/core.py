@@ -42,31 +42,38 @@ def sync_balance():
 
         for credit_account in credit_accounts:
             try:
-                log.info(f"Checking if {credit_account.type} access token needs refreshing")
+                log.info(
+                    f"Checking if {credit_account.type} access token needs refreshing"
+                )
                 if credit_account.is_token_within_expiry_window():
                     credit_account.refresh_access_token()
                     account_repository.save(credit_account)
 
-                log.info(f"Pinging {credit_account.type} connection to verify health")
+                log.info(f"Checking health of {credit_account.type} connection")
                 credit_account.ping()
                 log.info(f"{credit_account.type} connection is healthy")
             except AuthException:
-                log.error(f"Authentication failed for {credit_account.type}; deleting connection")
+                log.error(
+                    f"Failed to check health of {credit_account.type} connection; connection will be removed"
+                )
+
                 if monzo_account is not None:
                     monzo_account.send_notification(
                         f"{credit_account.type} Pot Sync Access Expired",
-                        "Reconnect the account(s) on your portal to resume syncing.",
+                        "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
                     )
+
                 account_repository.delete(credit_account)
 
-        # Exit early if critical connections are missing
+        # nothing to sync, so exit now
         if monzo_account is None or len(credit_accounts) == 0:
-            log.info("Missing Monzo connection or credit card connections; skipping sync loop")
+            log.info(
+                "Either Monzo connection is invalid, or there are no valid credit card connections; exiting sync loop"
+            )
             return
 
-        # Check if sync is enabled from settings
         if not settings_repository.get("enable_sync"):
-            log.info("Balance sync is disabled in settings; skipping sync loop")
+            log.info("Balance sync is disabled; exiting sync loop")
             return
 
         # Step 2: Calculate balance differentials for each designated credit card pot
@@ -86,8 +93,10 @@ def sync_balance():
                     pot_balance = monzo_account.get_pot_balance(pot_id)
                     pot_balance_map[pot_id] = {'balance': pot_balance, 'account_selection': account_selection}
                     log.info(f"Credit card pot {pot_id} balance is £{pot_balance / 100:.2f}")
-            except NoResultFound as e:
-                log.error(str(e))
+            except NoResultFound:
+                log.error(
+                    f"No designated credit card pot configured for {credit_account.type}; exiting sync loop"
+                )
                 return
 
             log.info(f"Retrieving balance for {credit_account.type} credit card")
@@ -129,6 +138,6 @@ def sync_balance():
                 log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
                 monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
             else:
-                difference = pot_diff
+                difference = abs(pot_diff)
                 log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
                 monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
