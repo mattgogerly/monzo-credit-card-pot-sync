@@ -224,12 +224,18 @@ class TrueLayerAccount(Account):
             if card.get("provider", {}).get("display_name") == "AMEX":
                 pending_transactions = self.get_pending_transactions(card_id)
 
+                log.info(f"Card ID: {card_id}")
                 log.info(f"Current Balance: {balance}")
+                log.info(f"Pending Transactions (Raw): {pending_transactions}")
 
-                total_pending_transactions = sum(txn for txn in pending_transactions)
-                adjusted_balance = balance + total_pending_transactions
+                # Separate charges and payments/refunds
+                pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
+                pending_payments = sum(txn for txn in pending_transactions if txn < 0)  # Payments decrease balance
 
-                log.info(f"Pending Transactions Total: {total_pending_transactions}")
+                adjusted_balance = balance + pending_charges
+
+                log.info(f"Pending Charges: {pending_charges}")
+                log.info(f"Pending Payments: {pending_payments}")
                 log.info(f"Adjusted Balance: {adjusted_balance}")
 
                 balance = adjusted_balance
