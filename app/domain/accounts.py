@@ -190,40 +190,69 @@ class MonzoAccount(Account):
 
 
 class TrueLayerAccount(Account):
-    def __init__(
-        self,
-        type,
-        access_token=None,
-        refresh_token=None,
-        token_expiry=None,
-        pot_id=None,
-        account_id=None,
-    ):
+    def __init__(self, type, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None):
         super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id)
 
     def ping(self) -> None:
-        r.get(
-            f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header()
-        )
+        r.get(f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header())
 
     def get_cards(self) -> list:
-        response = r.get(
-            f"{self.auth_provider.api_url}/data/v1/cards",
-            headers=self.get_auth_header(),
-        )
+        response = r.get(f"{self.auth_provider.api_url}/data/v1/cards", headers=self.get_auth_header())
+        response.raise_for_status()
         return response.json()["results"]
 
-    def get_card_balance(self, card_id: str) -> int:
-        response = r.get(
-            f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance",
-            headers=self.get_auth_header(),
-        )
-        return response.json()["results"][0]["current"]
+    def get_card_balance(self, card_id: str) -> float:
+        response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance", headers=self.get_auth_header())
+        response.raise_for_status()
+        data = response.json()["results"][0]
+        return data["current"]
+
+    def get_pending_transactions(self, card_id: str) -> list:
+        response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending", headers=self.get_auth_header())
+        response.raise_for_status()
+        transactions = response.json()["results"]
+        return [txn["amount"] for txn in transactions] if transactions else []
 
     def get_total_balance(self) -> int:
-        total_balance = 0
+        total_balance = 0.0
         cards = self.get_cards()
+
         for card in cards:
             card_id = card["account_id"]
-            total_balance += int(self.get_card_balance(card_id) * 100)
-        return total_balance
+            balance = self.get_card_balance(card_id)
+            provider = card.get("provider", {}).get("display_name")
+
+            if provider == "AMEX":
+                pending_transactions = self.get_pending_transactions(card_id)
+
+                log.info(f"Current Balance: {balance}")
+
+                # Separate charges and payments/refunds
+                pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
+                pending_payments = sum(txn for txn in pending_transactions if txn < 0)  # Payments decrease balance
+
+                adjusted_balance = balance + pending_charges
+
+                log.info(f"Pending Charges: {pending_charges}")
+                log.info(f"Pending Payments: {pending_payments}")
+                log.info(f"Adjusted Balance: {adjusted_balance}")
+
+                balance = adjusted_balance
+
+            elif provider == "BARCLAYCARD":
+                pending_transactions = self.get_pending_transactions(card_id)
+                
+                # Find credits and subtract their absolute values from the balance
+                pending_credits = sum(abs(txn) for txn in pending_transactions if txn < 0)
+
+                log.info(f"Current Balance (Before Credit Adjustment): {balance}")
+                log.info(f"Pending Credits: {pending_credits}")
+
+                balance -= pending_credits  # Deduct credits from balance
+
+                log.info(f"Adjusted Balance (After Credit Adjustment): {balance}")
+
+            total_balance += balance
+
+        log.info(f"Total balance calculated: {total_balance}")
+        return int(total_balance * 100)  # Convert balance to pence

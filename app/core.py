@@ -2,6 +2,7 @@ import logging
 from sqlalchemy.exc import NoResultFound
 
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
+from app.domain.settings import Setting
 from app.errors import AuthException
 from app.extensions import db, scheduler
 from app.models.account_repository import SqlAlchemyAccountRepository
@@ -41,31 +42,38 @@ def sync_balance():
 
         for credit_account in credit_accounts:
             try:
-                log.info(f"Checking if {credit_account.type} access token needs refreshing")
+                log.info(
+                    f"Checking if {credit_account.type} access token needs refreshing"
+                )
                 if credit_account.is_token_within_expiry_window():
                     credit_account.refresh_access_token()
                     account_repository.save(credit_account)
 
-                log.info(f"Pinging {credit_account.type} connection to verify health")
+                log.info(f"Checking health of {credit_account.type} connection")
                 credit_account.ping()
                 log.info(f"{credit_account.type} connection is healthy")
             except AuthException:
-                log.error(f"Authentication failed for {credit_account.type}; deleting connection")
+                log.error(
+                    f"Failed to check health of {credit_account.type} connection; connection will be removed"
+                )
+
                 if monzo_account is not None:
                     monzo_account.send_notification(
                         f"{credit_account.type} Pot Sync Access Expired",
-                        "Reconnect the account(s) on your portal to resume syncing.",
+                        "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
                     )
+
                 account_repository.delete(credit_account)
 
-        # Exit early if critical connections are missing
+        # nothing to sync, so exit now
         if monzo_account is None or len(credit_accounts) == 0:
-            log.info("Missing Monzo connection or credit card connections; skipping sync loop")
+            log.info(
+                "Either Monzo connection is invalid, or there are no valid credit card connections; exiting sync loop"
+            )
             return
 
-        # Check if sync is enabled from settings
         if not settings_repository.get("enable_sync"):
-            log.info("Balance sync is disabled in settings; skipping sync loop")
+            log.info("Balance sync is disabled; exiting sync loop")
             return
 
         # Step 2: Calculate balance differentials for each designated credit card pot
@@ -85,38 +93,18 @@ def sync_balance():
                     pot_balance = monzo_account.get_pot_balance(pot_id)
                     pot_balance_map[pot_id] = {'balance': pot_balance, 'account_selection': account_selection}
                     log.info(f"Credit card pot {pot_id} balance is £{pot_balance / 100:.2f}")
-            except NoResultFound as e:
-                log.error(str(e))
+            except NoResultFound:
+                log.error(
+                    f"No designated credit card pot configured for {credit_account.type}; exiting sync loop"
+                )
                 return
 
             log.info(f"Retrieving balance for {credit_account.type} credit card")
             credit_balance = credit_account.get_total_balance()
             log.info(f"{credit_account.type} card balance is £{credit_balance / 100:.2f}")
 
-            # Retrieve pending transactions if applicable (AMEX case)
-            pending_amount = 0
-            if credit_account.type == "AMEX":
-                pending_transactions = credit_account.get_pending_transactions(credit_account.account_id)
-
-                if not isinstance(pending_transactions, list):
-                    log.warning(f"Unexpected pending transactions format for {credit_account.type}: {pending_transactions}")
-                    pending_transactions = []
-                
-                pending_amount = sum(txn for txn in pending_transactions if isinstance(txn, (int, float)))
-
-                log.info(f"{credit_account.type} Card - Pending Transactions Total: £{pending_amount / 100:.2f}")
-
-            # Adjusted balance includes pending transactions
-            adjusted_balance = credit_balance + pending_amount
-            log.info(f"{credit_account.type} Card - Adjusted Balance (including pending): £{adjusted_balance / 100:.2f}")
-
-            # Adjust the designated pot balance based on the adjusted credit card balance
-            # If the credit card balance is positive (money owed), subtract it from the pot
-            # If the credit card balance is negative (money available), add it to the pot
-            if adjusted_balance > 0:
-                pot_balance_map[pot_id]['balance'] -= adjusted_balance  # Subtract from the pot
-            else:
-                pot_balance_map[pot_id]['balance'] += abs(adjusted_balance)  # Add to the pot if it's a credit
+            # Adjust the designated pot balance by subtracting the credit card balance
+            pot_balance_map[pot_id]['balance'] -= credit_balance
 
         # Step 3: Perform necessary balance adjustments between Monzo account and each pot
         for pot_id, pot_info in pot_balance_map.items():
@@ -136,31 +124,20 @@ def sync_balance():
             if pot_diff == 0:
                 log.info("No balance difference; no action required")
             elif pot_diff < 0:
-                # Negative pot_diff means we should deposit into the account
                 difference = abs(pot_diff)
                 if monzo_balance < difference:
-                    log.warning(f"Insufficient funds in Monzo account (£{monzo_balance / 100:.2f}); skipping deposit.")
+                    log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
+                    settings_repository.save(Setting("enable_sync", "False"))
                     monzo_account.send_notification(
                         "Insufficient Funds for Sync",
-                        "Not enough funds in Monzo account to sync with the credit card pot.",
+                        "Sync disabled due to low Monzo balance. Please top up and re-enable sync.",
                         account_selection=account_selection
                     )
-                    continue  # Skip this transaction instead of failing the whole sync process
+                    return
 
-                log.info(f"Depositing £{difference / 100:.2f} into Monzo account from pot {pot_id}")
+                log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
                 monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
-
             else:
-                # Positive pot_diff means we should withdraw from the pot
-                difference = pot_diff
-                try:
-                    log.info(f"Withdrawing £{difference / 100:.2f} from Monzo account to pot {pot_id}")
-                    monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
-                except Exception as e:
-                    error_msg = str(e)
-                    if "insufficient_funds" in error_msg:
-                        log.warning(f"Not enough funds in pot {pot_id} to withdraw £{difference / 100:.2f}; skipping.")
-                        continue  # Skip withdrawal instead of failing the entire sync
-                    else:
-                        log.error(f"Unexpected error while withdrawing from pot {pot_id}: {error_msg}")
-                        raise  # Only crash on unknown errors
+                difference = abs(pot_diff)
+                log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
+                monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
