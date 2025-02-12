@@ -231,17 +231,17 @@ class TrueLayerAccount(Account):
 
                 adjusted_balance = balance + pending_charges
 
-                log.info(f"Current Balance (Excluding Pending Transactions): £{balance / 100:.2f}")
-                log.info(f"Pending Charges: £{pending_charges / 100:.2f}")
-                log.info(f"Pending Payments: £{pending_payments / 100:.2f}")
-                log.info(f"Total Balance: £{adjusted_balance / 100:.2f}")
+                log.info(f"Current Balance (Excluding Pending Transactions): £{balance}")
+                log.info(f"Pending Charges: £{pending_charges}")
+                log.info(f"Pending Payments: £{pending_payments}")
+                log.info(f"Total Balance: £{adjusted_balance}")
 
                 balance = adjusted_balance
 
             elif provider == "BARCLAYCARD":
                 pending_transactions = self.get_pending_transactions(card_id)
                 
-                log.info(f"Current Balance: £{balance / 100:.2f}")
+                log.info(f"Current Balance: £{balance}")
 
                 # Find credits and subtract their absolute values from the balance
                 pending_charges = sum(txn for txn in pending_transactions if txn > 0)  # Charges increase balance
@@ -249,14 +249,14 @@ class TrueLayerAccount(Account):
 
                 adjusted_balance = balance - pending_credits
 
-                log.info(f"Current Balance (Excluding Pending Transactions): £{balance / 100:.2f}")
-                log.info(f"Pending Charges: £{pending_charges / 100:.2f}")
-                log.info(f"Pending Credits: £{pending_credits / 100:.2f}")
-                log.info(f"Total Balance: £{adjusted_balance / 100:.2f}")
+                log.info(f"Current Balance (Excluding Pending Transactions): £{balance}")
+                log.info(f"Pending Charges: £{pending_charges}")
+                log.info(f"Pending Credits: £{pending_credits}")
+                log.info(f"Total Balance: £{adjusted_balance:.2f}}")
 
                 balance = adjusted_balance
 
             total_balance += balance
 
-        log.info(f"Total balance calculated: {total_balance / 100:.2f}")
+        log.info(f"Total balance calculated: £{total_balance * 100:.2f}}")
         return int(total_balance * 100)  # Convert balance to pence
