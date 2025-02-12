@@ -1,4 +1,5 @@
 import logging
+import math
 from time import time
 from urllib import parse
 
@@ -205,13 +206,15 @@ class TrueLayerAccount(Account):
         response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/balance", headers=self.get_auth_header())
         response.raise_for_status()
         data = response.json()["results"][0]
-        return data["current"]
+        # Multiply by 100, round up, then divide by 100 to get two decimal places
+        return math.ceil(data["current"] * 100) / 100
 
     def get_pending_transactions(self, card_id: str) -> list:
         response = r.get(f"{self.auth_provider.api_url}/data/v1/cards/{card_id}/transactions/pending", headers=self.get_auth_header())
         response.raise_for_status()
         transactions = response.json()["results"]
-        return [txn["amount"] for txn in transactions] if transactions else []
+        # Multiply by 100, round up, then divide by 100 to get two decimal places
+        return [math.ceil(txn["amount"] * 100) / 100 for txn in transactions] if transactions else []
 
     def get_total_balance(self) -> int:
         total_balance = 0.0
@@ -222,7 +225,7 @@ class TrueLayerAccount(Account):
             balance = self.get_card_balance(card_id)
             provider = card.get("provider", {}).get("display_name")
 
-            if provider in ["AMEX", "BARCLAYS"]:
+            if provider in ["AMEX", "BARCLAYCARD"]:
                 pending_transactions = self.get_pending_transactions(card_id)
 
                 # Separate charges and payments/refunds
