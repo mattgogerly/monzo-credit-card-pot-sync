@@ -89,7 +89,7 @@ def sync_balance():
                 log.error(str(e))
                 return
 
-            log.info(f"Retrieving balance for {credit_account.type} credit card")
+           log.info(f"Retrieving balance for {credit_account.type} credit card")
             credit_balance = credit_account.get_total_balance()
             log.info(f"{credit_account.type} card balance is £{credit_balance / 100:.2f}")
 
@@ -101,12 +101,6 @@ def sync_balance():
                 if not isinstance(pending_transactions, list):
                     log.warning(f"Unexpected pending transactions format for {credit_account.type}: {pending_transactions}")
                     pending_transactions = []
-
-                log.info(f"{credit_account.type} Pending Transactions List: {pending_transactions}")  # Log all pending transactions
-                
-                # Debugging: print each individual transaction
-                for txn in pending_transactions:
-                    log.info(f"Pending transaction: £{txn / 100:.2f}")  # Log each pending transaction with detailed amounts
                 
                 pending_amount = sum(txn for txn in pending_transactions if isinstance(txn, (int, float)))
 
