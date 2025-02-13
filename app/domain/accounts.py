@@ -245,7 +245,8 @@ class TrueLayerAccount(Account):
                 pending_charges = math.ceil(sum(txn for txn in pending_transactions if txn > 0) * 100) / 100
                 pending_payments = math.ceil(sum(txn for txn in pending_transactions if txn < 0) * 100) / 100
 
-                pending_balance = pending_charges - pending_payments
+                # it looks like pending charges might take into account credits
+                pending_balance = pending_charges # + pending_payments
 
                 adjusted_balance = balance + pending_balance
 
