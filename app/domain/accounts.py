@@ -37,14 +37,27 @@ class Account:
         log.info(f"{self.type} access token is within expiry window, refreshing tokens")
         try:
             tokens = self.auth_provider.refresh_access_token(self.refresh_token)
+
+            # Log response safely (hiding tokens)
+            sanitized_tokens = {k: "***REDACTED***" if "token" in k else v for k, v in tokens.items()}
+            log.debug(f"{self.type} token refresh response: {sanitized_tokens}")
+
+            # Validate expected fields
+            if "access_token" not in tokens or "refresh_token" not in tokens:
+                log.error(f"{self.type} token refresh response missing fields: {sanitized_tokens}")
+                raise AuthException("Access token refresh response missing required fields")
+
+            # Assign new tokens
             self.access_token = tokens["access_token"]
             self.refresh_token = tokens["refresh_token"]
             self.token_expiry = int(time()) + tokens["expires_in"]
-            log.info(
-                f"Successfully refreshed {self.type} access token, new expiry time is {self.token_expiry}"
-            )
+
+            log.info(f"Successfully refreshed {self.type} access token, new expiry time is {self.token_expiry}")
+
         except KeyError as e:
-            raise AuthException(e)
+            log.error(f"KeyError while refreshing {self.type} token: {str(e)} - Response: {sanitized_tokens}")
+            raise AuthException("Unexpected token response format") from e
+
         except AuthException as e:
             log.error(f"Failed to refresh access token for {self.type}")
             raise e
