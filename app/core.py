@@ -72,10 +72,6 @@ def sync_balance():
             )
             return
 
-        if not settings_repository.get("enable_sync"):
-            log.info("Balance sync is disabled; exiting sync loop")
-            return
-
         # Step 2: Calculate balance differentials for each designated credit card pot
         pot_balance_map = {}
 
@@ -105,6 +101,10 @@ def sync_balance():
 
             # Adjust the designated pot balance by subtracting the credit card balance
             pot_balance_map[pot_id]['balance'] -= credit_balance
+
+        if not settings_repository.get("enable_sync"):
+            log.info("Balance sync is disabled; exiting sync loop")
+            return
 
         # Step 3: Perform necessary balance adjustments between Monzo account and each pot
         for pot_id, pot_info in pot_balance_map.items():
