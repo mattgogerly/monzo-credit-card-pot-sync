@@ -145,7 +145,7 @@ class TrueLayerAuthProvider(AuthProvider):
             "https://auth.truelayer.com",
             "https://auth.truelayer.com",
             "/connect/token",
-            "accounts balance cards offline_access",
+            "accounts balance transactions cards offline_access",
             f"{Config.LOCAL_URL}/auth/callback/truelayer",
             SettingsPrefix.TRUELAYER.value,
         )

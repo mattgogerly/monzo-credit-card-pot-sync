@@ -1,13 +1,10 @@
 import logging
-
 from flask import Flask
-
 from app.config import Config
-
 
 def create_app(test_config=None):
     logging.basicConfig(level=logging.INFO)
-
+    
     app = Flask(__name__, instance_relative_config=True)
     if test_config is None:
         app.config.from_object(Config)
@@ -16,12 +13,10 @@ def create_app(test_config=None):
 
     from .core import sync_balance
     from .extensions import db, scheduler
-    from .models import account as account
-    from .models import setting as setting
-    from .models.setting_repository import SqlAlchemySettingRepository
+    from .models.setting_repository import SqlAlchemySettingRepository  # Removed unused imports
 
     db.init_app(app)
-    # TODO move to migrations
+    # Create tables (if migrations are not yet set up)
     with app.app_context():
         db.create_all()
 
@@ -37,11 +32,11 @@ def create_app(test_config=None):
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(settings_bp, url_prefix="/settings")
 
-    # don't need to setup the scheduler when testing, so return early
+    # Skip scheduler setup when testing
     if app.config["TESTING"]:
         return app
 
-    # get the configured interval for the sync loop
+    # Retrieve the configured interval for the sync loop
     with app.app_context():
         setting_repository = SqlAlchemySettingRepository(db)
         interval = setting_repository.get("sync_interval_seconds")
@@ -52,7 +47,4 @@ def create_app(test_config=None):
     )
     scheduler.start()
 
-    try:
-        return app
-    except Exception:
-        scheduler.shutdown()
+    return app

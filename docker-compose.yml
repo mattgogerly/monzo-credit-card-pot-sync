@@ -1,6 +1,6 @@
 services:
   monzo-credit-card-pot-sync:
-    image: ghcr.io/mattgogerly/monzo-credit-card-pot-sync:latest
+    image: ghcr.io/martadams89/monzo-credit-card-pot-sync:latest
     container_name: monzo-credit-card-pot-sync
     restart: always
     environment:

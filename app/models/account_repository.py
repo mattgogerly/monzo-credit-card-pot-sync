@@ -17,6 +17,7 @@ class SqlAlchemyAccountRepository:
             refresh_token=account.refresh_token,
             token_expiry=account.token_expiry,
             pot_id=account.pot_id,
+            account_id=account.account_id
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
@@ -26,6 +27,7 @@ class SqlAlchemyAccountRepository:
             refresh_token=model.refresh_token,
             token_expiry=model.token_expiry,
             pot_id=model.pot_id,
+            account_id=model.account_id
         )
 
     def get_all(self) -> list[Account]:
@@ -36,10 +38,13 @@ class SqlAlchemyAccountRepository:
         result: AccountModel = (
             self._session.query(AccountModel).filter_by(type="Monzo").one()
         )
-
         account = self._to_domain(result)
         return MonzoAccount(
-            account.access_token, account.refresh_token, account.token_expiry
+            account.access_token,
+            account.refresh_token,
+            account.token_expiry,
+            account.pot_id,
+            account_id=account.account_id
         )
 
     def get_credit_accounts(self) -> list[TrueLayerAccount]:
@@ -63,7 +68,6 @@ class SqlAlchemyAccountRepository:
             )
         except NoResultFound:
             raise NoResultFound(id)
-
         return self._to_domain(result)
 
     def save(self, account: Account) -> None:
