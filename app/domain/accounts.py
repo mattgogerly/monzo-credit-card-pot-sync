@@ -266,7 +266,7 @@ class TrueLayerAccount(Account):
                 pending_payments = math.ceil(sum(txn for txn in pending_transactions if txn < 0) * 100) / 100
 
                 # it looks like pending charges might take into account credits
-                # pending_balance = pending_charges # + pending_payments
+                pending_balance = pending_charges # + pending_payments
 
                 # barclaycard seem to add pending charges to the balance instantly, so we ignore pending transactions
                 adjusted_balance = balance
