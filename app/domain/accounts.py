@@ -258,7 +258,7 @@ class TrueLayerAccount(Account):
 
                 balance = adjusted_balance
 
-             if provider in ["BARCLAYCARD"]:
+            if provider in ["BARCLAYCARD"]:
                 pending_transactions = self.get_pending_transactions(card_id)
 
                 # Separate charges and payments/refunds
