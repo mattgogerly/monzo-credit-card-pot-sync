@@ -238,7 +238,7 @@ class TrueLayerAccount(Account):
             balance = self.get_card_balance(card_id)
             provider = card.get("provider", {}).get("display_name")
 
-            if provider in ["AMEX", "BARCLAYCARD"]:
+            if provider in ["AMEX"]:
                 pending_transactions = self.get_pending_transactions(card_id)
 
                 # Separate charges and payments/refunds
@@ -249,6 +249,27 @@ class TrueLayerAccount(Account):
                 pending_balance = pending_charges # + pending_payments
 
                 adjusted_balance = balance + pending_balance
+
+                log.info(f"Current Balance (Excluding Pending Transactions): £{balance:.2f}")
+                log.info(f"Pending Charges: £{pending_charges:.2f}")
+                log.info(f"Pending Payments: £{pending_payments:.2f}")
+                log.info(f"Pending Balance: £{pending_balance:.2f}")
+                log.info(f"Total Balance: £{adjusted_balance:.2f}")
+
+                balance = adjusted_balance
+
+if provider in ["BARCLAYCARD"]:
+                pending_transactions = self.get_pending_transactions(card_id)
+
+                # Separate charges and payments/refunds
+                pending_charges = math.ceil(sum(txn for txn in pending_transactions if txn > 0) * 100) / 100
+                pending_payments = math.ceil(sum(txn for txn in pending_transactions if txn < 0) * 100) / 100
+
+                # it looks like pending charges might take into account credits
+                # pending_balance = pending_charges # + pending_payments
+
+                # barclaycard seem to add pending charges to the balance instantly, so we ignore pending transactions
+                adjusted_balance = balance
 
                 log.info(f"Current Balance (Excluding Pending Transactions): £{balance:.2f}")
                 log.info(f"Pending Charges: £{pending_charges:.2f}")
