@@ -132,13 +132,13 @@ class MonzoAccount(Account):
         """
         desired_type = "uk_retail_joint" if account_selection == "joint" else "uk_retail"
         import logging
-         log = logging.getLogger("account")
+        log = logging.getLogger("account")
         log.debug(f"get_account_id: account_selection={account_selection}, desired_type={desired_type}")
-         accounts = self._fetch_accounts()
+        accounts = self._fetch_accounts()
         log.debug(f"get_account_id: fetched accounts: {accounts}")
         for account in accounts:
-           if account["type"] == desired_type:
-               return account["id"]
+            if account["type"] == desired_type:
+                return account["id"]
         raise AuthException(f"No account found for type: {desired_type}")
 
     def get_account_description(self, account_selection="personal") -> str:
@@ -262,11 +262,11 @@ class TrueLayerAccount(Account):
         # should show a different icon than the default TrueLayer icon.
         if account_type.lower() == "american express":
             icon = "amex-icon"
-        if account_type.lower() == "barclaycard":
+        elif account_type.lower() == "barclaycard":
             icon = "barclaycard-icon"
-        if account_type.lower() == "halifax":
+        elif account_type.lower() == "halifax":
             icon = "halifax-icon"
-        if account_type.lower() == "natwest":
+        elif account_type.lower() == "natwest":
             icon = "natwest-icon"
         else:
             icon = "truelayer-icon"
