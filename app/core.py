@@ -130,16 +130,31 @@ def sync_balance():
             if pot_diff == 0:
                 log.info("No balance difference; no action required")
             elif pot_diff < 0:
-                # Funds need to be withdrawn from the pot back to the account.
+                # Negative differential: need to deposit funds into the pot.
+                difference = abs(pot_diff)
+                if monzo_balance < difference:
+                    log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
+                    settings_repository.save(Setting("enable_sync", "False"))
+                    monzo_account.send_notification(
+                        "Insufficient Funds for Sync",
+                        "Sync disabled due to low Monzo balance. Please top up and re-enable sync.",
+                        account_selection=account_selection
+                    )
+                    return
+
+                log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
+                monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
+            else:
+                # Positive differential: need to withdraw funds from the pot back to the account.
+                difference = abs(pot_diff)
                 credit_account = pot_to_credit_account.get(pot_id)
                 if credit_account is None:
                     log.error(f"No credit account found for pot {pot_id}. Skipping withdrawal.")
                     continue
 
-                # Get current account balance and calculate the new balance after withdrawal.
+                # Get current account balance and calculate new balance after withdrawal.
                 current_balance = monzo_account.get_balance(account_selection=account_selection)
-                withdrawal_amount = abs(pot_diff)
-                new_balance = current_balance + withdrawal_amount
+                new_balance = current_balance + difference
 
                 # Retrieve cooldown duration from settings (in hours) and convert to seconds.
                 withdrawal_cooldown_hours = int(settings_repository.get("withdrawal_cooldown_hours"))
@@ -147,10 +162,6 @@ def sync_balance():
 
                 if credit_account.pre_withdrawal_check(current_balance, new_balance, cooldown_duration):
                     log.info(f"Proceeding with withdrawal for pot {pot_id} for {credit_account.type}")
-                    monzo_account.withdraw_from_pot(pot_id, withdrawal_amount, account_selection=account_selection)
+                    monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
                 else:
                     log.info(f"Withdrawal postponed for {credit_account.type} due to active cooldown.")
-            else:
-                # Deposit funds into the pot (if pot_diff > 0)
-                log.info(f"Proceeding with deposit of £{pot_diff / 100:.2f} to pot {pot_id}")
-                monzo_account.deposit_to_pot(pot_id, pot_diff, account_selection=account_selection)
