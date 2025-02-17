@@ -156,7 +156,10 @@ def sync_balance():
                 # Apply cooldown on deposit (i.e. add_to_pot)
                 current_balance = monzo_balance
                 new_balance = current_balance - difference
-                deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                try:
+                    deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                except Exception:
+                    deposit_cooldown_hours = 0
                 cooldown_duration = deposit_cooldown_hours * 3600
 
                 if monzo_account.pre_deposit_check(current_balance, new_balance, cooldown_duration):
