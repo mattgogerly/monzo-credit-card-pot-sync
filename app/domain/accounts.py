@@ -182,8 +182,8 @@ class MonzoAccount(Account):
             if pot_id == "default_pot" and pots:
                 pot_id = pots[0]["id"]
             for pot in pots:
-                if pot["id"] == pot_id:
-                    return pot.get("type", "personal")
+                if any(p["id"] == pot_id for p in pots):
+                    return account_selection
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
