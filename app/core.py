@@ -165,7 +165,7 @@ def sync_balance():
                 if pot_id not in credit_account.prev_balances:
                     credit_account.prev_balances[pot_id] = current_pot_balance
                     log.info(f"Initialized prev_balances for {credit_account.type} pot {pot_id} to {current_pot_balance}")
-                previous_pot_balance = credit_account.prev_balances.get(pot_id, current_pot_balance)
+                previous_pot_balance = credit_account.prev_balances.get(current_pot_balance)
                 
                 # Only apply cooldown if current pot balance is below the previous recorded balance.
                 import datetime
