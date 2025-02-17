@@ -69,15 +69,7 @@ class Account:
 
     def pre_deposit_check(self, current_balance, new_balance, cooldown_duration):
         """
-        Checks before a deposit:
-         - If performing the deposit (resulting in new_balance) would be lower than current_balance
-           then a cooldown period is applied.
-         - Returns True if deposit is allowed, otherwise False.
-          
-        Parameters:
-          current_balance: the current balance before deposit.
-          new_balance: the prospective balance after deposit.
-          cooldown_duration: the desired cooldown period (in seconds) from settings.
+        Only activate cooldown when the new pot balance is lower than the previous balance.
         """
         now = int(time())
         if new_balance < current_balance:
@@ -85,11 +77,8 @@ class Account:
                 log.info(f"Cooldown active until {self.cooldown_until}. Deposit postponed for {self.type}.")
                 return False
             else:
-                # Initiate cooldown period before allowing deposit
                 self.cooldown_until = now + cooldown_duration
-                log.info(
-                    f"Withdrawal would reduce balance for {self.type}. Initiating a cooldown until {self.cooldown_until}."
-                )
+                log.info(f"Pot balance decreased. Initiating cooldown until {self.cooldown_until} for {self.type}.")
                 return False
         return True
 
