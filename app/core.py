@@ -150,10 +150,10 @@ def sync_balance():
 
             if (pot_diff == 0):
                 log.info("No balance difference; no action required")
-            elif (pot_diff < 0):
+            elif pot_diff < 0:
                 # Negative differential: need to deposit funds into the pot.
                 difference = abs(pot_diff)
-                if (monzo_balance < difference):
+                if monzo_balance < difference:
                     log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
                     settings_repository.save(Setting("enable_sync", "False"))
                     monzo_account.send_notification(
@@ -165,42 +165,45 @@ def sync_balance():
 
                 # Retrieve credit account corresponding to this pot.
                 credit_account = pot_to_credit_account.get(pot_id)
-                if (credit_account is None):
+                if credit_account is None:
                     log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
                     continue
 
-                # Always compute the live pot balance freshly.
+                # Always compute the fresh live pot balance.
                 current_pot_balance = monzo_account.get_pot_balance(pot_id)
-                # Retrieve the persisted previous balance without reinitializing it.
+                # Retrieve the persisted previous balance (if any)
                 persisted_previous_balance = credit_account.prev_balances.get(pot_id)
-                if (persisted_previous_balance is None):
+                if persisted_previous_balance is None:
                     log.info(f"No persisted previous balance for {credit_account.type} pot {pot_id}. Using live balance {current_pot_balance} as default.")
                     persisted_previous_balance = current_pot_balance
+                    credit_account.prev_balances[pot_id] = current_pot_balance
+                    account_repository.save(credit_account)
                 log.info(f"Persisted previous balance for {pot_id}: {persisted_previous_balance}")
                 log.info(f"Current pot balance for {pot_id}: {current_pot_balance}")
                 
-                # Now, regardless of pot_diff check, decide on deposit based on the persisted value.
-                if (current_pot_balance < persisted_previous_balance):
-                    try:
-                        deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
-                    except Exception:
-                        deposit_cooldown_hours = 0
-                    cooldown_duration = deposit_cooldown_hours * 3600
-                    now = int(time())
-                    if (credit_account.cooldown_until and now < credit_account.cooldown_until):
-                        dt_str = __import__("datetime").datetime.fromtimestamp(credit_account.cooldown_until).isoformat()
-                        log.info(f"Deposit postponed for {credit_account.type} due to active cooldown until {dt_str}.")
-                        continue
-                    else:
-                        credit_account.cooldown_until = now + cooldown_duration
-                        dt_str = __import__("datetime").datetime.fromtimestamp(credit_account.cooldown_until).isoformat()
-                        log.info(f"Cooldown initiated until {dt_str} for {credit_account.type}.")
+                # Only proceed with deposit if the live balance has dropped below the persisted balance.
+                if current_pot_balance >= persisted_previous_balance:
+                    log.info(f"No deposit required because live balance ({current_pot_balance}) is not below persisted ({persisted_previous_balance}).")
+                    continue
+
+                # Optional: apply cooldown if needed.
+                try:
+                    deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                except Exception:
+                    deposit_cooldown_hours = 0
+                cooldown_duration = deposit_cooldown_hours * 3600
+                now = int(time())
+                if credit_account.cooldown_until and now < credit_account.cooldown_until:
+                    dt_str = __import__("datetime").datetime.fromtimestamp(credit_account.cooldown_until).isoformat()
+                    log.info(f"Deposit postponed for {credit_account.type} due to active cooldown until {dt_str}.")
+                    continue
                 else:
-                    log.info(f"Current pot balance for {pot_id} is not below persisted value; no cooldown applied.")
+                    credit_account.cooldown_until = now + cooldown_duration
+                    dt_str = __import__("datetime").datetime.fromtimestamp(credit_account.cooldown_until).isoformat()
+                    log.info(f"Cooldown initiated until {dt_str} for {credit_account.type}.")
 
                 # Proceed with deposit
-                difference = abs(pot_diff)
-                if (monzo_balance < difference):
+                if monzo_balance < difference:
                     log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
                     settings_repository.save(Setting("enable_sync", "False"))
                     monzo_account.send_notification(
@@ -213,7 +216,7 @@ def sync_balance():
                 log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
                 monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
                 log.info(f"[Before Deposit] {credit_account.type} prev_balances: {credit_account.prev_balances}")
-                # Update the persisted previous balance to reflect the deposit.
+                # Update persisted previous balance after deposit.
                 credit_account.prev_balances[pot_id] = current_pot_balance + difference
                 log.info(f"[After Deposit] {credit_account.type} prev_balances: {credit_account.prev_balances}")
                 account_repository.save(credit_account)
