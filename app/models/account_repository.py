@@ -1,4 +1,3 @@
-import json
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import not_
 from sqlalchemy.exc import NoResultFound
