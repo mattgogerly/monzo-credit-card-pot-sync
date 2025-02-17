@@ -203,10 +203,17 @@ class MonzoAccount(Account):
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
+        # Retrieve the pot details from the appropriate account type.
+        pots = self.get_pots(account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if not pot:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+
+        # Use the pot's owning_account_id (or similar field) so that the deposit is made from the correct account.
         data = {
-            "source_account_id": self.get_account_id(account_selection=account_selection),
+            "source_account_id": pot.get("owning_account_id"),
             "amount": amount,
-            "dedupe_id": str(int(time())),  # Ensure dedupe_id is a string
+            "dedupe_id": str(int(time())),
         }
         response = r.put(
             f"{self.auth_provider.api_url}/pots/{pot_id}/deposit",
@@ -218,10 +225,17 @@ class MonzoAccount(Account):
             raise Exception(f"Deposit failed: {response.json()}")
 
     def withdraw_from_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
+        # Retrieve the pot details from the appropriate account type.
+        pots = self.get_pots(account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if not pot:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+
+        # Use the pot's owning_account_id as the destination for withdrawals.
         data = {
-            "destination_account_id": self.get_account_id(account_selection=account_selection),
+            "destination_account_id": pot.get("owning_account_id"),
             "amount": amount,
-            "dedupe_id": str(int(time())),  # Ensure dedupe_id is a string
+            "dedupe_id": str(int(time())),
         }
         response = r.put(
             f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
@@ -248,33 +262,12 @@ class MonzoAccount(Account):
 
 
 class TrueLayerAccount(Account):
-    def __init__(self, account_type, access_token, refresh_token, token_expiry, pot_id="default_pot", account_id=None):
-        super().__init__(
-            account_type,
-            access_token,
-            refresh_token,
-            token_expiry,
-            pot_id,
-            account_id
-        )
-        # Initialize the auth provider for TrueLayer with the proper icon.
+    def __init__(self, account_type, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None):
+        super().__init__(account_type, access_token, refresh_token, token_expiry, pot_id, account_id)
         from app.domain.auth_providers import TrueLayerAuthProvider
-        # Use a conditional mapping here if needed; for example, if account_type "American Express"
-        # should show a different icon than the default TrueLayer icon.
-        if account_type.lower() == "american express":
-            icon = "amex-icon"
-        elif account_type.lower() == "barclaycard":
-            icon = "barclaycard-icon"
-        elif account_type.lower() == "halifax":
-            icon = "halifax-icon"
-        elif account_type.lower() == "natwest":
-            icon = "natwest-icon"
-        else:
-            icon = "truelayer-icon"
         self.auth_provider = TrueLayerAuthProvider(
             name="TrueLayer",
-            type="truelayer",
-            icon_name=icon
+            type="truelayer"
         )
 
     def ping(self) -> None:
