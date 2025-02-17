@@ -1,4 +1,5 @@
 import logging
+import ast
 from sqlalchemy.exc import NoResultFound
 
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
@@ -55,17 +56,26 @@ def sync_balance():
                 error_message = str(e)
                 log.error(f"Failed to check health of {credit_account.type} connection; connection will be removed. Error: {error_message}")
 
-                # Only send a notification if the error is not due to provider unavailability
-                if "provider service is currently unavailable" not in error_message:
+                # Try to extract the provider's error_description from the error message.
+                error_desc = ""
+                try:
+                    # Expecting error_message to contain something like "... missing fields: { ... }"
+                    error_part = error_message.split("missing fields: ")[-1]
+                    err_dict = ast.literal_eval(error_part)
+                    error_desc = err_dict.get("error_description", "")
+                except Exception:
+                    error_desc = error_message
+
+                # If the provider indicates unavailability (using error_description), skip notification/deletion.
+                if "currently unavailable" not in error_desc:
                     if monzo_account is not None:
                         monzo_account.send_notification(
                             f"{credit_account.type} Pot Sync Access Expired",
                             "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
                         )
-                    account_repository.delete(credit_account)
+                    account_repository.delete(credit_account.type)
                 else:
-                    log.info(f"Service provider for {credit_account.type} is unavailable, will retry later.")
-
+                    log.info(f"Service provider for {credit_account.type} is currently unavailable, will retry later.")
         # nothing to sync, so exit now
         if monzo_account is None or len(credit_accounts) == 0:
             log.info(
@@ -143,26 +153,24 @@ def sync_balance():
                     )
                     return
 
-                log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
-                monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
-            else:
-                # Positive differential: need to withdraw funds from the pot back to the account.
-                difference = abs(pot_diff)
-                credit_account = pot_to_credit_account.get(pot_id)
-                if credit_account is None:
-                    log.error(f"No credit account found for pot {pot_id}. Skipping withdrawal.")
-                    continue
+                # Apply cooldown on deposit (i.e. add_to_pot)
+                current_balance = monzo_balance
+                new_balance = current_balance - difference
+                deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                cooldown_duration = deposit_cooldown_hours * 3600
 
-                # Get current account balance and calculate new balance after withdrawal.
-                current_balance = monzo_account.get_balance(account_selection=account_selection)
-                new_balance = current_balance + difference
-
-                # Retrieve cooldown duration from settings (in hours) and convert to seconds.
-                withdrawal_cooldown_hours = int(settings_repository.get("withdrawal_cooldown_hours"))
-                cooldown_duration = withdrawal_cooldown_hours * 3600
-
-                if credit_account.pre_withdrawal_check(current_balance, new_balance, cooldown_duration):
-                    log.info(f"Proceeding with withdrawal for pot {pot_id} for {credit_account.type}")
-                    monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
+                if monzo_account.pre_deposit_check(current_balance, new_balance, cooldown_duration):
+                    log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
+                    monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
                 else:
-                    log.info(f"Withdrawal postponed for {credit_account.type} due to active cooldown.")
+                    log.info(f"Deposit postponed for {monzo_account.type} due to active cooldown.")
+                else:
+                    # Positive differential: need to withdraw funds from the pot back to the account.
+                    difference = abs(pot_diff)
+                    credit_account = pot_to_credit_account.get(pot_id)
+                    if credit_account is None:
+                        log.error(f"No credit account found for pot {pot_id}. Skipping withdrawal.")
+                        continue
+
+                    log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
+                    monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)

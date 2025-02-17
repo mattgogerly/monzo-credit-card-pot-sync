@@ -66,25 +66,25 @@ class Account:
     def get_auth_header(self):
         return {"Authorization": f"Bearer {self.access_token}"}
 
-    def pre_withdrawal_check(self, current_balance, new_balance, cooldown_duration):
+    def pre_deposit_check(self, current_balance, new_balance, cooldown_duration):
         """
-        Checks before a withdrawal:
-         - If performing the withdrawal (resulting in new_balance) would be lower than current_balance
+        Checks before a deposit:
+         - If performing the deposit (resulting in new_balance) would be lower than current_balance
            then a cooldown period is applied.
-         - Returns True if withdrawal is allowed, otherwise False.
+         - Returns True if deposit is allowed, otherwise False.
           
         Parameters:
-          current_balance: the current balance before withdrawal.
-          new_balance: the prospective balance after withdrawal.
+          current_balance: the current balance before deposit.
+          new_balance: the prospective balance after deposit.
           cooldown_duration: the desired cooldown period (in seconds) from settings.
         """
         now = int(time())
         if new_balance < current_balance:
             if self.cooldown_until and now < self.cooldown_until:
-                log.info(f"Cooldown active until {self.cooldown_until}. Withdrawal postponed for {self.type}.")
+                log.info(f"Cooldown active until {self.cooldown_until}. Deposit postponed for {self.type}.")
                 return False
             else:
-                # Initiate cooldown period before allowing withdrawal
+                # Initiate cooldown period before allowing deposit
                 self.cooldown_until = now + cooldown_duration
                 log.info(
                     f"Withdrawal would reduce balance for {self.type}. Initiating a cooldown until {self.cooldown_until}."
