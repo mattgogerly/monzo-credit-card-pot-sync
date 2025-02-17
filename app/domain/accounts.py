@@ -4,8 +4,7 @@ from time import time
 from urllib import parse
 
 import requests as r
-from app.extensions import db
-
+from app.domain.settings import Setting
 from app.domain.auth_providers import AuthProviderType, provider_mapping
 from app.errors import AuthException
 
