@@ -95,15 +95,7 @@ class Account:
 
 
 class MonzoAccount(Account):
-    def __init__(
-        self,
-        access_token,
-        refresh_token,
-        token_expiry,
-        pot_id,
-        account_id=None,
-        prev_balances: dict = None
-    ):
+    def __init__(self, access_token, refresh_token, token_expiry, pot_id, account_id=None, prev_balances=None):
         super().__init__(
             type="Monzo",
             access_token=access_token,
@@ -113,6 +105,9 @@ class MonzoAccount(Account):
             account_id=account_id,
             prev_balances=prev_balances
         )
+        # Initialize the auth provider for Monzo
+        from app.domain.auth_providers import MonzoAuthProvider
+        self.auth_provider = MonzoAuthProvider()
 
     def ping(self) -> None:
         r.get(
@@ -245,8 +240,11 @@ class MonzoAccount(Account):
 
 
 class TrueLayerAccount(Account):
-    def __init__(self, type, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None):
+    def __init__(self, type, access_token, refresh_token, token_expiry, pot_id, account_id=None):
         super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id)
+        # Initialize the auth provider for TrueLayer
+        from app.domain.auth_providers import TrueLayerAuthProvider
+        self.auth_provider = TrueLayerAuthProvider()
 
     def ping(self) -> None:
         r.get(f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header())
