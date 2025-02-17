@@ -7,3 +7,4 @@ class AccountModel(db.Model):
     access_token = db.Column(db.String(1024))
     refresh_token = db.Column(db.String(1024))
     token_expiry = db.Column(db.Integer)
+    account_id = db.Column(db.String(150), nullable=True)
