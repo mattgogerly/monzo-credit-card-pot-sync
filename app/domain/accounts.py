@@ -205,8 +205,20 @@ class MonzoAccount(Account):
             raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
 
         # Use the pot's owning_account_id (or similar field) so that the deposit is made from the correct account.
+        # Normalize account_selection – treat any value other than "joint" as "personal"
+        if account_selection not in ("personal", "joint"):
+            account_selection = "personal"
+    
+        source_account_id = self.get_account_id(account_selection=account_selection)
+    
+        # Ensure the pot exists by fetching pots for the normalized account
+        pots = self.get_pots(account_selection=account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if pot is None:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+    
         data = {
-            "source_account_id": pot.get("owning_account_id"),
+            "source_account_id": source_account_id,
             "amount": amount,
             "dedupe_id": str(int(time())),
         }
@@ -226,9 +238,20 @@ class MonzoAccount(Account):
         if not pot:
             raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
 
-        # Use the pot's owning_account_id as the destination for withdrawals.
+        # Normalize account_selection – treat any value other than "joint" as "personal"
+        if account_selection not in ("personal", "joint"):
+            account_selection = "personal"
+    
+        destination_account_id = self.get_account_id(account_selection=account_selection)
+    
+        # Ensure the pot exists before attempting withdrawal
+        pots = self.get_pots(account_selection=account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if pot is None:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+    
         data = {
-            "destination_account_id": pot.get("owning_account_id"),
+            "destination_account_id": destination_account_id,
             "amount": amount,
             "dedupe_id": str(int(time())),
         }
