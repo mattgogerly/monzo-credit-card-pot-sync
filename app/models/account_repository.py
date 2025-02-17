@@ -18,7 +18,8 @@ class SqlAlchemyAccountRepository:
             token_expiry=account.token_expiry,
             pot_id=account.pot_id,
             account_id=account.account_id,
-            cooldown_until=account.cooldown_until
+            cooldown_until=account.cooldown_until,
+            prev_balance=account.prev_balance
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
@@ -29,7 +30,8 @@ class SqlAlchemyAccountRepository:
             token_expiry=model.token_expiry,
             pot_id=model.pot_id,
             account_id=model.account_id,
-            cooldown_until=model.cooldown_until
+            cooldown_until=model.cooldown_until,
+            prev_balance=model.prev_balance
         )
 
     def get_all(self) -> list[Account]:

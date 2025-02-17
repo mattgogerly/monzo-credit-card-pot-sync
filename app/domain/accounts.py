@@ -19,7 +19,8 @@ class Account:
         token_expiry=None,
         pot_id=None,
         account_id=None,
-        cooldown_until=None,  # new field with default None
+        cooldown_until=None,  # existing field for cooldown
+        prev_balance: int = 0  # new field, defaulting to 0
     ):
         self.type = type
         self.access_token = access_token
@@ -28,7 +29,8 @@ class Account:
         self.pot_id = pot_id
         self.account_id = account_id
         self.auth_provider = provider_mapping[AuthProviderType(type)]
-        self.cooldown_until = cooldown_until  # store the next allowed withdrawal time
+        self.cooldown_until = cooldown_until
+        self.prev_balance = prev_balance  # persist previous pot balance
 
     def is_token_within_expiry_window(self):
         # Returns True if the token expires in the next two minutes or has already expired.
