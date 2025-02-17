@@ -1,6 +1,7 @@
 import logging
 import ast
 from sqlalchemy.exc import NoResultFound
+from time import time
 
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
 from app.errors import AuthException
