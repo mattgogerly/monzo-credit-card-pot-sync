@@ -198,71 +198,62 @@ class MonzoAccount(Account):
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        # Retrieve the pot details from the appropriate account type.
-        pots = self.get_pots(account_selection)
-        pot = next((p for p in pots if p["id"] == pot_id), None)
-        if not pot:
-            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
-
-        # Use the pot's owning_account_id (or similar field) so that the deposit is made from the correct account.
-        # Normalize account_selection – treat any value other than "joint" as "personal"
+        # If account_selection is neither 'personal' nor 'joint', we try personal first.
         if account_selection not in ("personal", "joint"):
             account_selection = "personal"
-    
-        source_account_id = self.get_account_id(account_selection=account_selection)
-    
-        # Ensure the pot exists by fetching pots for the normalized account
-        pots = self.get_pots(account_selection=account_selection)
-        pot = next((p for p in pots if p["id"] == pot_id), None)
-        if pot is None:
-            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
-    
-        data = {
-            "source_account_id": source_account_id,
-            "amount": amount,
-            "dedupe_id": str(int(time())),
-        }
-        response = r.put(
-            f"{self.auth_provider.api_url}/pots/{pot_id}/deposit",
-            data=data,
-            headers=self.get_auth_header(),
-        )
-        if response.status_code != 200:
-            log.error(f"Failed to deposit to pot: {response.json()}")
-            raise Exception(f"Deposit failed: {response.json()}")
+
+        # Check personal, then joint if necessary:
+        for selection in ["personal", "joint"]:
+            source_account_id = self.get_account_id(account_selection=selection)
+            pots = self.get_pots(account_selection=selection)
+            pot = next((p for p in pots if p["id"] == pot_id), None)
+            if pot:
+                # Found the pot in this selection
+                data = {
+                    "source_account_id": source_account_id,
+                    "amount": amount,
+                    "dedupe_id": str(int(time())),
+                }
+                response = r.put(
+                    f"{self.auth_provider.api_url}/pots/{pot_id}/deposit",
+                    data=data,
+                    headers=self.get_auth_header(),
+                )
+                if response.status_code != 200:
+                    log.error(f"Failed to deposit to pot: {response.json()}")
+                    raise Exception(f"Deposit failed: {response.json()}")
+                return
+
+        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots")
+
 
     def withdraw_from_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        # Retrieve the pot details from the appropriate account type.
-        pots = self.get_pots(account_selection)
-        pot = next((p for p in pots if p["id"] == pot_id), None)
-        if not pot:
-            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
-
-        # Normalize account_selection – treat any value other than "joint" as "personal"
+        # If account_selection is neither 'personal' nor 'joint', we try personal first.
         if account_selection not in ("personal", "joint"):
             account_selection = "personal"
-    
-        destination_account_id = self.get_account_id(account_selection=account_selection)
-    
-        # Ensure the pot exists before attempting withdrawal
-        pots = self.get_pots(account_selection=account_selection)
-        pot = next((p for p in pots if p["id"] == pot_id), None)
-        if pot is None:
-            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
-    
-        data = {
-            "destination_account_id": destination_account_id,
-            "amount": amount,
-            "dedupe_id": str(int(time())),
-        }
-        response = r.put(
-            f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
-            data=data,
-            headers=self.get_auth_header(),
-        )
-        if response.status_code != 200:
-            log.error(f"Failed to withdraw from pot: {response.json()}")
-            raise Exception(f"Withdrawal failed: {response.json()}")
+
+        # Check personal, then joint if necessary:
+        for selection in ["personal", "joint"]:
+            destination_account_id = self.get_account_id(account_selection=selection)
+            pots = self.get_pots(account_selection=selection)
+            pot = next((p for p in pots if p["id"] == pot_id), None)
+            if pot:
+                data = {
+                    "destination_account_id": destination_account_id,
+                    "amount": amount,
+                    "dedupe_id": str(int(time())),
+                }
+                response = r.put(
+                    f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
+                    data=data,
+                    headers=self.get_auth_header(),
+                )
+                if response.status_code != 200:
+                    log.error(f"Failed to withdraw from pot: {response.json()}")
+                    raise Exception(f"Withdrawal failed: {response.json()}")
+                return
+
+        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots")
 
     def send_notification(self, title: str, message: str, account_selection="personal") -> None:
         body = {
