@@ -140,7 +140,7 @@ def sync_balance():
             log.info(f"Pot {pot_id} balance differential is £{pot_diff / 100:.2f}")
 
             # Use the credit account's stored previous balance or initialize if not present.
-            current_pot_balance = pot_info['balance']
+            current_pot_balance = pot_balance
             if pot_id not in credit_account.prev_balances:
                 credit_account.prev_balances[pot_id] = current_pot_balance
                 log.info(f"Initialized prev_balances for {credit_account.type} pot {pot_id} to {current_pot_balance}")
