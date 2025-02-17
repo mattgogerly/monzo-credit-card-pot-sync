@@ -265,10 +265,22 @@ class TrueLayerAccount(Account):
     def __init__(self, account_type, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None):
         super().__init__(account_type, access_token, refresh_token, token_expiry, pot_id, account_id)
         from app.domain.auth_providers import TrueLayerAuthProvider
+        # Determine the proper icon based on account_type
+        if account_type.lower() == "american express":
+            icon = "amex-icon"
+        elif account_type.lower() == "barclaycard":
+            icon = "barclaycard-icon"
+        elif account_type.lower() == "halifax":
+            icon = "halifax-icon"
+        elif account_type.lower() == "natwest":
+            icon = "natwest-icon"
+        else:
+            icon = "truelayer-icon"
+
         self.auth_provider = TrueLayerAuthProvider(
             name="TrueLayer",
-            type="truelayer"
-        )
+            type="truelayer",
+            icon_name=icon
 
     def ping(self) -> None:
         r.get(f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header())
