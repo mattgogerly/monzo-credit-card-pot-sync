@@ -4,10 +4,18 @@ from time import time
 from urllib import parse
 
 import requests as r
+
+from app.domain.auth_providers import AuthProviderType, provider_mapping
 from app.errors import AuthException
+from app.models.account_repository import SqlAlchemyAccountRepository
+from app.models.setting_repository import SqlAlchemySettingRepository
 
 log = logging.getLogger("account")
 
+# Initialize repositories
+db = SQLAlchemy()  # Assuming SQLAlchemy is initialized somewhere in your application
+account_repository = SqlAlchemyAccountRepository(db)
+settings_repository = SqlAlchemySettingRepository(db)
 
 class Account:
     def __init__(
@@ -18,8 +26,6 @@ class Account:
         token_expiry=None,
         pot_id=None,
         account_id=None,
-        cooldown_until=None,
-        prev_balances: dict = None
     ):
         self.type = type
         self.access_token = access_token
@@ -27,9 +33,7 @@ class Account:
         self.token_expiry = token_expiry
         self.pot_id = pot_id
         self.account_id = account_id
-        self.cooldown_until = cooldown_until
-        self.prev_balances = prev_balances if prev_balances is not None else {}
-
+        self.auth_provider = provider_mapping[AuthProviderType(type)]
 
     def is_token_within_expiry_window(self):
         # Returns True if the token expires in the next two minutes or has already expired.
@@ -67,47 +71,15 @@ class Account:
     def get_auth_header(self):
         return {"Authorization": f"Bearer {self.access_token}"}
 
-    def pre_deposit_check(self, current_balance, new_balance, cooldown_duration):
-        """
-        Checks before a deposit:
-         - If performing the deposit (resulting in new_balance) would be lower than current_balance
-           then a cooldown period is applied.
-         - Returns True if deposit is allowed, otherwise False.
-          
-        Parameters:
-          current_balance: the current balance before deposit.
-          new_balance: the prospective balance after deposit.
-          cooldown_duration: the desired cooldown period (in seconds) from settings.
-        """
-        now = int(time())
-        if new_balance < current_balance:
-            if self.cooldown_until and now < self.cooldown_until:
-                log.info(f"Cooldown active until {self.cooldown_until}. Deposit postponed for {self.type}.")
-                return False
-            else:
-                # Initiate cooldown period before allowing deposit
-                self.cooldown_until = now + cooldown_duration
-                log.info(
-                    f"Withdrawal would reduce balance for {self.type}. Initiating a cooldown until {self.cooldown_until}."
-                )
-                return False
-        return True
-
 
 class MonzoAccount(Account):
-    def __init__(self, access_token, refresh_token, token_expiry, pot_id="default_pot", account_id=None, prev_balances=None):
-        super().__init__(
-            type="Monzo",
-            access_token=access_token,
-            refresh_token=refresh_token,
-            token_expiry=token_expiry,
-            pot_id=pot_id,
-            account_id=account_id,
-            prev_balances=prev_balances
-        )
-        # Initialize the auth provider for Monzo
-        from app.domain.auth_providers import MonzoAuthProvider
-        self.auth_provider = MonzoAuthProvider()
+    def __init__(
+        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
+    ):
+        # Pass all parameters directly to the parent class
+        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id, account_id)
+        self.prev_balances = {}
+        self.cooldown_until = 0
 
     def ping(self) -> None:
         r.get(
@@ -193,7 +165,7 @@ class MonzoAccount(Account):
             if pot_id == "default_pot" and pots:
                 pot_id = pots[0]["id"]
             for pot in pots:
-                if pot["id"] == pot_id:
+                if pot["id"] == pot_id):
                     return pot.get("type", "personal")
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
