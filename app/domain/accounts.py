@@ -187,20 +187,19 @@ class MonzoAccount(Account):
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        # Retrieve the pot details from the appropriate account type.
+        # Normalize account_selection immediately
+        if account_selection not in ("personal", "joint"):
+            account_selection = "personal"
+        
+        # Retrieve pot details using normalized account_selection
         pots = self.get_pots(account_selection)
         pot = next((p for p in pots if p["id"] == pot_id), None)
         if not pot:
             raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
-
-        # Use the pot's owning_account_id (or similar field) so that the deposit is made from the correct account.
-        # Normalize account_selection – treat any value other than "joint" as "personal"
-        if account_selection not in ("personal", "joint"):
-            account_selection = "personal"
-    
+        
         source_account_id = self.get_account_id(account_selection=account_selection)
     
-        # Ensure the pot exists by fetching pots for the normalized account
+        # Re-fetch pot list for extra safety
         pots = self.get_pots(account_selection=account_selection)
         pot = next((p for p in pots if p["id"] == pot_id), None)
         if pot is None:
