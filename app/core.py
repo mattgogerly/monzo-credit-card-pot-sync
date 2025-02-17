@@ -139,6 +139,17 @@ def sync_balance():
 
             log.info(f"Pot {pot_id} balance differential is £{pot_diff / 100:.2f}")
 
+            # Use the credit account's stored previous balance or initialize if not present.
+            current_pot_balance = pot_info['balance']
+            if pot_id not in credit_account.prev_balances:
+                credit_account.prev_balances[pot_id] = current_pot_balance
+                log.info(f"Initialized prev_balances for {credit_account.type} pot {pot_id} to {current_pot_balance}")
+            previous_pot_balance = credit_account.prev_balances.get(pot_id, current_pot_balance)
+            
+            # Log the current and previous pot balances for debugging
+            log.info(f"Current pot balance for {pot_id}: {current_pot_balance}")
+            log.info(f"Previous pot balance for {pot_id}: {previous_pot_balance}")
+
             if pot_diff == 0:
                 log.info("No balance difference; no action required")
             elif pot_diff < 0:
@@ -159,17 +170,6 @@ def sync_balance():
                 if credit_account is None:
                     log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
                     continue
-
-                # Use the credit account's stored previous balance or initialize if not present.
-                current_pot_balance = monzo_account.get_pot_balance(pot_id)
-                if pot_id not in credit_account.prev_balances:
-                    credit_account.prev_balances[pot_id] = current_pot_balance
-                    log.info(f"Initialized prev_balances for {credit_account.type} pot {pot_id} to {current_pot_balance}")
-                previous_pot_balance = credit_account.prev_balances.get(pot_id, current_pot_balance)
-                
-                # Log the current and previous pot balances for debugging
-                log.info(f"Current pot balance for {pot_id}: {current_pot_balance}")
-                log.info(f"Previous pot balance for {pot_id}: {previous_pot_balance}")
 
                 # Only apply cooldown if current pot balance is below the previous recorded balance.
                 import datetime
