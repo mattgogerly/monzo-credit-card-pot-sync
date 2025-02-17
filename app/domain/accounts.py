@@ -4,18 +4,10 @@ from time import time
 from urllib import parse
 
 import requests as r
-
-from app.domain.auth_providers import AuthProviderType, provider_mapping
 from app.errors import AuthException
-from app.models.account_repository import SqlAlchemyAccountRepository
-from app.models.setting_repository import SqlAlchemySettingRepository
 
 log = logging.getLogger("account")
 
-# Initialize repositories
-db = SQLAlchemy()  # Assuming SQLAlchemy is initialized somewhere in your application
-account_repository = SqlAlchemyAccountRepository(db)
-settings_repository = SqlAlchemySettingRepository(db)
 
 class Account:
     def __init__(
@@ -26,6 +18,8 @@ class Account:
         token_expiry=None,
         pot_id=None,
         account_id=None,
+        cooldown_until=None,
+        prev_balances: dict = None
     ):
         self.type = type
         self.access_token = access_token
@@ -33,7 +27,9 @@ class Account:
         self.token_expiry = token_expiry
         self.pot_id = pot_id
         self.account_id = account_id
-        self.auth_provider = provider_mapping[AuthProviderType(type)]
+        self.cooldown_until = cooldown_until
+        self.prev_balances = prev_balances if prev_balances is not None else {}
+
 
     def is_token_within_expiry_window(self):
         # Returns True if the token expires in the next two minutes or has already expired.
@@ -71,15 +67,47 @@ class Account:
     def get_auth_header(self):
         return {"Authorization": f"Bearer {self.access_token}"}
 
+    def pre_deposit_check(self, current_balance, new_balance, cooldown_duration):
+        """
+        Checks before a deposit:
+         - If performing the deposit (resulting in new_balance) would be lower than current_balance
+           then a cooldown period is applied.
+         - Returns True if deposit is allowed, otherwise False.
+          
+        Parameters:
+          current_balance: the current balance before deposit.
+          new_balance: the prospective balance after deposit.
+          cooldown_duration: the desired cooldown period (in seconds) from settings.
+        """
+        now = int(time())
+        if new_balance < current_balance:
+            if self.cooldown_until and now < self.cooldown_until:
+                log.info(f"Cooldown active until {self.cooldown_until}. Deposit postponed for {self.type}.")
+                return False
+            else:
+                # Initiate cooldown period before allowing deposit
+                self.cooldown_until = now + cooldown_duration
+                log.info(
+                    f"Withdrawal would reduce balance for {self.type}. Initiating a cooldown until {self.cooldown_until}."
+                )
+                return False
+        return True
+
 
 class MonzoAccount(Account):
-    def __init__(
-        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
-    ):
-        # Pass all parameters directly to the parent class
-        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id, account_id)
-        self.prev_balances = {}
-        self.cooldown_until = 0
+    def __init__(self, access_token, refresh_token, token_expiry, pot_id="default_pot", account_id=None, prev_balances=None):
+        super().__init__(
+            type="Monzo",
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expiry=token_expiry,
+            pot_id=pot_id,
+            account_id=account_id,
+            prev_balances=prev_balances
+        )
+        # Initialize the auth provider for Monzo
+        from app.domain.auth_providers import MonzoAuthProvider
+        self.auth_provider = MonzoAuthProvider()
 
     def ping(self) -> None:
         r.get(
@@ -165,67 +193,76 @@ class MonzoAccount(Account):
             if pot_id == "default_pot" and pots:
                 pot_id = pots[0]["id"]
             for pot in pots:
-                if pot["id"] == pot_id):
+                if pot["id"] == pot_id:
                     return pot.get("type", "personal")
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        # If account_selection is neither 'personal' nor 'joint', we try personal first.
+        # Retrieve the pot details from the appropriate account type.
+        pots = self.get_pots(account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if not pot:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+
+        # Use the pot's owning_account_id (or similar field) so that the deposit is made from the correct account.
+        # Normalize account_selection – treat any value other than "joint" as "personal"
         if account_selection not in ("personal", "joint"):
             account_selection = "personal"
-
-        # Check personal, then joint if necessary:
-        for selection in ["personal", "joint"]:
-            source_account_id = self.get_account_id(account_selection=selection)
-            pots = self.get_pots(account_selection=selection)
-            pot = next((p for p in pots if p["id"] == pot_id), None)
-            if pot:
-                # Found the pot in this selection
-                data = {
-                    "source_account_id": source_account_id,
-                    "amount": amount,
-                    "dedupe_id": str(int(time())),
-                }
-                response = r.put(
-                    f"{self.auth_provider.api_url}/pots/{pot_id}/deposit",
-                    data=data,
-                    headers=self.get_auth_header(),
-                )
-                if response.status_code != 200:
-                    log.error(f"Failed to deposit to pot: {response.json()}")
-                    raise Exception(f"Deposit failed: {response.json()}")
-                return
-
-        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots")
-
+    
+        source_account_id = self.get_account_id(account_selection=account_selection)
+    
+        # Ensure the pot exists by fetching pots for the normalized account
+        pots = self.get_pots(account_selection=account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if pot is None:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+    
+        data = {
+            "source_account_id": source_account_id,
+            "amount": amount,
+            "dedupe_id": str(int(time())),
+        }
+        response = r.put(
+            f"{self.auth_provider.api_url}/pots/{pot_id}/deposit",
+            data=data,
+            headers=self.get_auth_header(),
+        )
+        if response.status_code != 200:
+            log.error(f"Failed to deposit to pot: {response.json()}")
+            raise Exception(f"Deposit failed: {response.json()}")
 
     def withdraw_from_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        # If account_selection is neither 'personal' nor 'joint', we try personal first.
+        # Retrieve the pot details from the appropriate account type.
+        pots = self.get_pots(account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if not pot:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+
+        # Normalize account_selection – treat any value other than "joint" as "personal"
         if account_selection not in ("personal", "joint"):
             account_selection = "personal"
-
-        # Check personal, then joint if necessary:
-        for selection in ["personal", "joint"]:
-            destination_account_id = self.get_account_id(account_selection=selection)
-            pots = self.get_pots(account_selection=selection)
-            pot = next((p for p in pots if p["id"] == pot_id), None)
-            if pot:
-                data = {
-                    "destination_account_id": destination_account_id,
-                    "amount": amount,
-                    "dedupe_id": str(int(time())),
-                }
-                response = r.put(
-                    f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
-                    data=data,
-                    headers=self.get_auth_header(),
-                )
-                if response.status_code != 200:
-                    log.error(f"Failed to withdraw from pot: {response.json()}")
-                    raise Exception(f"Withdrawal failed: {response.json()}")
-                return
-
-        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots")
+    
+        destination_account_id = self.get_account_id(account_selection=account_selection)
+    
+        # Ensure the pot exists before attempting withdrawal
+        pots = self.get_pots(account_selection=account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if pot is None:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+    
+        data = {
+            "destination_account_id": destination_account_id,
+            "amount": amount,
+            "dedupe_id": str(int(time())),
+        }
+        response = r.put(
+            f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
+            data=data,
+            headers=self.get_auth_header(),
+        )
+        if response.status_code != 200:
+            log.error(f"Failed to withdraw from pot: {response.json()}")
+            raise Exception(f"Withdrawal failed: {response.json()}")
 
     def send_notification(self, title: str, message: str, account_selection="personal") -> None:
         body = {
