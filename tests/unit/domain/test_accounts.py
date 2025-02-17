@@ -95,6 +95,10 @@ def test_monzo_account_get_pot_balance(requests_mock):
 def test_monzo_account_add_to_pot(requests_mock):
     account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
+    # Add a mock for the pots endpoint required by add_to_pot (GET pots?current_account_id=id)
+    pots_url = f"https://api.monzo.com/pots?{parse.urlencode({'current_account_id': 'id'})}"
+    pot_response = {"pots": [{"id": "1", "deleted": False, "balance": 0}]}
+    requests_mock.get(pots_url, status_code=200, json=pot_response)
 
     requests_mock.put("https://api.monzo.com/pots/1/deposit", status_code=200)
 
@@ -105,7 +109,10 @@ def test_monzo_account_add_to_pot(requests_mock):
 def test_monzo_account_withdraw_from_pot(requests_mock):
     account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
-
+    # Add a mock for the pots endpoint required by withdraw_from_pot (GET pots?current_account_id=id)
+    pots_url = f"https://api.monzo.com/pots?{parse.urlencode({'current_account_id': 'id'})}"
+    pot_response = {"pots": [{"id": "1", "deleted": False, "balance": 1000}]}
+    requests_mock.get(pots_url, status_code=200, json=pot_response)
     requests_mock.put("https://api.monzo.com/pots/1/withdraw", status_code=200)
 
     account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
