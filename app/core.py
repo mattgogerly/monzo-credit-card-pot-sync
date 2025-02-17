@@ -23,7 +23,7 @@ def sync_balance():
             monzo_account: MonzoAccount = account_repository.get_monzo_account()
 
             log.info("Checking if Monzo access token needs refreshing")
-            if monzo_account.is_token_within_expiry_window():
+            if (monzo_account.is_token_within_expiry_window()):
                 monzo_account.refresh_access_token()
                 account_repository.save(monzo_account)
 
@@ -45,7 +45,7 @@ def sync_balance():
         for credit_account in credit_accounts:
             try:
                 log.info(f"Checking if {credit_account.type} access token needs refreshing")
-                if credit_account.is_token_within_expiry_window():
+                if (credit_account.is_token_within_expiry_window()):
                     credit_account.refresh_access_token()
                     account_repository.save(credit_account)
 
@@ -68,8 +68,8 @@ def sync_balance():
                     error_desc = error_message
 
                 # If the provider indicates unavailability (using error_description), skip notification/deletion.
-                if "currently unavailable" not in error_desc:
-                    if monzo_account is not None:
+                if ("currently unavailable" not in error_desc):
+                    if (monzo_account is not None):
                         monzo_account.send_notification(
                             f"{credit_account.type} Pot Sync Access Expired",
                             "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
@@ -78,7 +78,7 @@ def sync_balance():
                 else:
                     log.info(f"Service provider for {credit_account.type} is currently unavailable, will retry later.")
         # nothing to sync, so exit now
-        if monzo_account is None or len(credit_accounts) == 0:
+        if (monzo_account is None or len(credit_accounts) == 0):
             log.info(
                 "Either Monzo connection is invalid, or there are no valid credit card connections; exiting sync loop"
             )
@@ -90,13 +90,13 @@ def sync_balance():
         for credit_account in credit_accounts:
             try:
                 pot_id = credit_account.pot_id
-                if not pot_id:
+                if (not pot_id):
                     raise NoResultFound(f"No designated credit card pot set for {credit_account.type}")
 
                 # Determine account selection based on account type
                 account_selection = monzo_account.get_account_type(pot_id)
 
-                if pot_id not in pot_balance_map:
+                if (pot_id not in pot_balance_map):
                     log.info(f"Retrieving balance for credit card pot {pot_id}")
                     pot_balance = monzo_account.get_pot_balance(pot_id)
                     pot_balance_map[pot_id] = {'balance': pot_balance, 'account_selection': account_selection}
@@ -114,14 +114,14 @@ def sync_balance():
             # Adjust the designated pot balance by subtracting the credit card balance
             pot_balance_map[pot_id]['balance'] -= credit_balance
 
-        if not settings_repository.get("enable_sync"):
+        if (not settings_repository.get("enable_sync")):
             log.info("Balance sync is disabled; exiting sync loop")
             return
 
         # Build mapping from pot_id to credit account for withdrawal check later
         pot_to_credit_account = {}
         for credit_account in credit_accounts:
-            if credit_account.pot_id:
+            if (credit_account.pot_id):
                 pot_to_credit_account[credit_account.pot_id] = credit_account
 
         # Step 3: Perform necessary balance adjustments between Monzo account and each pot
@@ -139,12 +139,12 @@ def sync_balance():
 
             log.info(f"Pot {pot_id} balance differential is £{pot_diff / 100:.2f}")
 
-            if pot_diff == 0:
+            if (pot_diff == 0):
                 log.info("No balance difference; no action required")
-            elif pot_diff < 0:
+            elif (pot_diff < 0):
                 # Negative differential: need to deposit funds into the pot.
                 difference = abs(pot_diff)
-                if monzo_balance < difference:
+                if (monzo_balance < difference):
                     log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
                     settings_repository.save(Setting("enable_sync", "False"))
                     monzo_account.send_notification(
@@ -156,13 +156,13 @@ def sync_balance():
 
                 # Retrieve credit account corresponding to this pot.
                 credit_account = pot_to_credit_account.get(pot_id)
-                if credit_account is None:
+                if (credit_account is None):
                     log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
                     continue
 
                 # Use the credit account's stored previous balance or initialize if not present.
                 current_pot_balance = monzo_account.get_pot_balance(pot_id)
-                if pot_id not in credit_account.prev_balances:
+                if (pot_id not in credit_account.prev_balances):
                     credit_account.prev_balances[pot_id] = current_pot_balance
                     log.info(f"Initialized prev_balances for {credit_account.type} pot {pot_id} to {current_pot_balance}")
                 previous_pot_balance = credit_account.prev_balances.get(pot_id, current_pot_balance)
@@ -174,13 +174,13 @@ def sync_balance():
                 # Only apply cooldown if current pot balance is below the previous recorded balance.
                 import datetime
                 now = int(time())
-                if current_pot_balance < previous_pot_balance:
+                if (current_pot_balance < previous_pot_balance):
                     try:
                         deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                     except Exception:
                         deposit_cooldown_hours = 0
                     cooldown_duration = deposit_cooldown_hours * 3600
-                    if credit_account.cooldown_until and now < credit_account.cooldown_until:
+                    if (credit_account.cooldown_until and now < credit_account.cooldown_until):
                         dt_str = datetime.datetime.fromtimestamp(credit_account.cooldown_until).isoformat()
                         log.info(f"Deposit postponed for {credit_account.type} due to active cooldown until {dt_str}.")
                         continue
@@ -197,13 +197,14 @@ def sync_balance():
                 # Log the previous balance before and after deposit
                 log.info(f"[Before Deposit] {credit_account.type} prev_balances: {credit_account.prev_balances}")
                 credit_account.prev_balances[pot_id] = current_pot_balance + difference
+                credit_account.last_deposit = current_pot_balance + difference  # Update last_deposit
                 log.info(f"[After Deposit] {credit_account.type} prev_balances: {credit_account.prev_balances}")
                 account_repository.save(credit_account)
             else:
                 # Positive differential: need to withdraw funds from the pot back to the account.
                 difference = abs(pot_diff)
                 credit_account = pot_to_credit_account.get(pot_id)
-                if credit_account is None:
+                if (credit_account is None):
                     log.error(f"No credit account found for pot {pot_id}. Skipping withdrawal.")
                     continue
 
