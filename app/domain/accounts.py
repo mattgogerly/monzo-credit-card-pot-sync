@@ -196,9 +196,7 @@ class MonzoAccount(Account):
         pot = next((p for p in pots if p["id"] == pot_id), None)
         if not pot:
             raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
-        
-        source_account_id = self.get_account_id(account_selection=account_selection)
-    
+            
         # Re-fetch pot list for extra safety
         pots = self.get_pots(account_selection=account_selection)
         pot = next((p for p in pots if p["id"] == pot_id), None)
@@ -230,8 +228,6 @@ class MonzoAccount(Account):
         if not pot:
             raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
         
-        source_account_id = self.get_account_id(account_selection=account_selection)
-    
         # Re-fetch pot list for extra safety
         pots = self.get_pots(account_selection=account_selection)
         pot = next((p for p in pots if p["id"] == pot_id), None)
