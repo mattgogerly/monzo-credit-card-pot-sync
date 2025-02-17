@@ -281,6 +281,7 @@ class TrueLayerAccount(Account):
             name="TrueLayer",
             type="truelayer",
             icon_name=icon
+        )
 
     def ping(self) -> None:
         r.get(f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header())
