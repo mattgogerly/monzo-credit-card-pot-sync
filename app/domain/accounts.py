@@ -264,11 +264,6 @@ class MonzoAccount(Account):
 class TrueLayerAccount(Account):
     def __init__(self, account_type, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None):
         super().__init__(account_type, access_token, refresh_token, token_expiry, pot_id, account_id)
-        from app.domain.auth_providers import TrueLayerAuthProvider
-        self.auth_provider = TrueLayerAuthProvider(
-            name="TrueLayer",
-            type="truelayer"
-        )
 
     def ping(self) -> None:
         r.get(f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header())
