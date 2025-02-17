@@ -204,7 +204,7 @@ class MonzoAccount(Account):
             raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
     
         data = {
-            "destination_account_id": self.get_account_id(account_selection=account_selection),
+            "source_account_id": self.get_account_id(account_selection=account_selection),
             "amount": amount,
             "dedupe_id": str(int(time())),  # Ensure dedupe_id is a string
         }
