@@ -164,13 +164,13 @@ def sync_balance():
                     monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
                 else:
                     log.info(f"Deposit postponed for {monzo_account.type} due to active cooldown.")
-                else:
-                    # Positive differential: need to withdraw funds from the pot back to the account.
-                    difference = abs(pot_diff)
-                    credit_account = pot_to_credit_account.get(pot_id)
-                    if credit_account is None:
-                        log.error(f"No credit account found for pot {pot_id}. Skipping withdrawal.")
-                        continue
+            else:
+                # Positive differential: need to withdraw funds from the pot back to the account.
+                difference = abs(pot_diff)
+                credit_account = pot_to_credit_account.get(pot_id)
+                if credit_account is None:
+                    log.error(f"No credit account found for pot {pot_id}. Skipping withdrawal.")
+                    continue
 
-                    log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
-                    monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
+                log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
+                monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
