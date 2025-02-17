@@ -19,6 +19,5 @@ def after_create(tbl, conn, **kw) -> None:
             {"key": "sync_interval_seconds", "value": 120},
             {"key": "deposit_cooldown_hours", "value": 3},
             {"key": "prev_balance", "value": ""},
-            {"key": "last_deposit", "value": ""},
         ],
     )
