@@ -7,11 +7,10 @@ import requests as r
 
 from app.domain.auth_providers import AuthProviderType, provider_mapping
 from app.errors import AuthException
-from app.repositories import account_repository, settings_repository
+from app.models.account_repository import SqlAlchemyAccountRepository
+from app.models.setting_repository import SqlAlchemySettingRepository
 
 log = logging.getLogger("account")
-
-
 
 
 class Account:
