@@ -20,11 +20,10 @@ class SqlAlchemyAccountRepository:
             pot_id=account.pot_id,
             account_id=account.account_id,
             cooldown_until=account.cooldown_until,
-            prev_balances=json.dumps(account.prev_balances) if account.prev_balances is not None else "{}"
+            prev_balances=account.prev_balances if account.prev_balances is not None else {}
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
-        prev_balances = json.loads(model.prev_balances) if model.prev_balances else {}
         return Account(
             type=model.type,
             access_token=model.access_token,
@@ -33,7 +32,7 @@ class SqlAlchemyAccountRepository:
             pot_id=model.pot_id,
             account_id=model.account_id,
             cooldown_until=model.cooldown_until,
-            prev_balances=prev_balances
+            prev_balances=model.prev_balances if model.prev_balances else {}
         )
 
     def get_all(self) -> list[Account]:
