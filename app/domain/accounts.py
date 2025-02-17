@@ -130,8 +130,12 @@ class MonzoAccount(Account):
         Return the account id for the desired account type.
         Defaults to personal ('uk_retail') and uses 'uk_retail_joint' for joint accounts.
         """
-        desired_type = "uk_retail_joint" if account_selection == "joint" else "uk_retail"
+         desired_type = "uk_retail_joint" if account_selection == "joint" else "uk_retail"
+         import logging
+         log = logging.getLogger("account")
+         log.debug(f"get_account_id: account_selection={account_selection}, desired_type={desired_type}")
         accounts = self._fetch_accounts()
+         log.debug(f"get_account_id: fetched accounts: {accounts}")
         for account in accounts:
             if account["type"] == desired_type:
                 return account["id"]
