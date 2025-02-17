@@ -206,9 +206,9 @@ class MonzoAccount(Account):
             raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
     
         data = {
-            "source_account_id": source_account_id,
+            "destination_account_id": self.get_account_id(account_selection=account_selection),
             "amount": amount,
-            "dedupe_id": str(int(time())),
+            "dedupe_id": str(int(time())),  # Ensure dedupe_id is a string
         }
         response = r.put(
             f"{self.auth_provider.api_url}/pots/{pot_id}/deposit",
@@ -239,9 +239,9 @@ class MonzoAccount(Account):
             raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
     
         data = {
-            "source_account_id": source_account_id,
+            "destination_account_id": self.get_account_id(account_selection=account_selection),
             "amount": amount,
-            "dedupe_id": str(int(time())),
+            "dedupe_id": str(int(time())),  # Ensure dedupe_id is a string
         }
         response = r.put(
             f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
