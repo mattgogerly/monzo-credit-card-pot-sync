@@ -42,9 +42,7 @@ def sync_balance():
 
         for credit_account in credit_accounts:
             try:
-                log.info(
-                    f"Checking if {credit_account.type} access token needs refreshing"
-                )
+                log.info(f"Checking if {credit_account.type} access token needs refreshing")
                 if credit_account.is_token_within_expiry_window():
                     credit_account.refresh_access_token()
                     account_repository.save(credit_account)
@@ -52,18 +50,21 @@ def sync_balance():
                 log.info(f"Checking health of {credit_account.type} connection")
                 credit_account.ping()
                 log.info(f"{credit_account.type} connection is healthy")
-            except AuthException:
-                log.error(
-                    f"Failed to check health of {credit_account.type} connection; connection will be removed"
-                )
 
-                if monzo_account is not None:
-                    monzo_account.send_notification(
-                        f"{credit_account.type} Pot Sync Access Expired",
-                        "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
-                    )
+            except AuthException as e:
+                error_message = str(e)
+                log.error(f"Failed to check health of {credit_account.type} connection; connection will be removed. Error: {error_message}")
 
-                account_repository.delete(credit_account)
+                # Only send a notification if the error is not due to provider unavailability
+                if "provider service is currently unavailable" not in error_message:
+                    if monzo_account is not None:
+                        monzo_account.send_notification(
+                            f"{credit_account.type} Pot Sync Access Expired",
+                            "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
+                        )
+                    account_repository.delete(credit_account)
+                else:
+                    log.info(f"Service provider for {credit_account.type} is unavailable, will retry later.")
 
         # nothing to sync, so exit now
         if monzo_account is None or len(credit_accounts) == 0:
