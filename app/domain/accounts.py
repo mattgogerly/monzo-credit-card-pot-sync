@@ -12,6 +12,10 @@ from app.models.setting_repository import SqlAlchemySettingRepository
 
 log = logging.getLogger("account")
 
+# Initialize repositories
+db = SQLAlchemy()  # Assuming SQLAlchemy is initialized somewhere in your application
+account_repository = SqlAlchemyAccountRepository(db)
+settings_repository = SqlAlchemySettingRepository(db)
 
 class Account:
     def __init__(
@@ -162,7 +166,7 @@ class MonzoAccount(Account):
             if pot_id == "default_pot" and pots:
                 pot_id = pots[0]["id"]
             for pot in pots:
-                if pot["id"] == pot_id:
+                if pot["id"] == pot_id):
                     return pot.get("type", "personal")
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
