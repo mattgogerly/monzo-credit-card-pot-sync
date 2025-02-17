@@ -28,9 +28,9 @@ class Account:
         self.token_expiry = token_expiry
         self.pot_id = pot_id
         self.account_id = account_id
-        self.auth_provider = provider_mapping[AuthProviderType(type)]
         self.cooldown_until = cooldown_until
         self.prev_balances = prev_balances if prev_balances is not None else {}
+
 
     def is_token_within_expiry_window(self):
         # Returns True if the token expires in the next two minutes or has already expired.
@@ -97,10 +97,23 @@ class Account:
 
 class MonzoAccount(Account):
     def __init__(
-        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
+        self,
+        access_token,
+        refresh_token,
+        token_expiry,
+        pot_id,
+        account_id=None,
+        prev_balances: dict = None
     ):
-        # Pass all parameters directly to the parent class
-        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id, account_id)
+        super().__init__(
+            type="Monzo",
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expiry=token_expiry,
+            pot_id=pot_id,
+            account_id=account_id,
+            prev_balances=prev_balances
+        )
 
     def ping(self) -> None:
         r.get(
