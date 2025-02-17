@@ -192,13 +192,14 @@ class MonzoAccount(Account):
         """
         Retrieve the account type (personal or joint) for the given pot ID.
         """
-        pots = self.get_pots()
-        # If using the default value, fall back to the first returned pot’s id.
-        if pot_id == "default_pot" and pots:
-            pot_id = pots[0]["id"]
-        for pot in pots:
-            if pot["id"] == pot_id:
-               return pot.get("type", "personal")
+        for account_selection in ("personal", "joint"):
+            pots = self.get_pots(account_selection)
+            # If using the default value, fall back to the first returned pot's id.
+            if pot_id == "default_pot" and pots:
+                pot_id = pots[0]["id"]
+            for pot in pots:
+                if pot["id"] == pot_id:
+                    return pot.get("type", "personal")
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
