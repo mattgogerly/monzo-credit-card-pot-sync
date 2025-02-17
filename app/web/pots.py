@@ -1,5 +1,6 @@
 import logging
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from time import time
+from flask import Blueprint, flash, redirect, render_template, request, url_for, jsonify
 from sqlalchemy.exc import NoResultFound
 
 from app.domain.accounts import MonzoAccount
@@ -28,7 +29,8 @@ def index():
     log.info("Retrieving credit card accounts")
     accounts = account_repository.get_credit_accounts()
     
-    return render_template("pots/index.html", pots=pots, accounts=accounts, account_type=account_type)
+    current_time = int(time())
+    return render_template("pots/index.html", pots=pots, accounts=accounts, account_type=account_type, current_time=current_time)
 
 @pots_bp.route("/", methods=["POST"])
 def set_designated_pot():
@@ -41,3 +43,18 @@ def set_designated_pot():
 
     flash(f"Updated designated credit card pot for {account.type}")
     return redirect(url_for("pots.index"))
+
+@pots_bp.route("/balance", methods=["GET"])
+def get_balance():
+    pot_id = request.args.get("pot_id")
+    if not pot_id:
+        return jsonify({"error": "No pot_id provided"}), 400
+
+    try:
+        monzo_account: MonzoAccount = account_repository.get_monzo_account()
+    except NoResultFound:
+        return jsonify({"error": "Monzo account not found"}), 404
+
+    # Replace the following call with your actual logic to retrieve the pot's balance.
+    balance = monzo_account.get_pot_balance(pot_id)
+    return jsonify({"balance": balance})

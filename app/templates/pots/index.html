@@ -46,12 +46,24 @@
                                         </svg>
                                         <span class="ms-1 text-md font-medium">Credit Card pot</span>
                                     </h5>
+                                    {% if account.cooldown_until and account.cooldown_until > current_time %}
+                                        <p class="text-xs text-red-600 mt-1">
+                                            On cooldown until {{ account.cooldown_until | datetimeformat }}
+                                        </p>
+                                    {% endif %}
+                                    <!-- Show Balance toggle -->
+                                    <label class="inline-flex items-center mt-2 cursor-pointer">
+                                        <input type="checkbox" name="show_balance_{{ pot['id'] }}" id="show_balance_{{ pot['id'] }}" class="sr-only toggle-show-balance">
+                                        <div class="relative w-10 h-5 bg-gray-200 rounded-full peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800"></div>
+                                        <span class="ms-2 text-xs text-gray-600">Show Balance</span>
+                                    </label>
+                                    <div id="pot_balance_{{ pot['id'] }}" class="hidden text-xs mt-1 text-gray-500"></div>
                                 {% else %}
                                     <form action="{{ url_for('pots.set_designated_pot') }}" method="post">
                                         <input name="account_type" id="account_type" type="hidden" value="{{ account.type }}" />
                                         <input name="pot_id" id="pot_id" type="hidden" value="{{ pot['id'] }}" />
                                         <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                                            Set as Credit Card pot
+                                            Designate as Credit Card pot
                                         </button>
                                     </form>
                                 {% endif %}
@@ -65,50 +77,28 @@
 </section>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const defaultAccount = "personal";  // Default to "personal" if nothing is saved
-        const storageKey = "selectedAccount_global"; // Use a consistent key for global selection
-        const tabStorageKey = "activeTab"; // Key for storing the active tab
-        let savedAccountType = localStorage.getItem(storageKey) || defaultAccount;
-        let savedTab = localStorage.getItem(tabStorageKey);
-
-        // Check if the URL already has the account parameter
-        let currentUrl = new URL(window.location.href);
-        let currentAccount = currentUrl.searchParams.get("account");
-
-        if (!currentAccount) {
-            // If no account type is in the URL, redirect to the saved one
-            currentUrl.searchParams.set("account", savedAccountType);
-            window.location.replace(currentUrl.href); // Use replace to avoid back button issues
-        }
-
-        // Ensure dropdown selections reflect the saved choice
-        const selects = document.querySelectorAll("select[id^='account_switcher_']");
-        selects.forEach(function(select) {
-            select.value = savedAccountType;
-            select.addEventListener("change", function() {
-                localStorage.setItem(storageKey, this.value);
-                let updatedUrl = new URL(window.location.href);
-                updatedUrl.searchParams.set("account", this.value);
-                window.location.href = updatedUrl.href; // Navigate to update the URL
-            });
-        });
-
-        // Restore the active tab
-        if (savedTab) {
-            const activeTabButton = document.querySelector(`#${savedTab}-tab`);
-            if (activeTabButton) {
-                activeTabButton.click();
-            }
-        }
-
-        // Save the active tab when a tab is clicked
-        const tabButtons = document.querySelectorAll("[data-tabs-target]");
-        tabButtons.forEach(function(button) {
-            button.addEventListener("click", function() {
-                localStorage.setItem(tabStorageKey, this.getAttribute("data-tabs-target").substring(1));
-            });
-        });
+document.addEventListener("DOMContentLoaded", function() {
+  const toggles = document.querySelectorAll(".toggle-show-balance");
+  toggles.forEach(function(toggle) {
+    toggle.addEventListener("change", function() {
+      const potId = this.id.replace("show_balance_", "");
+      const balanceDiv = document.getElementById("pot_balance_" + potId);
+      if (this.checked) {
+        fetch(`/pots/balance?pot_id=${potId}`)
+          .then(response => response.json())
+          .then(data => {
+            balanceDiv.textContent = "Pot balance: £" + (data.balance / 100).toFixed(2);
+            balanceDiv.classList.remove("hidden");
+          })
+          .catch(error => {
+            balanceDiv.textContent = "Error retrieving balance.";
+            balanceDiv.classList.remove("hidden");
+          });
+      } else {
+        balanceDiv.classList.add("hidden");
+      }
     });
+  });
+});
 </script>
 {% endblock %}
