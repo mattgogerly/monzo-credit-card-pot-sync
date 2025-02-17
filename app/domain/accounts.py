@@ -126,16 +126,11 @@ class MonzoAccount(Account):
         return self._fetch_accounts()
 
     def get_account_id(self, account_selection="personal") -> str:
-        """
-        Return the account id for the desired account type.
-        Defaults to personal ('uk_retail') and uses 'uk_retail_joint' for joint accounts.
-        """
+        # Treat any account selection not 'joint' as 'personal'
+        if account_selection != "joint":
+            account_selection = "personal"
         desired_type = "uk_retail_joint" if account_selection == "joint" else "uk_retail"
-        import logging
-        log = logging.getLogger("account")
-        log.debug(f"get_account_id: account_selection={account_selection}, desired_type={desired_type}")
         accounts = self._fetch_accounts()
-        log.debug(f"get_account_id: fetched accounts: {accounts}")
         for account in accounts:
             if account["type"] == desired_type:
                 return account["id"]
@@ -203,48 +198,62 @@ class MonzoAccount(Account):
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        # Retrieve the pot details from the appropriate account type.
-        pots = self.get_pots(account_selection)
-        pot = next((p for p in pots if p["id"] == pot_id), None)
-        if not pot:
-            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+        # If account_selection is neither 'personal' nor 'joint', we try personal first.
+        if account_selection not in ("personal", "joint"):
+            account_selection = "personal"
 
-        # Use the pot's owning_account_id (or similar field) so that the deposit is made from the correct account.
-        data = {
-            "source_account_id": pot.get("owning_account_id"),
-            "amount": amount,
-            "dedupe_id": str(int(time())),
-        }
-        response = r.put(
-            f"{self.auth_provider.api_url}/pots/{pot_id}/deposit",
-            data=data,
-            headers=self.get_auth_header(),
-        )
-        if response.status_code != 200:
-            log.error(f"Failed to deposit to pot: {response.json()}")
-            raise Exception(f"Deposit failed: {response.json()}")
+        # Check personal, then joint if necessary:
+        for selection in ["personal", "joint"]:
+            source_account_id = self.get_account_id(account_selection=selection)
+            pots = self.get_pots(account_selection=selection)
+            pot = next((p for p in pots if p["id"] == pot_id), None)
+            if pot:
+                # Found the pot in this selection
+                data = {
+                    "source_account_id": source_account_id,
+                    "amount": amount,
+                    "dedupe_id": str(int(time())),
+                }
+                response = r.put(
+                    f"{self.auth_provider.api_url}/pots/{pot_id}/deposit",
+                    data=data,
+                    headers=self.get_auth_header(),
+                )
+                if response.status_code != 200:
+                    log.error(f"Failed to deposit to pot: {response.json()}")
+                    raise Exception(f"Deposit failed: {response.json()}")
+                return
+
+        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots")
+
 
     def withdraw_from_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        # Retrieve the pot details from the appropriate account type.
-        pots = self.get_pots(account_selection)
-        pot = next((p for p in pots if p["id"] == pot_id), None)
-        if not pot:
-            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+        # If account_selection is neither 'personal' nor 'joint', we try personal first.
+        if account_selection not in ("personal", "joint"):
+            account_selection = "personal"
 
-        # Use the pot's owning_account_id as the destination for withdrawals.
-        data = {
-            "destination_account_id": pot.get("owning_account_id"),
-            "amount": amount,
-            "dedupe_id": str(int(time())),
-        }
-        response = r.put(
-            f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
-            data=data,
-            headers=self.get_auth_header(),
-        )
-        if response.status_code != 200:
-            log.error(f"Failed to withdraw from pot: {response.json()}")
-            raise Exception(f"Withdrawal failed: {response.json()}")
+        # Check personal, then joint if necessary:
+        for selection in ["personal", "joint"]:
+            destination_account_id = self.get_account_id(account_selection=selection)
+            pots = self.get_pots(account_selection=selection)
+            pot = next((p for p in pots if p["id"] == pot_id), None)
+            if pot:
+                data = {
+                    "destination_account_id": destination_account_id,
+                    "amount": amount,
+                    "dedupe_id": str(int(time())),
+                }
+                response = r.put(
+                    f"{self.auth_provider.api_url}/pots/{pot_id}/withdraw",
+                    data=data,
+                    headers=self.get_auth_header(),
+                )
+                if response.status_code != 200:
+                    log.error(f"Failed to withdraw from pot: {response.json()}")
+                    raise Exception(f"Withdrawal failed: {response.json()}")
+                return
+
+        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots")
 
     def send_notification(self, title: str, message: str, account_selection="personal") -> None:
         body = {
@@ -267,15 +276,15 @@ class TrueLayerAccount(Account):
         from app.domain.auth_providers import TrueLayerAuthProvider
         # Determine the proper icon based on account_type
         if account_type.lower() == "american express":
-            icon = "amex-icon"
+            icon = "amex.svg"
         elif account_type.lower() == "barclaycard":
-            icon = "barclaycard-icon"
+            icon = "barclaycard.svg"
         elif account_type.lower() == "halifax":
-            icon = "halifax-icon"
+            icon = "halifax.svg"
         elif account_type.lower() == "natwest":
-            icon = "natwest-icon"
+            icon = "natwest.svg"
         else:
-            icon = "truelayer-icon"
+            icon = "truelayer.svg"
 
         self.auth_provider = TrueLayerAuthProvider(
             name="TrueLayer",
