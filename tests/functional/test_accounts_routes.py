@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 def test_get_accounts(test_client, seed_data):
     response = test_client.get("/accounts/")
     assert response.status_code == 200

@@ -1,7 +1,6 @@
 import logging
 from sqlalchemy.exc import NoResultFound
 
-from urllib.parse import urlparse
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
 from app.errors import AuthException
 from app.extensions import db, scheduler
