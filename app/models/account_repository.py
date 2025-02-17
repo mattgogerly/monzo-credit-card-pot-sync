@@ -20,7 +20,7 @@ class SqlAlchemyAccountRepository:
             pot_id=account.pot_id,
             account_id=account.account_id,
             cooldown_until=account.cooldown_until,
-            prev_balances=json.dumps(account.prev_balances) if account.prev_balances is not None else None
+            prev_balances=json.dumps(account.prev_balances) if account.prev_balances is not None else "{}"
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
@@ -74,7 +74,7 @@ class SqlAlchemyAccountRepository:
                 self._session.query(AccountModel).filter_by(type=type).one()
             )
         except NoResultFound:
-            raise NoResultFound(id)
+            raise NoResultFound(type)
         return self._to_domain(result)
 
     def save(self, account: Account) -> None:
