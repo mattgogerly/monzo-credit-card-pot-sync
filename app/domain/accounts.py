@@ -125,15 +125,21 @@ class MonzoAccount(Account):
         """Return a list of authorized accounts (both personal and joint) with details."""
         return self._fetch_accounts()
 
-    def get_account_type(self, pot_id):
-        pots = self.get_pots()
-        # If using the default value, fall back to the first returned pot’s id.
-        if pot_id == "default_pot" and pots:
-            pot_id = pots[0]["id"]
-        for pot in pots:
-            if pot["id"] == pot_id:
-                return pot["type"]
-        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
+    def get_account_id(self, account_selection="personal") -> str:
+        """
+        Return the account id for the desired account type.
+        Defaults to personal ('uk_retail') and uses 'uk_retail_joint' for joint accounts.
+        """
+        desired_type = "uk_retail_joint" if account_selection == "joint" else "uk_retail"
+        import logging
+         log = logging.getLogger("account")
+        log.debug(f"get_account_id: account_selection={account_selection}, desired_type={desired_type}")
+         accounts = self._fetch_accounts()
+        log.debug(f"get_account_id: fetched accounts: {accounts}")
+        for account in accounts:
+           if account["type"] == desired_type:
+               return account["id"]
+        raise AuthException(f"No account found for type: {desired_type}")
 
     def get_account_description(self, account_selection="personal") -> str:
         """Return the account description for the selected account."""
@@ -186,10 +192,13 @@ class MonzoAccount(Account):
         """
         Retrieve the account type (personal or joint) for the given pot ID.
         """
-        for account_selection in ("personal", "joint"):
-            pots = self.get_pots(account_selection)
-            if any(p["id"] == pot_id for p in pots):
-                return account_selection
+        pots = self.get_pots()
+        # If using the default value, fall back to the first returned pot’s id.
+        if pot_id == "default_pot" and pots:
+            pot_id = pots[0]["id"]
+        for pot in pots:
+            if pot["id"] == pot_id:
+                return pot["type"]
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
