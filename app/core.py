@@ -153,11 +153,11 @@ def sync_balance():
                     )
                     return
 
-                # Retrieve the previous pot balance from the persistent field
-                previous_pot_balance = monzo_account.prev_balance
-                # Calculate the expected pot balance after depositing the funds
+                # Use a mapping for previous pot balances; default to current pot balance if not set
+                previous_pot_balance = monzo_account.prev_balances.get(pot_id, monzo_account.get_pot_balance(pot_id))
+                # Calculate the expected new pot balance after the deposit
                 expected_new_pot_balance = previous_pot_balance + difference
-                
+
                 try:
                     deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                 except Exception:
@@ -167,8 +167,8 @@ def sync_balance():
                 if monzo_account.pre_deposit_check(previous_pot_balance, expected_new_pot_balance, cooldown_duration):
                     log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
                     monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
-                    # Update the persistent previous pot balance after successful deposit
-                    monzo_account.prev_balance = expected_new_pot_balance
+                    # Update the stored previous balance for this pot
+                    monzo_account.prev_balances[pot_id] = expected_new_pot_balance
                     account_repository.save(monzo_account)
                 else:
                     log.info(f"Deposit postponed for {monzo_account.type} due to active cooldown.")

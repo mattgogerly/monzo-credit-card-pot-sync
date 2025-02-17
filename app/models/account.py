@@ -8,4 +8,4 @@ class AccountModel(db.Model):
     token_expiry = db.Column(db.Integer)
     account_id = db.Column(db.String(150), nullable=True)
     cooldown_until = db.Column(db.Integer, nullable=True)
-    prev_balance = db.Column(db.Integer, default=0)
+    prev_balances = db.Column(db.JSON, default=lambda: {})
