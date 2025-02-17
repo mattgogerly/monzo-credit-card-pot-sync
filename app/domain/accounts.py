@@ -220,26 +220,26 @@ class MonzoAccount(Account):
             raise Exception(f"Deposit failed: {response.json()}")
 
     def withdraw_from_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        # Retrieve the pot details from the appropriate account type.
+        # Normalize account_selection immediately
+        if account_selection not in ("personal", "joint"):
+            account_selection = "personal"
+        
+        # Retrieve pot details using normalized account_selection
         pots = self.get_pots(account_selection)
         pot = next((p for p in pots if p["id"] == pot_id), None)
         if not pot:
             raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
-
-        # Normalize account_selection – treat any value other than "joint" as "personal"
-        if account_selection not in ("personal", "joint"):
-            account_selection = "personal"
+        
+        source_account_id = self.get_account_id(account_selection=account_selection)
     
-        destination_account_id = self.get_account_id(account_selection=account_selection)
-    
-        # Ensure the pot exists before attempting withdrawal
+        # Re-fetch pot list for extra safety
         pots = self.get_pots(account_selection=account_selection)
         pot = next((p for p in pots if p["id"] == pot_id), None)
         if pot is None:
             raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
     
         data = {
-            "destination_account_id": destination_account_id,
+            "source_account_id": source_account_id,
             "amount": amount,
             "dedupe_id": str(int(time())),
         }
