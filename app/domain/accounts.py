@@ -125,21 +125,15 @@ class MonzoAccount(Account):
         """Return a list of authorized accounts (both personal and joint) with details."""
         return self._fetch_accounts()
 
-    def get_account_id(self, account_selection="personal") -> str:
-        """
-        Return the account id for the desired account type.
-        Defaults to personal ('uk_retail') and uses 'uk_retail_joint' for joint accounts.
-        """
-         desired_type = "uk_retail_joint" if account_selection == "joint" else "uk_retail"
-         import logging
-         log = logging.getLogger("account")
-         log.debug(f"get_account_id: account_selection={account_selection}, desired_type={desired_type}")
-        accounts = self._fetch_accounts()
-         log.debug(f"get_account_id: fetched accounts: {accounts}")
-        for account in accounts:
-            if account["type"] == desired_type:
-                return account["id"]
-        raise AuthException(f"No account found for type: {desired_type}")
+    def get_account_type(self, pot_id):
+        pots = self.get_pots()
+        # If using the default value, fall back to the first returned pot’s id.
+        if pot_id == "default_pot" and pots:
+            pot_id = pots[0]["id"]
+        for pot in pots:
+            if pot["id"] == pot_id:
+                return pot["type"]
+        raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def get_account_description(self, account_selection="personal") -> str:
         """Return the account description for the selected account."""
@@ -244,21 +238,33 @@ class MonzoAccount(Account):
 
 
 class TrueLayerAccount(Account):
-    def __init__(self, type, access_token, refresh_token, token_expiry, pot_id="default_pot", account_id=None):
+    def __init__(self, account_type, access_token, refresh_token, token_expiry, pot_id="default_pot", account_id=None):
         super().__init__(
-            type,
+            account_type,
             access_token,
             refresh_token,
             token_expiry,
             pot_id,
             account_id
         )
-        # Initialize the auth provider for TrueLayer with required arguments
+        # Initialize the auth provider for TrueLayer with the proper icon.
         from app.domain.auth_providers import TrueLayerAuthProvider
+        # Use a conditional mapping here if needed; for example, if account_type "American Express"
+        # should show a different icon than the default TrueLayer icon.
+        if account_type.lower() == "american express":
+            icon = "amex-icon"
+        if account_type.lower() == "barclaycard":
+            icon = "barclaycard-icon"
+        if account_type.lower() == "halifax":
+            icon = "halifax-icon"
+        if account_type.lower() == "natwest":
+            icon = "natwest-icon"
+        else:
+            icon = "truelayer-icon"
         self.auth_provider = TrueLayerAuthProvider(
-            name=self.type,
+            name="TrueLayer",
             type="truelayer",
-            icon_name="truelayer-icon"
+            icon_name=icon
         )
 
     def ping(self) -> None:
