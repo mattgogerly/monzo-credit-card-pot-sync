@@ -4,6 +4,8 @@ from time import time
 from urllib import parse
 
 import requests as r
+
+from app.domain.auth_providers import AuthProviderType, provider_mapping
 from app.errors import AuthException
 
 log = logging.getLogger("account")
@@ -18,8 +20,6 @@ class Account:
         token_expiry=None,
         pot_id=None,
         account_id=None,
-        cooldown_until=None,
-        prev_balances: dict = None
     ):
         self.type = type
         self.access_token = access_token
@@ -27,9 +27,7 @@ class Account:
         self.token_expiry = token_expiry
         self.pot_id = pot_id
         self.account_id = account_id
-        self.cooldown_until = cooldown_until
-        self.prev_balances = prev_balances if prev_balances is not None else {}
-
+        self.auth_provider = provider_mapping[AuthProviderType(type)]
 
     def is_token_within_expiry_window(self):
         # Returns True if the token expires in the next two minutes or has already expired.
@@ -67,47 +65,15 @@ class Account:
     def get_auth_header(self):
         return {"Authorization": f"Bearer {self.access_token}"}
 
-    def pre_deposit_check(self, current_balance, new_balance, cooldown_duration):
-        """
-        Checks before a deposit:
-         - If performing the deposit (resulting in new_balance) would be lower than current_balance
-           then a cooldown period is applied.
-         - Returns True if deposit is allowed, otherwise False.
-          
-        Parameters:
-          current_balance: the current balance before deposit.
-          new_balance: the prospective balance after deposit.
-          cooldown_duration: the desired cooldown period (in seconds) from settings.
-        """
-        now = int(time())
-        if new_balance < current_balance:
-            if self.cooldown_until and now < self.cooldown_until:
-                log.info(f"Cooldown active until {self.cooldown_until}. Deposit postponed for {self.type}.")
-                return False
-            else:
-                # Initiate cooldown period before allowing deposit
-                self.cooldown_until = now + cooldown_duration
-                log.info(
-                    f"Withdrawal would reduce balance for {self.type}. Initiating a cooldown until {self.cooldown_until}."
-                )
-                return False
-        return True
-
 
 class MonzoAccount(Account):
-    def __init__(self, access_token, refresh_token, token_expiry, pot_id="default_pot", account_id=None, prev_balances=None):
-        super().__init__(
-            type="Monzo",
-            access_token=access_token,
-            refresh_token=refresh_token,
-            token_expiry=token_expiry,
-            pot_id=pot_id,
-            account_id=account_id,
-            prev_balances=prev_balances
-        )
-        # Initialize the auth provider for Monzo
-        from app.domain.auth_providers import MonzoAuthProvider
-        self.auth_provider = MonzoAuthProvider()
+    def __init__(
+        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
+    ):
+        # Pass all parameters directly to the parent class
+        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id, account_id)
+        self.prev_balances = {}
+        self.cooldown_until = 0
 
     def ping(self) -> None:
         r.get(
@@ -126,9 +92,10 @@ class MonzoAccount(Account):
         return self._fetch_accounts()
 
     def get_account_id(self, account_selection="personal") -> str:
-        # Treat any account selection not 'joint' as 'personal'
-        if account_selection != "joint":
-            account_selection = "personal"
+        """
+        Return the account id for the desired account type.
+        Defaults to personal ('uk_retail') and uses 'uk_retail_joint' for joint accounts.
+        """
         desired_type = "uk_retail_joint" if account_selection == "joint" else "uk_retail"
         accounts = self._fetch_accounts()
         for account in accounts:
@@ -198,17 +165,21 @@ class MonzoAccount(Account):
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        # If account_selection is neither 'personal' nor 'joint', we try personal first.
         if account_selection not in ("personal", "joint"):
             account_selection = "personal"
 
-        # Check personal, then joint if necessary:
         for selection in ["personal", "joint"]:
             source_account_id = self.get_account_id(account_selection=selection)
             pots = self.get_pots(account_selection=selection)
             pot = next((p for p in pots if p["id"] == pot_id), None)
             if pot:
-                # Found the pot in this selection
+                previous_balance = self.prev_balances.get(pot_id, pot["balance"])
+                expected_new_balance = previous_balance + amount
+
+                if not self.pre_deposit_check(previous_balance, expected_new_balance, self.get_cooldown_duration()):
+                    log.info(f"Deposit postponed for {self.type} due to active cooldown.")
+                    return
+
                 data = {
                     "source_account_id": source_account_id,
                     "amount": amount,
@@ -222,22 +193,31 @@ class MonzoAccount(Account):
                 if response.status_code != 200:
                     log.error(f"Failed to deposit to pot: {response.json()}")
                     raise Exception(f"Deposit failed: {response.json()}")
+
+                # Update prev_balances and cooldown_until
+                self.prev_balances[pot_id] = pot["balance"] + amount
+                self.cooldown_until = int(time()) + self.get_cooldown_duration()
+                account_repository.save(self)
                 return
 
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots")
 
-
     def withdraw_from_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
-        # If account_selection is neither 'personal' nor 'joint', we try personal first.
         if account_selection not in ("personal", "joint"):
             account_selection = "personal"
 
-        # Check personal, then joint if necessary:
         for selection in ["personal", "joint"]:
             destination_account_id = self.get_account_id(account_selection=selection)
             pots = self.get_pots(account_selection=selection)
             pot = next((p for p in pots if p["id"] == pot_id), None)
             if pot:
+                previous_balance = self.prev_balances.get(pot_id, pot["balance"])
+                expected_new_balance = previous_balance - amount
+
+                if not self.pre_deposit_check(previous_balance, expected_new_balance, self.get_cooldown_duration()):
+                    log.info(f"Withdrawal postponed for {self.type} due to active cooldown.")
+                    return
+
                 data = {
                     "destination_account_id": destination_account_id,
                     "amount": amount,
@@ -251,9 +231,47 @@ class MonzoAccount(Account):
                 if response.status_code != 200:
                     log.error(f"Failed to withdraw from pot: {response.json()}")
                     raise Exception(f"Withdrawal failed: {response.json()}")
+
+                # Update prev_balances and cooldown_until
+                self.prev_balances[pot_id] = pot["balance"] - amount
+                self.cooldown_until = int(time()) + self.get_cooldown_duration()
+                account_repository.save(self)
                 return
 
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots")
+
+    def pre_deposit_check(self, current_balance, new_balance, cooldown_duration):
+        """
+        Checks before a deposit:
+         - If performing the deposit (resulting in new_balance) would be lower than current_balance
+           then a cooldown period is applied.
+         - Returns True if deposit is allowed, otherwise False.
+          
+        Parameters:
+          current_balance: the current balance before deposit.
+          new_balance: the prospective balance after deposit.
+          cooldown_duration: the desired cooldown period (in seconds) from settings.
+        """
+        now = int(time())
+        if new_balance < current_balance:
+            if self.cooldown_until and now < self.cooldown_until:
+                log.info(f"Cooldown active until {self.cooldown_until}. Deposit postponed for {self.type}.")
+                return False
+            else:
+                # Initiate cooldown period before allowing deposit
+                self.cooldown_until = now + cooldown_duration
+                log.info(
+                    f"Withdrawal would reduce balance for {self.type}. Initiating a cooldown until {self.cooldown_until}."
+                )
+                return False
+        return True
+
+    def get_cooldown_duration(self) -> int:
+        try:
+            deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+        except Exception:
+            deposit_cooldown_hours = 0
+        return deposit_cooldown_hours * 3600
 
     def send_notification(self, title: str, message: str, account_selection="personal") -> None:
         body = {
@@ -271,26 +289,8 @@ class MonzoAccount(Account):
 
 
 class TrueLayerAccount(Account):
-    def __init__(self, account_type, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None):
-        super().__init__(account_type, access_token, refresh_token, token_expiry, pot_id, account_id)
-        from app.domain.auth_providers import TrueLayerAuthProvider
-        # Determine the proper icon based on account_type
-        if account_type.lower() == "american express":
-            icon = "amex.svg"
-        elif account_type.lower() == "barclaycard":
-            icon = "barclaycard.svg"
-        elif account_type.lower() == "halifax":
-            icon = "halifax.svg"
-        elif account_type.lower() == "natwest":
-            icon = "natwest.svg"
-        else:
-            icon = "truelayer.svg"
-
-        self.auth_provider = TrueLayerAuthProvider(
-            name="TrueLayer",
-            type="truelayer",
-            icon_name=icon
-        )
+    def __init__(self, type, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None):
+        super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id)
 
     def ping(self) -> None:
         r.get(f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header())
