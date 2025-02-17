@@ -126,16 +126,11 @@ class MonzoAccount(Account):
         return self._fetch_accounts()
 
     def get_account_id(self, account_selection="personal") -> str:
-        """
-        Return the account id for the desired account type.
-        Defaults to personal ('uk_retail') and uses 'uk_retail_joint' for joint accounts.
-        """
+        # Treat any account selection not 'joint' as 'personal'
+        if account_selection != "joint":
+            account_selection = "personal"
         desired_type = "uk_retail_joint" if account_selection == "joint" else "uk_retail"
-        import logging
-        log = logging.getLogger("account")
-        log.debug(f"get_account_id: account_selection={account_selection}, desired_type={desired_type}")
         accounts = self._fetch_accounts()
-        log.debug(f"get_account_id: fetched accounts: {accounts}")
         for account in accounts:
             if account["type"] == desired_type:
                 return account["id"]
@@ -267,15 +262,15 @@ class TrueLayerAccount(Account):
         from app.domain.auth_providers import TrueLayerAuthProvider
         # Determine the proper icon based on account_type
         if account_type.lower() == "american express":
-            icon = "amex-icon"
+            icon = "amex.svg"
         elif account_type.lower() == "barclaycard":
-            icon = "barclaycard-icon"
+            icon = "barclaycard.svg"
         elif account_type.lower() == "halifax":
-            icon = "halifax-icon"
+            icon = "halifax.svg"
         elif account_type.lower() == "natwest":
-            icon = "natwest-icon"
+            icon = "natwest.svg"
         else:
-            icon = "truelayer-icon"
+            icon = "truelayer.svg"
 
         self.auth_provider = TrueLayerAuthProvider(
             name="TrueLayer",
