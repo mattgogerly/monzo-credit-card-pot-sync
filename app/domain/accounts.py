@@ -20,6 +20,7 @@ class Account:
         token_expiry=None,
         pot_id=None,
         account_id=None,
+        cooldown_until=None,  # new field with default None
     ):
         self.type = type
         self.access_token = access_token
@@ -28,6 +29,7 @@ class Account:
         self.pot_id = pot_id
         self.account_id = account_id
         self.auth_provider = provider_mapping[AuthProviderType(type)]
+        self.cooldown_until = cooldown_until  # store the next allowed withdrawal time
 
     def is_token_within_expiry_window(self):
         # Returns True if the token expires in the next two minutes or has already expired.
@@ -64,6 +66,32 @@ class Account:
 
     def get_auth_header(self):
         return {"Authorization": f"Bearer {self.access_token}"}
+
+    def pre_withdrawal_check(self, current_balance, new_balance, cooldown_duration):
+        """
+        Checks before a withdrawal:
+         - If performing the withdrawal (resulting in new_balance) would be lower than current_balance
+           then a cooldown period is applied.
+         - Returns True if withdrawal is allowed, otherwise False.
+          
+        Parameters:
+          current_balance: the current balance before withdrawal.
+          new_balance: the prospective balance after withdrawal.
+          cooldown_duration: the desired cooldown period (in seconds) from settings.
+        """
+        now = int(time())
+        if new_balance < current_balance:
+            if self.cooldown_until and now < self.cooldown_until:
+                log.info(f"Cooldown active until {self.cooldown_until}. Withdrawal postponed for {self.type}.")
+                return False
+            else:
+                # Initiate cooldown period before allowing withdrawal
+                self.cooldown_until = now + cooldown_duration
+                log.info(
+                    f"Withdrawal would reduce balance for {self.type}. Initiating a cooldown until {self.cooldown_until}."
+                )
+                return False
+        return True
 
 
 class MonzoAccount(Account):

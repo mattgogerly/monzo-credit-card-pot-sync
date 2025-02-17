@@ -24,6 +24,10 @@
             <label for="sync_interval_seconds" class="block mb-2 text-sm font-medium">Sync Interval (seconds)</label>
             <input type="number" name="sync_interval_seconds" id="sync_interval_seconds" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ data['sync_interval_seconds'] }}" />
         </div>
+        <div>
+            <label for="withdrawal_cooldown_hours" class="block mb-2 text-sm font-medium">Withdrawal Cooldown (hours)</label>
+            <input type="number" name="withdrawal_cooldown_hours" id="withdrawal_cooldown_hours" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ data['withdrawal_cooldown_hours'] }}" />
+        </div>
 
         <label class="inline-flex items-center cursor-pointer">
             <input type="checkbox" name="enable_sync" class="sr-only peer" {% if data['enable_sync'] %} checked {% endif %} />
