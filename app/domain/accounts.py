@@ -82,6 +82,17 @@ class Account:
                 return False
         return True
 
+    def update_prev_balance(self, pot_id: str, balance: int) -> None:
+        # Update in-memory storage
+        self.prev_balances[pot_id] = balance
+        # Persist the previous balance to your storage layer.
+        # For example:
+        # db.update_prev_balance(account_id=self.account_id, pot_id=pot_id, balance=balance)
+        pass  # Replace with actual persistence code
+
+    def get_prev_balance(self, pot_id: str) -> int:
+        # Retrieve the persisted previous balance; fallback to 0 if not stored.
+        return self.prev_balances.get(pot_id, 0)
 
 class MonzoAccount(Account):
     def __init__(self, access_token, refresh_token, token_expiry, pot_id="default_pot", account_id=None, prev_balances=None):
