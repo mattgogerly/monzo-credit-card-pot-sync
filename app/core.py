@@ -218,21 +218,21 @@ def sync_balance():
                 account_repository.save(credit_account)
             else:
                 # Positive differential: need to withdraw funds from the pot back to the account.
-difference = abs(pot_diff)
-credit_account = pot_to_credit_account.get(pot_id)
-if credit_account is None:
-    log.error(f"No credit account found for pot {pot_id}. Skipping withdrawal.")
-    continue
-
-log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
-monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
-
-log.info(f"[Before Withdrawal] {credit_account.type} prev_balances: {credit_account.prev_balances}")
-
-# NEW: fetch the fresh live pot balance after withdrawal
-current_pot_balance = monzo_account.get_pot_balance(pot_id)
-
-# Update persisted previous balance based on the fresh balance
-credit_account.update_prev_balance(pot_id, current_pot_balance + difference)
-log.info(f"[After Withdrawal] {credit_account.type} prev_balances: {credit_account.prev_balances}")
-account_repository.save(credit_account)
+                difference = abs(pot_diff)
+                credit_account = pot_to_credit_account.get(pot_id)
+                if credit_account is None:
+                    log.error(f"No credit account found for pot {pot_id}. Skipping withdrawal.")
+                    continue
+                
+                log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
+                monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
+                
+                log.info(f"[Before Withdrawal] {credit_account.type} prev_balances: {credit_account.prev_balances}")
+                
+                # NEW: fetch the fresh live pot balance after withdrawal
+                current_pot_balance = monzo_account.get_pot_balance(pot_id)
+                
+                # Update persisted previous balance based on the fresh balance
+                credit_account.update_prev_balance(pot_id, current_pot_balance + difference)
+                log.info(f"[After Withdrawal] {credit_account.type} prev_balances: {credit_account.prev_balances}")
+                account_repository.save(credit_account)
