@@ -212,17 +212,20 @@ def sync_balance():
                 log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
                 monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
 
-        # Final loop: update persisted baseline only if live balance has increased and cooldown period is complete.
+        # Final loop: update persisted baseline only if the credit account’s total balance (i.e. TrueLayerAccount.get_total_balance())
+        # has increased and the cooldown period is complete.
         current_time = int(time())
         for credit_account in credit_accounts:
             if credit_account.pot_id:
-                live = monzo_account.get_pot_balance(credit_account.pot_id)
+                # Use the credit account's total balance as the intended live state after deposits/withdrawals.
+                live = credit_account.get_total_balance()
                 prev = credit_account.get_prev_balance(credit_account.pot_id)
-                # Only update baseline and possibly clear cooldown after cooldown expires
                 if credit_account.cooldown_until:
                     if current_time < credit_account.cooldown_until:
                         log.info(
-                            f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} (cooldown until {datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')}). Baseline not updated."
+                            f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} "
+                            f"(cooldown until {datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')}). "
+                            "Baseline not updated."
                         )
                         continue
                 if live > prev:
