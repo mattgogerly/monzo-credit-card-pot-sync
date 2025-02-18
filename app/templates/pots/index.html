@@ -38,6 +38,11 @@
                             <h5 class="mb-3 text-base font-semibold md:text-xl">
                                 {{ pot['name'] }}
                             </h5>
+                            {% if account.cooldown_until and account.cooldown_until > now %}
+                              <small class="block text-xs text-red-600">
+                                Cooldown active until {{ account.cooldown_until | datetimeformat }}
+                              </small>
+                            {% endif %}
                             <p class="text-sm font-normal">
                                 {% if account.pot_id == pot['id'] %}
                                     <h5 class="flex pt-2 text-green-900 dark:text-green-600">
