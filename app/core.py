@@ -170,7 +170,7 @@ def sync_balance():
                     continue
 
                 # Always compute the fresh live pot balance.
-                current_pot_balance = pot_diff
+                current_pot_balance = monzo_account.get_pot_balance(pot_id)
                 # Retrieve the persisted previous balance (if any)
                 persisted_previous_balance = credit_account.get_prev_balance(pot_id)
                 log.info(f"Persisted previous balance for {pot_id}: {persisted_previous_balance}")
