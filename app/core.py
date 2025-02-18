@@ -183,9 +183,10 @@ def sync_balance():
                         log.info(f"Cooldown expired for {credit_account.type} pot {pot_id}. Executing deposit now.")
                         desired_balance = credit_account.get_total_balance()
                         deposit_amount = desired_balance - pre_deposit_balance
-                        # Execute the deposit if deposit_amount > 0
                         if deposit_amount > 0:
-                            monzo_account.add_to_pot(pot_id, deposit_amount, account_selection="personal")
+                            # Dynamically determine account selection for the deposit
+                            selection = monzo_account.get_account_type(pot_id)
+                            monzo_account.add_to_pot(pot_id, deposit_amount, account_selection=selection)
                             new_balance = monzo_account.get_pot_balance(pot_id)
                             account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None)
                             credit_account.prev_balance = new_balance
@@ -235,7 +236,7 @@ def sync_balance():
                     if current_time < credit_account.cooldown_until:
                         log.info(
                             f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} "
-                            f"(cooldown until {datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")}). "
+                            f"(cooldown until {datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')}). "
                             "Baseline not updated."
                         )
                         continue
@@ -266,7 +267,9 @@ def sync_balance():
                     except Exception:
                         deposit_cooldown_hours = 0
                     cooldown_duration = deposit_cooldown_hours * 3600
-                    monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=account_selection)
+                    # Determine account selection dynamically
+                    selection = monzo_account.get_account_type(credit_account.pot_id)
+                    monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                     log.info(f"Post-cooldown deposit executed for {credit_account.type} pot {credit_account.pot_id}; deposited {drop/100:.2f}. New balance: {new_balance}.")
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, new_balance)
