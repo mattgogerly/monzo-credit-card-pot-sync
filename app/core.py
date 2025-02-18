@@ -150,17 +150,28 @@ def sync_balance():
 
             if (pot_diff == 0):
                 log.info("No balance difference; no action required")
-            elif pot_diff < -1:
-                difference = abs(pot_diff)
-                if monzo_balance < difference:
-                    log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
-                    settings_repository.save(Setting("enable_sync", "False"))
-                    monzo_account.send_notification(
-                        "Insufficient Funds for Sync",
-                        "Sync disabled due to low Monzo balance. Please top up and re-enable sync.",
-                        account_selection=account_selection
-                    )
-                    return
+                
+            elif
+                now = int(time())
+                deposit_executed = False
+                # FIRST: check if a cooldown exists.
+                if credit_account.cooldown_until is not None:
+                    if now < credit_account.cooldown_until:
+                        human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                        log.info(f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
+                        continue
+                else:
+                    pot_diff < 0:
+                    difference = abs(pot_diff)
+                    if monzo_balance < difference:
+                        log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
+                        settings_repository.save(Setting("enable_sync", "False"))
+                        monzo_account.send_notification(
+                            "Insufficient Funds for Sync",
+                            "Sync disabled due to low Monzo balance. Please top up and re-enable sync.",
+                            account_selection=account_selection
+                        )
+                        return
 
                 credit_account = pot_to_credit_account.get(pot_id)
                 if credit_account is None:
