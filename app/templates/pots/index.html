@@ -38,9 +38,9 @@
                             <h5 class="mb-3 text-base font-semibold md:text-xl">
                                 {{ pot['name'] }}
                             </h5>
-                            {% if account.cooldown_until and account.cooldown_until > now %}
+                            {% if cooldown_mapping[pot['id']] is defined %}
                               <small class="block text-xs text-red-600">
-                                Cooldown active until {{ account.cooldown_until | datetimeformat }}
+                                Countdown Timer Active Until: {{ cooldown_mapping[pot['id']] }}
                               </small>
                             {% endif %}
                             <p class="text-sm font-normal">
