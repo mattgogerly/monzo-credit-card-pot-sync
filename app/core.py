@@ -142,7 +142,6 @@ def sync_balance():
             if (pot_diff == 0):
                 log.info("No balance difference; no action required")
             elif pot_diff < 0:
-                # Negative differential, need to deposit funds into the pot.
                 difference = abs(pot_diff)
                 if monzo_balance < difference:
                     log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
@@ -154,7 +153,6 @@ def sync_balance():
                     )
                     return
 
-                # Retrieve credit account corresponding to this pot.
                 credit_account = pot_to_credit_account.get(pot_id)
                 if credit_account is None:
                     log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
@@ -169,20 +167,20 @@ def sync_balance():
                     deposit_cooldown_hours = 0
                 cooldown_duration = deposit_cooldown_hours * 3600
 
-                # Update cooldown value and re-fetch persisted account info
-                if credit_account.cooldown_until and now < credit_account.cooldown_until:
-                    dt_str = __import__("datetime").datetime.fromtimestamp(credit_account.cooldown_until).isoformat()
-                    log.info(f"Deposit postponed for {credit_account.type} due to active cooldown until {dt_str}.")
+                # Re-fetch fresh account record to check existing cooldown
+                fresh_account = account_repository.get(credit_account.type)
+                if fresh_account.cooldown_until and now < fresh_account.cooldown_until:
+                    dt_str = __import__("datetime").datetime.fromtimestamp(fresh_account.cooldown_until).isoformat()
+                    log.info(f"Deposit postponed for {fresh_account.type} due to active cooldown until {dt_str}.")
                     continue
                 else:
                     new_cooldown = now + cooldown_duration
                     credit_account.cooldown_until = new_cooldown
                     log.info(f"Cooldown initiated until {__import__('datetime').datetime.fromtimestamp(new_cooldown).isoformat()} for {credit_account.type}.")
-                    # Persist the new cooldown immediately
                     account_repository.update_credit_account_fields(
                         credit_account.type, pot_id, credit_account.get_prev_balance(pot_id), new_cooldown
                     )
-                    # Re-fetch to ensure updated cooldown is saved
+                    # Re-fetch again to confirm update
                     refreshed = account_repository.get(credit_account.type)
                     if refreshed.cooldown_until and now < refreshed.cooldown_until:
                         dt_str = __import__("datetime").datetime.fromtimestamp(refreshed.cooldown_until).isoformat()
