@@ -156,6 +156,13 @@ def sync_balance():
                 now = int(time())
                 deposit_executed = False
                 # FIRST: check if a cooldown exists.
+                # Determine the correct key based on the expected account type.
+                key = f"{pot_id}_{credit_account.type}"
+                credit_account = pot_to_credit_account.get(key)
+                if credit_account is None:
+                    log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
+                    continue
+                # Now safe to check credit_account.cooldown_until
                 if credit_account.cooldown_until is not None:
                     if now < credit_account.cooldown_until:
                         human_readable = datetime.datetime.fromtimestamp(
