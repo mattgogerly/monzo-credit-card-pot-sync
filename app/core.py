@@ -2,6 +2,7 @@ import logging
 import ast
 from sqlalchemy.exc import NoResultFound
 from time import time
+import datetime  # Add import if not already present
 
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
 from app.errors import AuthException
@@ -161,25 +162,38 @@ def sync_balance():
                 # Cache pre-deposit balance for decision making
                 pre_deposit_balance = monzo_account.get_pot_balance(pot_id)
                 log.info(f"Pre-deposit balance for pot {pot_id} is {pre_deposit_balance}")
+                
+                now = int(time())
+                # Check if a cooldown is already set
+                if credit_account.cooldown_until:
+                    if now < credit_account.cooldown_until:
+                        human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                        log.info(f"Cooldown still active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
+                        continue
+                    else:
+                        log.info(f"Cooldown expired for {credit_account.type} pot {pot_id}. Proceeding with deposit.")
+                else:
+                    log.info("No cooldown active. Checking for drop.")
 
                 # Calculate the drop
                 drop = credit_account.get_prev_balance(pot_id) - pre_deposit_balance
-
-                # Instead of triggering a deposit, trigger cooldown if any drop is detected
+                log.info(f"Calculated drop is {drop}.")
                 if drop > 0:
-                    now = int(time())
                     try:
                         deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                     except Exception:
                         deposit_cooldown_hours = 0
                     cooldown_duration = deposit_cooldown_hours * 3600
+
+                    log.info(f"Drop of {drop} detected. Depositing £{difference / 100:.2f} into pot {pot_id} using credit account {credit_account.type}")
+                    monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
                     new_cooldown = now + cooldown_duration if cooldown_duration > 0 else None
-                    log.info(f"Drop of {drop} detected. Setting cooldown until {new_cooldown} for pot {pot_id} using credit account {credit_account.type}.")
+                    log.info(f"Deposit executed. Setting new cooldown until {datetime.datetime.fromtimestamp(new_cooldown).strftime('%Y-%m-%d %H:%M:%S') if new_cooldown else 'None'}.")
                     account_repository.update_credit_account_fields(
                         credit_account.type, pot_id, pre_deposit_balance, new_cooldown
                     )
                 else:
-                    log.info(f"Drop of {drop} is not positive. No cooldown or deposit triggered.")
+                    log.info(f"Drop of {drop} is not positive. No deposit or cooldown triggered.")
 
             else:
                 # For positive differential (withdrawal)
@@ -199,8 +213,9 @@ def sync_balance():
                 live = monzo_account.get_pot_balance(credit_account.pot_id)
                 prev = credit_account.get_prev_balance(credit_account.pot_id)
                 if credit_account.cooldown_until and current_time < credit_account.cooldown_until:
+                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
                     log.info(
-                        f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} (cooldown until {credit_account.cooldown_until}). Baseline not updated."
+                        f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} (cooldown until {human_readable}). Baseline not updated."
                     )
                 elif live > prev:
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
