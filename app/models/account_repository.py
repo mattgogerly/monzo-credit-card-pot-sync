@@ -83,6 +83,3 @@ class SqlAlchemyAccountRepository:
     def delete(self, type: str) -> None:
         self._session.query(AccountModel).filter_by(type=type).delete()
         self._session.commit()
-
-# Create a global instance of the repository
-account_repository = SqlAlchemyAccountRepository(db)
