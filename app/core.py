@@ -181,9 +181,12 @@ def sync_balance():
                 log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
                 monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
                 current_pot_balance = monzo_account.get_pot_balance(pot_id)
-
-                # Set cooldown only if the current balance dropped below previous.
-                if current_pot_balance < prev_balance:
+                
+                # Determine cooldown based on persisted balance:
+                if prev_balance == 0:
+                    log.info(f"Initializing persisted balance for pot {pot_id} to {current_pot_balance}")
+                    new_cooldown = None
+                elif current_pot_balance < prev_balance:
                     new_cooldown = now + cooldown_duration if cooldown_duration > 0 else None
                     log.info(f"Pot balance decreased from {prev_balance} to {current_pot_balance}. Setting cooldown until {new_cooldown}")
                 else:
@@ -194,7 +197,6 @@ def sync_balance():
                 account_repository.update_credit_account_fields(
                     credit_account.type, pot_id, current_pot_balance, new_cooldown
                 )
-                # Update in-memory value so that get_prev_balance returns the updated balance next time
                 credit_account.prev_balances[pot_id] = current_pot_balance
                 log.info(f"[After Deposit] Updated persisted prev_balance for {credit_account.type} pot {pot_id} to {current_pot_balance}")
 
@@ -208,10 +210,3 @@ def sync_balance():
 
                 log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
                 monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
-        
-        # At the end of the sync cycle, update the persisted baseline for each credit account.
-        for credit_account in credit_accounts:
-            if credit_account.pot_id:
-                live = monzo_account.get_pot_balance(credit_account.pot_id)
-                account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
-                log.info(f"Updated persisted previous balance for {credit_account.type} pot {credit_account.pot_id} to {live}")
