@@ -86,14 +86,14 @@ class Account:
         # Ensure self.prev_balances is a dict
         if not isinstance(self.prev_balances, dict):
             self.prev_balances = {}
-        # Update in-memory storage with a new dictionary copy
-        self.prev_balances = dict(self.prev_balances)  # force a new instance
+        # Update the in-memory dictionary (force a new instance so changes are detected)
+        self.prev_balances = dict(self.prev_balances)
         self.prev_balances[pot_id] = balance
         # Persist the updated balance to the database.
         from app.core import account_repository
         account_repository.save(self)
-        # Do not refresh from the DB here, so that the persisted previous balance remains
-        # the value from the previous run until we deliberately update it (e.g. after a deposit).
+        # Do not refresh from the DB here—this leaves the stored previous balance
+        # intact for comparison in the next sync run.
 
     def get_prev_balance(self, pot_id: str) -> int:
         # Retrieve the persisted previous balance; fallback to 0 if not stored.
