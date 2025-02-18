@@ -39,9 +39,9 @@ class SqlAlchemyAccountRepository:
         return list(map(self._to_domain, results))
 
     def get_monzo_account(self) -> MonzoAccount:
-        result: AccountModel = self._session.query(AccountModel).filter_by(type="Monzo").one_or_none()
-        if result is None:
-            raise NoResultFound("Monzo account not found")
+        result: AccountModel = (
+            self._session.query(AccountModel).filter_by(type="Monzo").one()
+        )
         account = self._to_domain(result)
         return MonzoAccount(
             account.access_token,
