@@ -181,12 +181,11 @@ def sync_balance():
                 if drop > 0:
                     try:
                         deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
-                        deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                     except Exception:
+                        deposit_cooldown_hours = 0
                     cooldown_duration = deposit_cooldown_hours * 3600
                     new_cooldown = now + cooldown_duration if cooldown_duration > 0 else None
                     log.info(f"Drop of {drop} detected. Setting cooldown until {datetime.datetime.fromtimestamp(new_cooldown).strftime('%Y-%m-%d %H:%M:%S') if new_cooldown else 'None'} for pot {pot_id}. Deposit will execute after cooldown if drop persists.")
-                    # Update the database and refresh the in‑memory account object
                     updated_account = account_repository.update_credit_account_fields(
                         credit_account.type, pot_id, pre_deposit_balance, new_cooldown
                     )
