@@ -21,9 +21,7 @@ class SqlAlchemyAccountRepository:
             pot_id=account.pot_id,
             account_id=account.account_id,
             cooldown_until=account.cooldown_until,
-            prev_balances=json.loads(account.prev_balances)
-                if isinstance(account.prev_balances, str)
-                else (account.prev_balances if account.prev_balances is not None else {})
+            prev_balances=dict(account.prev_balances) if account.prev_balances is not None else {}
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
