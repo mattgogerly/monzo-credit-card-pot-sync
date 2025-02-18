@@ -165,7 +165,6 @@ def sync_balance():
                     deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                 except Exception:
                     deposit_cooldown_hours = 0
-                cooldown_duration = deposit_cooldown_hours * 3600
 
                 # Re-fetch fresh account record to check if a cooldown is still active
                 fresh_account = account_repository.get(credit_account.type)
