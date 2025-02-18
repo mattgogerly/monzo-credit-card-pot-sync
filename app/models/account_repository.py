@@ -21,18 +21,10 @@ class SqlAlchemyAccountRepository:
             pot_id=account.pot_id,
             account_id=account.account_id,
             cooldown_until=account.cooldown_until,
-            prev_balances=dict(account.prev_balances) if account.prev_balances is not None else {}
+            prev_balance=account.prev_balance if isinstance(account.prev_balance, int) else 0
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
-        prev = model.prev_balances
-        if isinstance(prev, str):
-            try:
-                prev = json.loads(prev)
-            except Exception:
-                prev = {}
-        elif not prev:
-            prev = {}
         return Account(
             type=model.type,
             access_token=model.access_token,
@@ -41,7 +33,7 @@ class SqlAlchemyAccountRepository:
             pot_id=model.pot_id,
             account_id=model.account_id,
             cooldown_until=model.cooldown_until,
-            prev_balances=prev
+            prev_balance=model.prev_balance
         )
 
     def get_all(self) -> list[Account]:
@@ -59,7 +51,7 @@ class SqlAlchemyAccountRepository:
             account.token_expiry,
             account.pot_id,
             account_id=account.account_id,
-            prev_balances=account.prev_balances
+            prev_balance=account.prev_balance
         )
 
     def get_credit_accounts(self) -> list[TrueLayerAccount]:
@@ -71,7 +63,7 @@ class SqlAlchemyAccountRepository:
         accounts = list(map(self._to_domain, results))
         return [
             TrueLayerAccount(
-                a.type, a.access_token, a.refresh_token, a.token_expiry, a.pot_id
+                a.type, a.access_token, a.refresh_token, a.token_expiry, a.pot_id, prev_balance=a.prev_balance
             )
             for a in accounts
         ]
@@ -95,14 +87,8 @@ class SqlAlchemyAccountRepository:
         self._session.commit()
 
     def update_credit_account_fields(self, account_type: str, pot_id: str, new_balance: int, cooldown_until: int = None) -> None:
-        # Retrieve the existing account record for the given credit account type
         record: AccountModel = self._session.query(AccountModel).filter_by(type=account_type).one()
-        # Ensure we have a dictionary for previous balances
-        prev_bal = record.prev_balances or {}
-        # Update the balance for the designated pot
-        prev_bal[pot_id] = new_balance
-        record.prev_balances = prev_bal
-        # Optionally update the cooldown_until field if provided
+        record.prev_balance = new_balance
         if cooldown_until is not None:
             record.cooldown_until = cooldown_until
         self._session.commit()

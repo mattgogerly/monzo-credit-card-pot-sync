@@ -25,5 +25,5 @@ class AccountModel(db.Model):
     token_expiry = db.Column(db.Integer)
     account_id = db.Column(db.String(150), nullable=True)
     cooldown_until = db.Column(db.Integer, nullable=True)
-    # Use MutableDict and the CoerceJSON type so that any string values are converted to a dict.
-    prev_balances = db.Column(MutableDict.as_mutable(CoerceJSON), default=lambda: {})
+    # Replace prev_balances JSON field with a simple integer field.
+    prev_balance = db.Column(db.Integer, default=0)

@@ -19,7 +19,7 @@ class Account:
         pot_id=None,
         account_id=None,
         cooldown_until=None,
-        prev_balances: dict = None
+        prev_balance=0
     ):
         self.type = type
         self.access_token = access_token
@@ -28,7 +28,7 @@ class Account:
         self.pot_id = pot_id
         self.account_id = account_id
         self.cooldown_until = cooldown_until
-        self.prev_balances = prev_balances if prev_balances is not None else {}
+        self.prev_balance = prev_balance
 
 
     def is_token_within_expiry_window(self):
@@ -84,10 +84,13 @@ class Account:
 
     def get_prev_balance(self, pot_id: str) -> int:
         # Retrieve the persisted previous balance; fallback to 0 if not stored.
-        return self.prev_balances.get(pot_id, 0)
+        try:
+            return int(self.prev_balance) if self.prev_balance is not None else 0
+        except Exception:
+            return 0
 
 class MonzoAccount(Account):
-    def __init__(self, access_token, refresh_token, token_expiry, pot_id="default_pot", account_id=None, prev_balances=None):
+    def __init__(self, access_token, refresh_token, token_expiry, pot_id="default_pot", account_id=None, prev_balance=0):
         super().__init__(
             type="Monzo",
             access_token=access_token,
@@ -95,7 +98,7 @@ class MonzoAccount(Account):
             token_expiry=token_expiry,
             pot_id=pot_id,
             account_id=account_id,
-            prev_balances=prev_balances
+            prev_balance=prev_balance
         )
         # Initialize the auth provider for Monzo
         from app.domain.auth_providers import MonzoAuthProvider
