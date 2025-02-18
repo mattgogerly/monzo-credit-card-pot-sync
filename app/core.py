@@ -237,28 +237,28 @@ def sync_balance():
         current_time = int(time())
         for credit_account in credit_accounts:
             if credit_account.pot_id and credit_account.cooldown_until:
-                if current_time >= credit_account.cooldown_until:
+                # Add explicit check: proceed only if cooldown time has passed.
+                if current_time < credit_account.cooldown_until:
                     human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
-                    log.info(f"Cooldown expired for {credit_account.type} pot {credit_account.pot_id} (expired at {human_readable}). Re-checking for deposit...")
-                    pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
-                    current_balance = monzo_account.get_pot_balance(credit_account.pot_id)
-                    drop = pre_deposit - current_balance
-                    if drop > 0:
-                        # Now, execute the deposit (top-up) after the cooldown expires.
-                        try:
-                            deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
-                        except Exception:
-                            deposit_cooldown_hours = 0
-                        cooldown_duration = deposit_cooldown_hours * 3600
-                        monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection="personal")
-                        new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
-                        log.info(f"Post-cooldown deposit executed for {credit_account.type} pot {credit_account.pot_id}; deposited {drop/100:.2f}. New balance: {new_balance}.")
-                        account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, new_balance)
-                    else:
-                        log.info(f"No drop persists for {credit_account.type} pot {credit_account.pot_id} after cooldown. Clearing cooldown.")
-                    # Clear cooldown in either case.
-                    credit_account.cooldown_until = None
-                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, current_balance)
+                    log.info(f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} (cooldown until {human_readable}). Skipping deposit re-check.")
+                    continue
+                human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                log.info(f"Cooldown expired for {credit_account.type} pot {credit_account.pot_id} (expired at {human_readable}). Re-checking for deposit...")
+                pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
+                current_balance = monzo_account.get_pot_balance(credit_account.pot_id)
+                drop = pre_deposit - current_balance
+                if drop > 0:
+                    try:
+                        deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                    except Exception:
+                        deposit_cooldown_hours = 0
+                    cooldown_duration = deposit_cooldown_hours * 3600
+                    monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection="personal")
+                    new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
+                    log.info(f"Post-cooldown deposit executed for {credit_account.type} pot {credit_account.pot_id}; deposited {drop/100:.2f}. New balance: {new_balance}.")
+                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, new_balance)
                 else:
-                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
-                    log.info(f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} (cooldown until {human_readable}).")
+                    log.info(f"No drop persists for {credit_account.type} pot {credit_account.pot_id} after cooldown. Clearing cooldown.")
+                # Clear cooldown in either case.
+                credit_account.cooldown_until = None
+                account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, current_balance)
