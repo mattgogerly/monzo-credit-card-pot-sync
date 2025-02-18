@@ -210,3 +210,16 @@ def sync_balance():
 
                 log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
                 monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
+
+        # Final loop: update persisted baseline only if live balance has increased
+        for credit_account in credit_accounts:
+            if credit_account.pot_id:
+                live = monzo_account.get_pot_balance(credit_account.pot_id)
+                prev = credit_account.get_prev_balance(credit_account.pot_id)
+                if live > prev:
+                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
+                    # Also update in-memory value so get_prev_balance reflects the change
+                    credit_account.prev_balances[credit_account.pot_id] = live
+                    log.info(f"Updated persisted previous balance for {credit_account.type} pot {credit_account.pot_id} to {live}")
+                else:
+                    log.info(f"Persisted baseline for {credit_account.type} pot {credit_account.pot_id} remains unchanged (prev: {prev}, live: {live})")
