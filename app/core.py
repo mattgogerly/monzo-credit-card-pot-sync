@@ -177,7 +177,7 @@ def sync_balance():
                 log.info(f"Current pot balance for {pot_id}: {current_pot_balance}")
                 
                 # Only proceed with deposit if the live balance has dropped below the persisted balance.
-                if current_pot_balance >= persisted_previous_balance:
+                if current_pot_balance < credit_balance:
                     log.info(f"No deposit required because live balance ({current_pot_balance}) is not below persisted ({persisted_previous_balance}).")
                     continue
 
