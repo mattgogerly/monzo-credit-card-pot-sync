@@ -172,15 +172,23 @@ def sync_balance():
                 log.info(f"Pre-deposit balance for pot {pot_id} is {pre_deposit_balance}")
                 
                 now = int(time())
-                # FIRST: check if a cooldown exists; if so, do nothing.
-                if credit_account.cooldown_until is not None and now < credit_account.cooldown_until:
-                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
-                    log.info(f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
-                    continue
-                # Only proceed if no cooldown is active
+                # FIRST: check if a cooldown exists; if so, and it has expired then execute deposit.
+                if credit_account.cooldown_until is not None:
+                    if now < credit_account.cooldown_until:
+                        human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                        log.info(f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
+                        continue
+                    else:
+                        # Cooldown expired: execute deposit
+                        log.info(f"Cooldown expired for {credit_account.type} pot {pot_id}. Executing deposit now.")
+                        monzo_account.add_to_pot(pot_id, desired_balance - pre_deposit_balance, account_selection="personal")
+                        new_balance = monzo_account.get_pot_balance(pot_id)
+                        account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None)
+                        credit_account.prev_balance = new_balance
+                        credit_account.cooldown_until = None
+                        continue
+                # If no cooldown, then set a new one
                 log.info("No active cooldown. Checking for deposit requirement.")
-                
-                # NEW: Calculate the drop based on TrueLayer total balance versus current pot balance
                 desired_balance = credit_account.get_total_balance()
                 drop = desired_balance - pre_deposit_balance
                 log.info(f"Calculated drop based on desired balance {desired_balance} and pot balance {pre_deposit_balance} is {drop}.")
