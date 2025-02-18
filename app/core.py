@@ -187,6 +187,7 @@ def sync_balance():
                             # Dynamically determine account selection for the deposit
                             selection = monzo_account.get_account_type(pot_id)
                             monzo_account.add_to_pot(pot_id, deposit_amount, account_selection=selection)
+                            log.info(f"Post-cooldown deposit executed for {credit_account.type} pot {credit_account.pot_id}; deposited {drop/100:.2f}. New balance: {new_balance}.")
                             new_balance = monzo_account.get_pot_balance(pot_id)
                             account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None)
                             credit_account.prev_balance = new_balance
