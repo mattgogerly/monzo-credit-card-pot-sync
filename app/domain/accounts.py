@@ -85,9 +85,12 @@ class Account:
     def update_prev_balance(self, pot_id: str, balance: int) -> None:
         # Update in-memory storage
         self.prev_balances[pot_id] = balance
-        # Persist the previous balance to the database.
+        # Persist the updated balance to the database.
         from app.models.account_repository import account_repository
         account_repository.save(self)
+        # Refresh the instance from the database to update in‑memory state.
+        refreshed = account_repository.get(self.type)
+        self.prev_balances = refreshed.prev_balances
 
     def get_prev_balance(self, pot_id: str) -> int:
         # Retrieve the persisted previous balance; fallback to 0 if not stored.
