@@ -172,17 +172,15 @@ def sync_balance():
                 log.info(f"Pre-deposit balance for pot {pot_id} is {pre_deposit_balance}")
                 
                 now = int(time())
-                if credit_account.cooldown_until is not None and credit_account.cooldown_until > 0:
-                    if now < credit_account.cooldown_until:
-                        human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
-                        log.info(f"Cooldown still active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
-                        continue
-                    else:
-                        log.info(f"Cooldown expired for {credit_account.type} pot {pot_id}. Proceeding with deposit.")
-                else:
-                    log.info("No cooldown active. Checking for deposit requirement.")
-
-                # NEW: Calculate the drop based on TrueLayer total balance versus current pot balance.
+                # FIRST: check if a cooldown exists; if so, do nothing.
+                if credit_account.cooldown_until is not None and now < credit_account.cooldown_until:
+                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                    log.info(f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
+                    continue
+                # Only proceed if no cooldown is active
+                log.info("No active cooldown. Checking for deposit requirement.")
+                
+                # NEW: Calculate the drop based on TrueLayer total balance versus current pot balance
                 desired_balance = credit_account.get_total_balance()
                 drop = desired_balance - pre_deposit_balance
                 log.info(f"Calculated drop based on desired balance {desired_balance} and pot balance {pre_deposit_balance} is {drop}.")
@@ -223,7 +221,7 @@ def sync_balance():
                     if current_time < credit_account.cooldown_until:
                         log.info(
                             f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} "
-                            f"(cooldown until {datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')}). "
+                            f"(cooldown until {datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")}). "
                             "Baseline not updated."
                         )
                         continue
