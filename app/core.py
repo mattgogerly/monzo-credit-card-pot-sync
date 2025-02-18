@@ -162,13 +162,14 @@ def sync_balance():
 
                 log.info(f"Applying deposit for pot {pot_id} using credit account {credit_account.type}")
 
-                # Apply (and persist) a cooldown period if applicable.
                 now = int(time())
                 try:
                     deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                 except Exception:
                     deposit_cooldown_hours = 0
                 cooldown_duration = deposit_cooldown_hours * 3600
+
+                # Update cooldown value and re-fetch persisted account info
                 if credit_account.cooldown_until and now < credit_account.cooldown_until:
                     dt_str = __import__("datetime").datetime.fromtimestamp(credit_account.cooldown_until).isoformat()
                     log.info(f"Deposit postponed for {credit_account.type} due to active cooldown until {dt_str}.")
@@ -177,6 +178,16 @@ def sync_balance():
                     new_cooldown = now + cooldown_duration
                     credit_account.cooldown_until = new_cooldown
                     log.info(f"Cooldown initiated until {__import__('datetime').datetime.fromtimestamp(new_cooldown).isoformat()} for {credit_account.type}.")
+                    # Persist the new cooldown immediately
+                    account_repository.update_credit_account_fields(
+                        credit_account.type, pot_id, credit_account.get_prev_balance(pot_id), new_cooldown
+                    )
+                    # Re-fetch to ensure updated cooldown is saved
+                    refreshed = account_repository.get(credit_account.type)
+                    if refreshed.cooldown_until and now < refreshed.cooldown_until:
+                        dt_str = __import__("datetime").datetime.fromtimestamp(refreshed.cooldown_until).isoformat()
+                        log.info(f"Deposit postponed after re-fetch for {refreshed.type} due to active cooldown until {dt_str}.")
+                        continue
 
                 log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
                 monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
