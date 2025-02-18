@@ -84,13 +84,14 @@ def sync_balance():
             )
             return
 
-        # Before computing differential adjustments, initialize prev_balance if unset.
+        # Only initialize prev_balance on first run (e.g. if it's not already set).
         for credit_account in credit_accounts:
-            if credit_account.pot_id:
-                if credit_account.get_prev_balance(credit_account.pot_id) == 0:
-                    live = monzo_account.get_pot_balance(credit_account.pot_id)
-                    credit_account.update_prev_balance(credit_account.pot_id, live)
-                    log.info(f"Initialized prev_balance for {credit_account.type} pot {credit_account.pot_id} to {live}")
+            if credit_account.pot_id and credit_account.get_prev_balance(credit_account.pot_id) == 0:
+                live = monzo_account.get_pot_balance(credit_account.pot_id)
+                # Instead of calling update_prev_balance (which persists live balance immediately),
+                # simply set the in-memory value once.
+                credit_account.prev_balances[credit_account.pot_id] = live
+                log.info(f"Initialized prev_balance for {credit_account.type} pot {credit_account.pot_id} to {live}")
 
         # Step 2: Calculate balance differentials for each designated credit card pot
         pot_balance_map = {}
@@ -210,7 +211,8 @@ def sync_balance():
                 log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
                 monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
                 log.info(f"[Before Deposit] {credit_account.type} prev_balances: {credit_account.prev_balances}")
-                # Update persisted previous balance after deposit.
+                # After depositing:
+                # current_pot_balance is freshly fetched (after deposit)
                 credit_account.update_prev_balance(pot_id, current_pot_balance + difference)
                 log.info(f"[After Deposit] {credit_account.type} prev_balances: {credit_account.prev_balances}")
                 account_repository.save(credit_account)
@@ -224,3 +226,10 @@ def sync_balance():
 
                 log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
                 monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
+                
+                log.info(f"[Before Withdrawal] {credit_account.type} prev_balances: {credit_account.prev_balances}")
+                # After withdrawing:
+                # current_pot_balance is freshly fetched (after deposit)
+                credit_account.update_prev_balance(pot_id, current_pot_balance + difference)
+                log.info(f"[After Withdrawal] {credit_account.type} prev_balances: {credit_account.prev_balances}")
+                account_repository.save(credit_account)
