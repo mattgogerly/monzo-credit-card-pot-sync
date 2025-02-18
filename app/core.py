@@ -162,21 +162,21 @@ def sync_balance():
 
                 now = int(time())
                 try:
-                    # Removed unused assignment: deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                     int(settings_repository.get("deposit_cooldown_hours"))
                 except Exception:
                     pass
-                # Re-fetch fresh account record to check if a cooldown is still active
-                fresh_account = account_repository.get(credit_account.type)
-                if fresh_account.cooldown_until and now < fresh_account.cooldown_until:
-                    dt_str = __import__("datetime").datetime.fromtimestamp(fresh_account.cooldown_until).isoformat()
-                    log.info(f"Deposit postponed for {fresh_account.type} due to active cooldown until {dt_str}.")
+
+                # If an active cooldown exists (i.e., value is set and in the future), skip deposit.
+                if credit_account.cooldown_until and credit_account.cooldown_until > now:
+                    dt_str = __import__("datetime").datetime.fromtimestamp(credit_account.cooldown_until).isoformat()
+                    log.info(f"Deposit postponed for {credit_account.type} due to active cooldown until {dt_str}.")
                     continue
-                # Do NOT reissue a new cooldown here; allow deposit to proceed when no active cooldown
+
+                # Otherwise, proceed with deposit and clear the cooldown (do not reissue a new one)
                 log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
                 monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
                 current_pot_balance = monzo_account.get_pot_balance(pot_id)
-                # Update only the persisted baseline balance; clear cooldown by setting it to None (or leave unchanged)
+                # Clear cooldown by setting it to None; new cooldown will be issued upon the next pot drop event.
                 account_repository.update_credit_account_fields(
                     credit_account.type, pot_id, current_pot_balance, None
                 )
