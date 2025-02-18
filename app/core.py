@@ -259,5 +259,7 @@ def sync_balance():
                         log.info(f"No drop persists for {credit_account.type} pot {credit_account.pot_id} after cooldown. Clearing cooldown.")
                     # Clear cooldown in either case.
                     credit_account.cooldown_until = None
-                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, current_balance)                else:                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, current_balance)
+                else:
+                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
                     log.info(f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} (cooldown until {human_readable}).")
