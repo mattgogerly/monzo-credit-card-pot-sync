@@ -122,7 +122,7 @@ def sync_balance():
         for credit_account in credit_accounts:
             if credit_account.pot_id:
                 live_balance = monzo_account.get_pot_balance(credit_account.pot_id)
-                if credit_account.get_prev_balance(credit_account.pot_id) is None:
+                if credit_account.get_prev_balance(credit_account.pot_id) == 0:
                     credit_account.update_prev_balance(credit_account.pot_id, live_balance)
                     log.info(f"Persisted previous balance for {credit_account.type} pot {credit_account.pot_id} set to {live_balance}")
                     account_repository.save(credit_account)
@@ -173,11 +173,11 @@ def sync_balance():
                 current_pot_balance = monzo_account.get_pot_balance(pot_id)
                 # Retrieve the persisted previous balance (if any)
                 persisted_previous_balance = credit_account.get_prev_balance(pot_id)
-                if persisted_previous_balance is None:
+                if persisted_previous_balance == 0:
                     log.info(f"No persisted previous balance for {credit_account.type} pot {pot_id}. Using live balance {current_pot_balance} as default.")
-                    persisted_previous_balance = current_pot_balance
                     credit_account.update_prev_balance(pot_id, current_pot_balance)
                     account_repository.save(credit_account)
+                    persisted_previous_balance = current_pot_balance
                 log.info(f"Persisted previous balance for {pot_id}: {persisted_previous_balance}")
                 log.info(f"Current pot balance for {pot_id}: {current_pot_balance}")
                 
