@@ -266,7 +266,7 @@ def sync_balance():
                     except Exception:
                         deposit_cooldown_hours = 0
                     cooldown_duration = deposit_cooldown_hours * 3600
-                    monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection="personal")
+                    monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=account_selection)
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                     log.info(f"Post-cooldown deposit executed for {credit_account.type} pot {credit_account.pot_id}; deposited {drop/100:.2f}. New balance: {new_balance}.")
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, new_balance)
