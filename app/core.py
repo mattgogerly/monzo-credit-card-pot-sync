@@ -84,6 +84,14 @@ def sync_balance():
             )
             return
 
+        # Before computing differential adjustments, initialize prev_balance if unset.
+        for credit_account in credit_accounts:
+            if credit_account.pot_id:
+                if credit_account.get_prev_balance(credit_account.pot_id) == 0:
+                    live = monzo_account.get_pot_balance(credit_account.pot_id)
+                    credit_account.update_prev_balance(credit_account.pot_id, live)
+                    log.info(f"Initialized prev_balance for {credit_account.type} pot {credit_account.pot_id} to {live}")
+
         # Step 2: Calculate balance differentials for each designated credit card pot
         pot_balance_map = {}
 
