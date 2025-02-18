@@ -125,6 +125,14 @@ def sync_balance():
             if credit_account.pot_id and credit_account.pot_id not in pot_to_credit_account:
                 pot_to_credit_account[credit_account.pot_id] = credit_account
 
+        # After calculating pot balance differentials (Step 2) and before performing adjustments:
+        # Refresh credit account objects with persisted values (e.g. active cooldown)
+        for i, credit_account in enumerate(credit_accounts):
+            refreshed = account_repository.get(credit_account.type)
+            credit_accounts[i].cooldown_until = refreshed.cooldown_until
+            credit_accounts[i].prev_balance = refreshed.prev_balance
+        log.info("Refreshed credit account data including cooldown values.")
+
         # Step 3: Perform necessary balance adjustments
         for pot_id, pot_info in pot_balance_map.items():
             pot_diff = pot_info['balance']
