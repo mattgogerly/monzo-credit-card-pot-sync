@@ -199,7 +199,7 @@ def sync_balance():
                     )
                     credit_account.cooldown_until = updated_account.cooldown_until
                 else:
-                    log.info(f"Calculated drop is not positive. No cooldown or deposit triggered.")
+                    log.info("Calculated drop is not positive. No cooldown or deposit triggered.")
             else:
                 # For positive differential (withdrawal)
                 difference = abs(pot_diff)
