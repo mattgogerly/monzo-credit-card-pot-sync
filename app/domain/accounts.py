@@ -86,15 +86,13 @@ class Account:
         # Ensure self.prev_balances is a dict
         if not isinstance(self.prev_balances, dict):
             self.prev_balances = {}
-        # Update the in-memory dictionary
+        # Update in-memory storage with a new dictionary copy
+        self.prev_balances = dict(self.prev_balances)  # force a new instance
         self.prev_balances[pot_id] = balance
-        # Explicitly flag that the mutable attribute has changed
-        from sqlalchemy.orm.attributes import flag_modified
-        flag_modified(self, "prev_balances")
-        # Persist the update to the database
+        # Do not call flag_modified() here because self is not a SQLAlchemy ORM instance.
         from app.models.account_repository import account_repository
         account_repository.save(self)
-        # Refresh the in-memory state from the DB
+        # Refresh in-memory state from the database.
         refreshed = account_repository.get(self.type)
         self.prev_balances = refreshed.prev_balances
 
