@@ -118,10 +118,10 @@ def sync_balance():
             log.info("Balance sync is disabled; exiting sync loop")
             return
 
-        # Build mapping from pot_id to credit account for withdrawal check later
+        # Build mapping from pot_id to credit account for further updates.
         pot_to_credit_account = {}
         for credit_account in credit_accounts:
-            if (credit_account.pot_id):
+            if credit_account.pot_id and credit_account.pot_id not in pot_to_credit_account:
                 pot_to_credit_account[credit_account.pot_id] = credit_account
 
         # Step 3: Perform necessary balance adjustments
@@ -142,7 +142,7 @@ def sync_balance():
             if (pot_diff == 0):
                 log.info("No balance difference; no action required")
             elif pot_diff < 0:
-                # Need to deposit funds into the pot.
+                # Negative differential, need to deposit funds into the pot.
                 difference = abs(pot_diff)
                 if monzo_balance < difference:
                     log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
@@ -154,13 +154,21 @@ def sync_balance():
                     )
                     return
 
-                # Optional: apply and persist a cooldown period if applicable.
+                # Retrieve credit account corresponding to this pot.
+                credit_account = pot_to_credit_account.get(pot_id)
+                if credit_account is None:
+                    log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
+                    continue
+
+                log.info(f"Applying deposit for pot {pot_id} using credit account {credit_account.type}")
+
+                # Apply (and persist) a cooldown period if applicable.
+                now = int(time())
                 try:
                     deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                 except Exception:
                     deposit_cooldown_hours = 0
                 cooldown_duration = deposit_cooldown_hours * 3600
-                now = int(time())
                 if credit_account.cooldown_until and now < credit_account.cooldown_until:
                     dt_str = __import__("datetime").datetime.fromtimestamp(credit_account.cooldown_until).isoformat()
                     log.info(f"Deposit postponed for {credit_account.type} due to active cooldown until {dt_str}.")
@@ -169,14 +177,10 @@ def sync_balance():
                     new_cooldown = now + cooldown_duration
                     credit_account.cooldown_until = new_cooldown
                     log.info(f"Cooldown initiated until {__import__('datetime').datetime.fromtimestamp(new_cooldown).isoformat()} for {credit_account.type}.")
-                    # Persist the new cooldown value along with the balance update below
 
-                # Proceed with deposit
                 log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
                 monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
-                # Fetch the fresh pot balance AFTER deposit
                 current_pot_balance = monzo_account.get_pot_balance(pot_id)
-                # Update persisted prev_balance (and cooldown) using our repository method
                 account_repository.update_credit_account_fields(
                     credit_account.type, pot_id, current_pot_balance, credit_account.cooldown_until
                 )
