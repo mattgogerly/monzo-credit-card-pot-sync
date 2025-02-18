@@ -1,4 +1,5 @@
 import logging
+import time
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy.exc import NoResultFound
 
@@ -28,7 +29,8 @@ def index():
     log.info("Retrieving credit card accounts")
     accounts = account_repository.get_credit_accounts()
     
-    return render_template("pots/index.html", pots=pots, accounts=accounts, account_type=account_type)
+    # Pass the current timestamp to the template
+    return render_template("pots/index.html", pots=pots, accounts=accounts, account_type=account_type, now=int(time.time()))
 
 @pots_bp.route("/", methods=["POST"])
 def set_designated_pot():
