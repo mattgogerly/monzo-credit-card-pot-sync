@@ -192,7 +192,7 @@ def sync_balance():
                             credit_account.prev_balance = new_balance
                             credit_account.cooldown_until = None
                             deposit_executed = True
-                            log.info(f"Post-cooldown deposit executed for {credit_account.type} pot {pot_id}; deposited {deposit_amount/100:.2f}. New balance: {new_balance}.")
+                            log.info(f"Post-cooldown deposit executed for {credit_account.type} pot {pot_id}; deposited £{deposit_amount/100:.2f}. New balance: {new_balance}.")
                         else:
                             log.info("No drop remains after cooldown; deposit not needed.")
                         # If deposit executed, do not continue to set a new cooldown.
