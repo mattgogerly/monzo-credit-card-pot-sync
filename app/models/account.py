@@ -1,6 +1,4 @@
 from app.extensions import db
-import json
-from sqlalchemy.types import TypeDecorator, JSON
 
 class AccountModel(db.Model):
     type = db.Column(db.String(150), primary_key=True)
