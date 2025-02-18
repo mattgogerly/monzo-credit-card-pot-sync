@@ -167,12 +167,11 @@ def sync_balance():
                     log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
                     continue
 
-                # Cache pre-deposit balance for decision making
+                # Cache pre-deposit balance for decision making (current pot balance)
                 pre_deposit_balance = monzo_account.get_pot_balance(pot_id)
                 log.info(f"Pre-deposit balance for pot {pot_id} is {pre_deposit_balance}")
                 
                 now = int(time())
-                # Check if a cooldown is already set (explicitly check non-null and > 0)
                 if credit_account.cooldown_until is not None and credit_account.cooldown_until > 0:
                     if now < credit_account.cooldown_until:
                         human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
@@ -181,11 +180,12 @@ def sync_balance():
                     else:
                         log.info(f"Cooldown expired for {credit_account.type} pot {pot_id}. Proceeding with deposit.")
                 else:
-                    log.info("No cooldown active. Checking for drop.")
+                    log.info("No cooldown active. Checking for deposit requirement.")
 
-                # Calculate the drop
-                drop = credit_account.get_prev_balance(pot_id) - pre_deposit_balance
-                log.info(f"Calculated drop is {drop}.")
+                # NEW: Calculate the drop based on TrueLayer total balance versus current pot balance.
+                desired_balance = credit_account.get_total_balance()
+                drop = desired_balance - pre_deposit_balance
+                log.info(f"Calculated drop based on desired balance {desired_balance} and pot balance {pre_deposit_balance} is {drop}.")
                 if drop > 0:
                     try:
                         deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
@@ -199,8 +199,7 @@ def sync_balance():
                     )
                     credit_account.cooldown_until = updated_account.cooldown_until
                 else:
-                    log.info(f"Drop of {drop} is not positive. No cooldown or deposit triggered.")
-
+                    log.info(f"Calculated drop is not positive. No cooldown or deposit triggered.")
             else:
                 # For positive differential (withdrawal)
                 difference = abs(pot_diff)
@@ -212,12 +211,12 @@ def sync_balance():
                 log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
                 monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
 
-        # Final loop: update persisted baseline only if the credit account’s total balance (i.e. TrueLayerAccount.get_total_balance())
-        # has increased and the cooldown period is complete.
+        # Final loop: update persisted baseline; if the cooldown period has expired and no deposit is needed,
+        # then clear the cooldown flag.
         current_time = int(time())
         for credit_account in credit_accounts:
             if credit_account.pot_id:
-                # Use the credit account's total balance as the intended live state after deposits/withdrawals.
+                # Use the credit account's total balance as the intended live state.
                 live = credit_account.get_total_balance()
                 prev = credit_account.get_prev_balance(credit_account.pot_id)
                 if credit_account.cooldown_until:
@@ -228,10 +227,14 @@ def sync_balance():
                             "Baseline not updated."
                         )
                         continue
+                    # Clear expired cooldown
+                    log.info(f"Cooldown expired for {credit_account.type} pot {credit_account.pot_id}; clearing cooldown.")
+                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, prev, None)
+                    credit_account.cooldown_until = None
                 if live > prev:
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
                     credit_account.prev_balance = live
-                    log.info(f"Cooldown complete. Updated baseline for {credit_account.type} pot {credit_account.pot_id} to {live} and retaining cooldown if still applicable.")
+                    log.info(f"Updated baseline for {credit_account.type} pot {credit_account.pot_id} to {live}.")
                 else:
                     log.info(f"Persisted baseline for {credit_account.type} pot {credit_account.pot_id} remains unchanged (prev: {prev}, live: {live})")
         # Final deposit re-check loop: only run if cooldown has expired.
