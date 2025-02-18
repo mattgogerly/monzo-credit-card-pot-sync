@@ -196,6 +196,7 @@ def sync_balance():
                     credit_account.cooldown_until = now + cooldown_duration
                     dt_str = __import__("datetime").datetime.fromtimestamp(credit_account.cooldown_until).isoformat()
                     log.info(f"Cooldown initiated until {dt_str} for {credit_account.type}.")
+                    continue
 
                 # Proceed with deposit
                 if monzo_balance < difference:
