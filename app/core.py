@@ -119,11 +119,12 @@ def sync_balance():
             log.info("Balance sync is disabled; exiting sync loop")
             return
 
-        # Build mapping from pot_id to credit account for further updates.
+        # Build mapping from (pot_id, account.type) to credit account for further updates.
         pot_to_credit_account = {}
         for credit_account in credit_accounts:
-            if credit_account.pot_id and credit_account.pot_id not in pot_to_credit_account:
-                pot_to_credit_account[credit_account.pot_id] = credit_account
+            if credit_account.pot_id:
+                key = f"{credit_account.pot_id}_{credit_account.type}"
+                pot_to_credit_account[key] = credit_account
 
         # After calculating pot balance differentials (Step 2) and before performing adjustments:
         # Refresh credit account objects with persisted values (e.g. active cooldown)
@@ -176,7 +177,9 @@ def sync_balance():
                             )
                             return
 
-                credit_account = pot_to_credit_account.get(pot_id)
+                # Determine the correct key based on the expected account type.
+                key = f"{pot_id}_{credit_account.type}"
+                credit_account = pot_to_credit_account.get(key)
                 if credit_account is None:
                     log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
                     continue
@@ -235,7 +238,9 @@ def sync_balance():
             else:
                 # For positive differential (withdrawal)
                 difference = abs(pot_diff)
-                credit_account = pot_to_credit_account.get(pot_id)
+                # Determine the correct key based on the expected account type.
+                key = f"{pot_id}_{credit_account.type}"
+                credit_account = pot_to_credit_account.get(key)
                 if credit_account is None:
                     log.error(f"No credit account found for pot {pot_id}. Skipping withdrawal.")
                     continue
