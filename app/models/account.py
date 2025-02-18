@@ -1,4 +1,5 @@
 from app.extensions import db
+from sqlalchemy.ext.mutable import MutableDict
 
 class AccountModel(db.Model):
     type = db.Column(db.String(150), primary_key=True)
@@ -8,4 +9,5 @@ class AccountModel(db.Model):
     token_expiry = db.Column(db.Integer)
     account_id = db.Column(db.String(150), nullable=True)
     cooldown_until = db.Column(db.Integer, nullable=True)
-    prev_balances = db.Column(db.JSON, default=lambda: {})
+    # Use MutableDict so changes in the dict are tracked and persisted.
+    prev_balances = db.Column(MutableDict.as_mutable(db.JSON), default=lambda: {})
