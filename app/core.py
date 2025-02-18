@@ -193,11 +193,12 @@ def sync_balance():
                     new_cooldown = None
                     log.info(f"Pot balance not decreased (prev: {prev_balance}, current: {current_pot_balance}). No cooldown set.")
                 
-                # After deposit, update persisted record and update in-memory prev_balances
+                # After deposit, update persisted record and update in-memory prev_balance
                 account_repository.update_credit_account_fields(
                     credit_account.type, pot_id, current_pot_balance, new_cooldown
                 )
-                credit_account.prev_balances[pot_id] = current_pot_balance
+                # Replace dictionary update with an integer assignment:
+                credit_account.prev_balance = current_pot_balance
                 log.info(f"[After Deposit] Updated persisted prev_balance for {credit_account.type} pot {pot_id} to {current_pot_balance}")
 
             else:
@@ -218,8 +219,8 @@ def sync_balance():
                 prev = credit_account.get_prev_balance(credit_account.pot_id)
                 if live > prev:
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
-                    # Also update in-memory value so get_prev_balance reflects the change
-                    credit_account.prev_balances[credit_account.pot_id] = live
+                    # Update in-memory attribute directly:
+                    credit_account.prev_balance = live
                     log.info(f"Updated persisted previous balance for {credit_account.type} pot {credit_account.pot_id} to {live}")
                 else:
                     log.info(f"Persisted baseline for {credit_account.type} pot {credit_account.pot_id} remains unchanged (prev: {prev}, live: {live})")
