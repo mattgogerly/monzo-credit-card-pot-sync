@@ -162,39 +162,24 @@ def sync_balance():
                 pre_deposit_balance = monzo_account.get_pot_balance(pot_id)
                 log.info(f"Pre-deposit balance for pot {pot_id} is {pre_deposit_balance}")
 
-                # Only trigger deposit if the drop is significant (custom threshold can be added)
-                if pre_deposit_balance < credit_account.get_prev_balance(pot_id):
-                    log.info(f"Applying deposit for pot {pot_id} using credit account {credit_account.type}")
+                # Calculate the drop
+                drop = credit_account.get_prev_balance(pot_id) - pre_deposit_balance
+
+                # Instead of triggering a deposit, trigger cooldown if any drop is detected
+                if drop > 0:
                     now = int(time())
                     try:
                         deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                     except Exception:
                         deposit_cooldown_hours = 0
                     cooldown_duration = deposit_cooldown_hours * 3600
-
-                    # Check if an active cooldown exists; if so, skip deposit.
-                    fresh_account = account_repository.get(credit_account.type)
-                    if fresh_account.cooldown_until and now < fresh_account.cooldown_until:
-                        dt_str = __import__("datetime").datetime.fromtimestamp(fresh_account.cooldown_until).isoformat()
-                        log.info(f"Deposit postponed for {fresh_account.type} due to active cooldown until {dt_str}.")
-                        continue
-
-                    # Retrieve previous persisted balance.
-                    prev_balance = credit_account.get_prev_balance(pot_id)
-                    log.info(f"Previous persisted balance for pot {pot_id} is {prev_balance}")
-
-                    # Proceed with deposit.
-                    log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
-                    monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
-                    # Do not fetch current balance immediately via API after deposit.
-                    # Instead, assume deposit is recorded and trigger cooldown.
                     new_cooldown = now + cooldown_duration if cooldown_duration > 0 else None
-                    log.info(f"Deposit executed. Setting cooldown until {new_cooldown}")
+                    log.info(f"Drop of {drop} detected. Setting cooldown until {new_cooldown} for pot {pot_id} using credit account {credit_account.type}.")
                     account_repository.update_credit_account_fields(
                         credit_account.type, pot_id, pre_deposit_balance, new_cooldown
                     )
                 else:
-                    log.info(f"Pre-deposit balance indicates no sustained drop for pot {pot_id}. Skipping deposit.")
+                    log.info(f"Drop of {drop} is not positive. No cooldown or deposit triggered.")
 
             else:
                 # For positive differential (withdrawal)
