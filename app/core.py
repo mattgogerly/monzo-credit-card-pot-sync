@@ -87,31 +87,34 @@ def sync_balance():
 
         # Step 2: Calculate balance differentials for each designated credit card pot
         pot_balance_map = {}
-
+        
         for credit_account in credit_accounts:
             try:
                 pot_id = credit_account.pot_id
-                if (not pot_id):
+                if not pot_id:
                     raise NoResultFound(f"No designated credit card pot set for {credit_account.type}")
-
+        
                 # Determine account selection based on account type
                 account_selection = monzo_account.get_account_type(pot_id)
-
-                if (pot_id not in pot_balance_map):
+        
+                if pot_id not in pot_balance_map:
                     log.info(f"Retrieving balance for credit card pot {pot_id}")
                     pot_balance = monzo_account.get_pot_balance(pot_id)
-                    pot_balance_map[pot_id] = {'balance': pot_balance, 'account_selection': account_selection}
+                    # Include the credit account type for later key construction.
+                    pot_balance_map[pot_id] = {
+                        'balance': pot_balance,
+                        'account_selection': account_selection,
+                        'credit_type': credit_account.type
+                    }
                     log.info(f"Credit card pot {pot_id} balance is £{pot_balance / 100:.2f}")
             except NoResultFound:
-                log.error(
-                    f"No designated credit card pot configured for {credit_account.type}; exiting sync loop"
-                )
+                log.error(f"No designated credit card pot configured for {credit_account.type}; exiting sync loop")
                 return
-
+        
             log.info(f"Retrieving balance for {credit_account.type} credit card")
             credit_balance = credit_account.get_total_balance()
             log.info(f"{credit_account.type} card balance is £{credit_balance / 100:.2f}")
-
+        
             # Adjust the designated pot balance by subtracting the credit card balance
             pot_balance_map[pot_id]['balance'] -= credit_balance
 
@@ -155,22 +158,17 @@ def sync_balance():
             elif pot_diff < 0:
                 now = int(time())
                 deposit_executed = False
-                # FIRST: check if a cooldown exists.
-                # Determine the correct key based on the expected account type.
-                key = f"{pot_id}_{credit_account.type}"
+                # Use the stored credit account type from pot_balance_map
+                key = f"{pot_id}_{pot_info['credit_type']}"
                 credit_account = pot_to_credit_account.get(key)
                 if credit_account is None:
                     log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
                     continue
-                # Now safe to check credit_account.cooldown_until
+            
                 if credit_account.cooldown_until is not None:
                     if now < credit_account.cooldown_until:
-                        human_readable = datetime.datetime.fromtimestamp(
-                            credit_account.cooldown_until
-                        ).strftime("%Y-%m-%d %H:%M:%S")
-                        log.info(
-                            f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit."
-                        )
+                        human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                        log.info(f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
                         continue
                     else:
                         difference = abs(pot_diff)
@@ -183,15 +181,15 @@ def sync_balance():
                                 account_selection=account_selection,
                             )
                             return
-
-                # Determine the correct key based on the expected account type.
-                key = f"{pot_id}_{credit_account.type}"
+            
+                # Retrieve the credit account again using the same key (if needed)
+                key = f"{pot_id}_{pot_info['credit_type']}"
                 credit_account = pot_to_credit_account.get(key)
                 if credit_account is None:
                     log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
                     continue
-
-                # Cache pre-deposit balance for decision making (current pot balance)
+            
+                # Cache pre-deposit balance for decision making
                 pre_deposit_balance = monzo_account.get_pot_balance(pot_id)
                 log.info(f"Pre-deposit balance for pot {pot_id} is {pre_deposit_balance}")
                 
@@ -242,19 +240,19 @@ def sync_balance():
                         credit_account.cooldown_until = updated_account.cooldown_until
                     else:
                         log.info("Calculated drop is not positive. No cooldown or deposit triggered.")
+    
             else:
                 # For positive differential (withdrawal)
                 difference = abs(pot_diff)
-                # Determine the correct key based on the expected account type.
-                key = f"{pot_id}_{credit_account.type}"
+                key = f"{pot_id}_{pot_info['credit_type']}"
                 credit_account = pot_to_credit_account.get(key)
                 if credit_account is None:
                     log.error(f"No credit account found for pot {pot_id}. Skipping withdrawal.")
                     continue
-
+            
                 log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
                 monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
-
+    
         # Final loop: update persisted baseline; if the cooldown period has expired and no deposit is needed,
         # then clear the cooldown flag.
         current_time = int(time())
