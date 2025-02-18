@@ -150,7 +150,7 @@ def sync_balance():
 
             if (pot_diff == 0):
                 log.info("No balance difference; no action required")
-            elif pot_diff < 0:
+            elif pot_diff < -1:
                 difference = abs(pot_diff)
                 if monzo_balance < difference:
                     log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
