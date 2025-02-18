@@ -190,7 +190,7 @@ def sync_balance():
                     new_cooldown = None
                     log.info(f"Pot balance not decreased (prev: {prev_balance}, current: {current_pot_balance}). No cooldown set.")
                 
-R                # After deposit, update persisted record and update in-memory prev_balances
+                # After deposit, update persisted record and update in-memory prev_balances
                 account_repository.update_credit_account_fields(
                     credit_account.type, pot_id, current_pot_balance, new_cooldown
                 )
