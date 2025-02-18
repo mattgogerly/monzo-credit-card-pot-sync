@@ -30,7 +30,7 @@ class SqlAlchemyAccountRepository:
             token_expiry=model.token_expiry,
             pot_id=model.pot_id,
             account_id=model.account_id,
-            cooldown_until=model.cooldown_until,
+            cooldown_until=(int(model.cooldown_until) if model.cooldown_until is not None else None),
             prev_balance=model.prev_balance
         )
 

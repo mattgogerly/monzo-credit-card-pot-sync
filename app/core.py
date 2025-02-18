@@ -164,8 +164,8 @@ def sync_balance():
                 log.info(f"Pre-deposit balance for pot {pot_id} is {pre_deposit_balance}")
                 
                 now = int(time())
-                # Check if a cooldown is already set
-                if credit_account.cooldown_until:
+                # Check if a cooldown is already set (explicitly check non-null and > 0)
+                if credit_account.cooldown_until is not None and credit_account.cooldown_until > 0:
                     if now < credit_account.cooldown_until:
                         human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
                         log.info(f"Cooldown still active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
@@ -225,9 +225,10 @@ def sync_balance():
                     log.info(f"Persisted baseline for {credit_account.type} pot {credit_account.pot_id} remains unchanged (prev: {prev}, live: {live})")
         # Final deposit re-check loop: only run if cooldown has expired.
         for credit_account in credit_accounts:
-            if credit_account.pot_id and credit_account.cooldown_until:
+            if credit_account.pot_id and (credit_account.cooldown_until is not None and credit_account.cooldown_until > 0):
                 if current_time < credit_account.cooldown_until:
-                    log.info(f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} (cooldown until {datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')}). Skipping deposit re-check.")
+                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                    log.info(f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} (cooldown until {human_readable}). Skipping deposit re-check.")
                     continue
                 # Only re-check deposit if cooldown has truly expired.
                 pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
