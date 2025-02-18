@@ -90,3 +90,5 @@ class SqlAlchemyAccountRepository:
         if cooldown_until is not None:
             record.cooldown_until = cooldown_until
         self._session.commit()
+        # Refresh and update the record in memory by returning the updated domain object.
+        return self._to_domain(record)
