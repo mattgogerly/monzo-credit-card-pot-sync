@@ -160,13 +160,10 @@ def sync_balance():
                     log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
                     continue
 
-                # Always compute the fresh live pot balance.
-                current_pot_balance = monzo_account.get_pot_balance(pot_id)
-                # Retrieve the persisted previous balance (if any)
-                persisted_previous_balance = credit_account.get_prev_balance(pot_id)
-                log.info(f"Persisted previous balance for {pot_id}: {persisted_previous_balance}")
-                log.info(f"Current pot balance for {pot_id}: {current_pot_balance}")
-                
+                # Update only if balance has changed
+                if live_balance != persisted_balance:
+                    update_persisted_balance(pot_id, live_balance)
+                                
                 # Only proceed with deposit if the live balance has dropped below the persisted balance.
                 if current_pot_balance >= persisted_previous_balance:
                     log.info(f"No deposit required because live balance ({current_pot_balance}) is not below persisted ({persisted_previous_balance}).")
