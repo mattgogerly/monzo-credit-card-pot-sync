@@ -89,12 +89,11 @@ class Account:
         # Update in-memory storage with a new dictionary copy
         self.prev_balances = dict(self.prev_balances)  # force a new instance
         self.prev_balances[pot_id] = balance
-        # Import the repository instance from app/core.py instead of models
+        # Persist the updated balance to the database.
         from app.core import account_repository
         account_repository.save(self)
-        # Refresh in-memory state from the database.
-        refreshed = account_repository.get(self.type)
-        self.prev_balances = refreshed.prev_balances
+        # Do not refresh from the DB here, so that the persisted previous balance remains
+        # the value from the previous run until we deliberately update it (e.g. after a deposit).
 
     def get_prev_balance(self, pot_id: str) -> int:
         # Retrieve the persisted previous balance; fallback to 0 if not stored.
