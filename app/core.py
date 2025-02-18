@@ -187,6 +187,10 @@ def sync_balance():
                     # Persist the updated cooldown value:
                     from app.core import account_repository
                     account_repository.save(credit_account)
+        
+                    refreshed_account = account_repository.get(credit_account.type)
+                    log.info(f"Persisted cooldown for {credit_account.type} is now {refreshed_account.cooldown_until}")
+
                 # Proceed with deposit
                 if monzo_balance < difference:
                     log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
