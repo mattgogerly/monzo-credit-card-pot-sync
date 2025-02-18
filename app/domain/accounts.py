@@ -82,23 +82,9 @@ class Account:
                 return False
         return True
 
-    def update_persisted_balance(pot_id: str, new_balance: int):
-        # Ensure transaction safety if using a database
-        with db_connection.begin() as transaction:
-            result = db_connection.execute(
-                "UPDATE balance_table SET balance = :balance WHERE pot_id = :pot_id",
-                {"balance": new_balance, "pot_id": pot_id}
-            )
-            if result.rowcount == 0:
-                db_connection.execute(
-                    "INSERT INTO balance_table (pot_id, balance) VALUES (:pot_id, :balance)",
-                    {"pot_id": pot_id, "balance": new_balance}
-                )
-            transaction.commit()
-        logger.info(f"Updated persisted balance for {pot_id} to {new_balance}")
-        def get_prev_balance(self, pot_id: str) -> int:
-            # Retrieve the persisted previous balance; fallback to 0 if not stored.
-            return self.prev_balances.get(pot_id, 0)
+    def get_prev_balance(self, pot_id: str) -> int:
+        # Retrieve the persisted previous balance; fallback to 0 if not stored.
+        return self.prev_balances.get(pot_id, 0)
 
 class MonzoAccount(Account):
     def __init__(self, access_token, refresh_token, token_expiry, pot_id="default_pot", account_id=None, prev_balances=None):
