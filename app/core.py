@@ -124,7 +124,7 @@ def sync_balance():
             if (credit_account.pot_id):
                 pot_to_credit_account[credit_account.pot_id] = credit_account
 
-        # Step 3: Perform necessary balance adjustments between Monzo account and each pot
+        # Step 3: Perform necessary balance adjustments
         for pot_id, pot_info in pot_balance_map.items():
             pot_diff = pot_info['balance']
             account_selection = pot_info['account_selection']
@@ -142,7 +142,7 @@ def sync_balance():
             if (pot_diff == 0):
                 log.info("No balance difference; no action required")
             elif pot_diff < 0:
-                # Negative differential: need to deposit funds into the pot.
+                # Need to deposit funds into the pot.
                 difference = abs(pot_diff)
                 if monzo_balance < difference:
                     log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
@@ -154,22 +154,7 @@ def sync_balance():
                     )
                     return
 
-                # Retrieve credit account corresponding to this pot.
-                credit_account = pot_to_credit_account.get(pot_id)
-                if credit_account is None:
-                    log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
-                    continue
-
-                # Update only if balance has changed
-                if live_balance != persisted_balance:
-                    update_persisted_balance(pot_id, live_balance)
-                                
-                # Only proceed with deposit if the live balance has dropped below the persisted balance.
-                if current_pot_balance >= persisted_previous_balance:
-                    log.info(f"No deposit required because live balance ({current_pot_balance}) is not below persisted ({persisted_previous_balance}).")
-                    continue
-
-                # Optional: apply cooldown if needed.
+                # Optional: apply and persist a cooldown period if applicable.
                 try:
                     deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                 except Exception:
@@ -181,51 +166,36 @@ def sync_balance():
                     log.info(f"Deposit postponed for {credit_account.type} due to active cooldown until {dt_str}.")
                     continue
                 else:
-                    credit_account.cooldown_until = now + cooldown_duration
-                    dt_str = __import__("datetime").datetime.fromtimestamp(credit_account.cooldown_until).isoformat()
-                    log.info(f"Cooldown initiated until {dt_str} for {credit_account.type}.")
-                    # Persist the updated cooldown value:
-                    from app.core import account_repository
-                    account_repository.save(credit_account)
-        
-                    refreshed_account = account_repository.get(credit_account.type)
-                    log.info(f"Persisted cooldown for {credit_account.type} is now {refreshed_account.cooldown_until}")
+                    new_cooldown = now + cooldown_duration
+                    credit_account.cooldown_until = new_cooldown
+                    log.info(f"Cooldown initiated until {__import__('datetime').datetime.fromtimestamp(new_cooldown).isoformat()} for {credit_account.type}.")
+                    # Persist the new cooldown value along with the balance update below
 
                 # Proceed with deposit
-                if monzo_balance < difference:
-                    log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
-                    settings_repository.save(Setting("enable_sync", "False"))
-                    monzo_account.send_notification(
-                        "Insufficient Funds for Sync",
-                        "Sync disabled due to low Monzo balance. Please top up and re-enable sync.",
-                        account_selection=account_selection
-                    )
-                    return
-
                 log.info(f"Depositing £{difference / 100:.2f} into credit card pot {pot_id}")
                 monzo_account.add_to_pot(pot_id, difference, account_selection=account_selection)
-                log.info(f"[Before Deposit] {credit_account.type} prev_balances: {credit_account.prev_balances}")
-                # After depositing:
-                # current_pot_balance is freshly fetched (after deposit)
-                credit_account.update_prev_balance(pot_id, current_pot_balance + difference)
-                log.info(f"[After Deposit] {credit_account.type} prev_balances: {credit_account.prev_balances}")
-                account_repository.save(credit_account)
+                # Fetch the fresh pot balance AFTER deposit
+                current_pot_balance = monzo_account.get_pot_balance(pot_id)
+                # Update persisted prev_balance (and cooldown) using our repository method
+                account_repository.update_credit_account_fields(
+                    credit_account.type, pot_id, current_pot_balance, credit_account.cooldown_until
+                )
+                log.info(f"[After Deposit] Updated persisted prev_balance for {credit_account.type} pot {pot_id} to {current_pot_balance}")
+
             else:
-                # Positive differential: need to withdraw funds from the pot back to the account.
+                # For positive differential (withdrawal)
                 difference = abs(pot_diff)
                 credit_account = pot_to_credit_account.get(pot_id)
                 if credit_account is None:
                     log.error(f"No credit account found for pot {pot_id}. Skipping withdrawal.")
                     continue
-                
+
                 log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
                 monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
-                
-                log.info(f"[Before Withdrawal] {credit_account.type} prev_balances: {credit_account.prev_balances}")
-                
-        # At the very end of the sync cycle, update the persisted baseline for each credit account.
+        
+        # At the end of the sync cycle, update the persisted baseline for each credit account.
         for credit_account in credit_accounts:
             if credit_account.pot_id:
                 live = monzo_account.get_pot_balance(credit_account.pot_id)
-                credit_account.update_prev_balance(credit_account.pot_id, live)
+                account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
                 log.info(f"Updated persisted previous balance for {credit_account.type} pot {credit_account.pot_id} to {live}")

@@ -93,3 +93,16 @@ class SqlAlchemyAccountRepository:
     def delete(self, type: str) -> None:
         self._session.query(AccountModel).filter_by(type=type).delete()
         self._session.commit()
+
+    def update_credit_account_fields(self, account_type: str, pot_id: str, new_balance: int, cooldown_until: int = None) -> None:
+        # Retrieve the existing account record for the given credit account type
+        record: AccountModel = self._session.query(AccountModel).filter_by(type=account_type).one()
+        # Ensure we have a dictionary for previous balances
+        prev_bal = record.prev_balances or {}
+        # Update the balance for the designated pot
+        prev_bal[pot_id] = new_balance
+        record.prev_balances = prev_bal
+        # Optionally update the cooldown_until field if provided
+        if cooldown_until is not None:
+            record.cooldown_until = cooldown_until
+        self._session.commit()
