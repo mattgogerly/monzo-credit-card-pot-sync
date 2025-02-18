@@ -162,10 +162,10 @@ def sync_balance():
 
                 now = int(time())
                 try:
-                    deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                    # Removed unused assignment: deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                    int(settings_repository.get("deposit_cooldown_hours"))
                 except Exception:
-                    deposit_cooldown_hours = 0
-
+                    pass
                 # Re-fetch fresh account record to check if a cooldown is still active
                 fresh_account = account_repository.get(credit_account.type)
                 if fresh_account.cooldown_until and now < fresh_account.cooldown_until:
