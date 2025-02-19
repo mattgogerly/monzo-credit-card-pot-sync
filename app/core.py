@@ -167,15 +167,28 @@ def sync_balance():
                 log.info(f"Pre-deposit balance for pot {pot_id} is {pre_deposit_balance}")
                 
                 now = int(time())
-                # Check for an active cooldown.
+                
+                # --- Implementing Step 1: Refresh baseline ---
+                # Retrieve the most recent persisted state for the credit account.
+                refreshed_account = account_repository.get(credit_account.type)
+                credit_account.prev_balance = refreshed_account.prev_balance
+                
+                # --- Implementing Step 2: Double-check live balance ---
+                # First read of live balance.
+                first_live = credit_account.get_total_balance()
+                # Immediately read again to ensure consistency.
+                second_live = credit_account.get_total_balance()
+                if first_live != second_live:
+                    log.info(f"Double-check discrepancy: first_live={first_live}, second_live={second_live}. Using second_live for verification.")
+                desired_balance = second_live
+                
+                # Check for an active cooldown with the updated baseline and double-checked live balance.
                 if credit_account.cooldown_until is not None and now < credit_account.cooldown_until:
-                    # Override cooldown if live balance increased compared to baseline.
-                    desired_balance = credit_account.get_total_balance()
                     if desired_balance > credit_account.prev_balance:
                         log.info(f"Override cooldown: live balance increased from baseline ({credit_account.prev_balance} to {desired_balance}). Proceeding with deposit.")
                     else:
                         human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
-                        log.info(f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
+                        log.info(f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit after double-check.")
                         continue
 
                 # Proceed to calculate deposit difference.
