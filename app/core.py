@@ -133,11 +133,16 @@ def sync_balance():
         # After calculating pot balance differentials (Step 2) and before performing adjustments:
         # Refresh credit account objects with persisted values (e.g. active cooldown)
         for i, credit_account in enumerate(credit_accounts):
-            refreshed = account_repository.get(credit_account.type)
-            credit_accounts[i].cooldown_until = refreshed.cooldown_until
-            credit_accounts[i].prev_balance = refreshed.prev_balance
+            try:
+                refreshed = account_repository.get(credit_account.type)
+                credit_accounts[i].cooldown_until = refreshed.cooldown_until
+                credit_accounts[i].prev_balance = refreshed.prev_balance
+            except NoResultFound:
+                log.error(f"Account for type {credit_account.type} not found; skipping baseline refresh.")
+            except Exception as e:
+                log.error(f"Unexpected error retrieving account {credit_account.type}: {str(e)}")
         log.info("Refreshed credit account data including cooldown values.")
-
+        
         # Step 3: Perform necessary balance adjustments
         for pot_id, pot_info in pot_balance_map.items():
             pot_diff = pot_info['balance']
@@ -223,11 +228,19 @@ def sync_balance():
         # then clear the cooldown flag.
         current_time = int(time())
         for credit_account in credit_accounts:
-            if (credit_account.pot_id):
+            if credit_account.pot_id:
+                try:
+                    prev = account_repository.get(credit_account.type).prev_balance
+                except NoResultFound:
+                    log.error(f"Account for type {credit_account.type} not found during baseline update; skipping.")
+                    continue
+                except Exception as e:
+                    log.error(f"Unexpected error updating baseline for {credit_account.type}: {str(e)}")
+                    continue
+
                 live = credit_account.get_total_balance()
-                prev = credit_account.get_prev_balance(credit_account.pot_id)
-                if (credit_account.cooldown_until):
-                    if (current_time < credit_account.cooldown_until):
+                if credit_account.cooldown_until:
+                    if current_time < credit_account.cooldown_until:
                         log.info(
                             f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} "
                             f"(cooldown until {datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')}). "
@@ -237,7 +250,7 @@ def sync_balance():
                     log.info(f"Cooldown expired for {credit_account.type} pot {credit_account.pot_id}; clearing cooldown.")
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, prev, None)
                     credit_account.cooldown_until = None
-                if (live > prev):
+                if live > prev:
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
                     credit_account.prev_balance = live
                     log.info(f"Updated baseline for {credit_account.type} pot {credit_account.pot_id} to {live}.")
