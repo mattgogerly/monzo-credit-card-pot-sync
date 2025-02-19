@@ -6,6 +6,7 @@ import datetime  # Add import if not already present
 
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
 from app.errors import AuthException
+from app.domain.settings import Setting
 from app.extensions import db, scheduler
 from app.models.account_repository import SqlAlchemyAccountRepository
 from app.models.setting_repository import SqlAlchemySettingRepository
@@ -154,59 +155,66 @@ def sync_balance():
             if pot_diff == 0:
                 log.info("No balance difference; no action required")
             elif pot_diff < 0:
-                # Potential deposit branch
+                # This branch handles a potential deposit scenario.
                 key = f"{pot_id}_{pot_info['credit_type']}"
                 credit_account = pot_to_credit_account.get(key)
                 if credit_account is None:
                     log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
                     continue
 
-                # Get current pot balance before deposit
+                # Get current pot balance
                 pre_deposit_balance = monzo_account.get_pot_balance(pot_id)
                 log.info(f"Pre-deposit balance for pot {pot_id} is {pre_deposit_balance}")
                 
                 now = int(time())
-                # Check for active cooldown; if active, check for override condition.
-                if credit_account.cooldown_until is not None and now < credit_account.cooldown_until:
-                    desired_balance = credit_account.get_total_balance()
-                    if desired_balance > credit_account.prev_balance:
-                        log.info(f"Override cooldown: live balance increased from baseline ({credit_account.prev_balance} to {desired_balance}). Proceeding with deposit.")
-                    else:
+                # FIRST: check for an active cooldown.
+                if credit_account.cooldown_until is not None:
+                    if now < credit_account.cooldown_until:
                         human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
                         log.info(f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
                         continue
+                    else:
+                        log.info(f"Cooldown expired for {credit_account.type} pot {pot_id}. Proceeding with deposit check.")
 
-                # Re-read live (true) card balance; note we never update prev_balance here.
+                # Calculate desired deposit difference.
                 desired_balance = credit_account.get_total_balance()
-                if desired_balance > credit_account.prev_balance:
-                    deposit_amount = desired_balance - pre_deposit_balance
-                    log.info(f"Live balance increased from baseline ({credit_account.prev_balance}). Calculated deposit amount is {deposit_amount}.")
-                    if deposit_amount > 0:
-                        # Verify sufficient funds (if necessary)
+                difference = desired_balance - pre_deposit_balance
+                log.info(f"Calculated difference based on desired balance {desired_balance} and pot balance {pre_deposit_balance} is {difference}.")
+
+                if difference > 0:
+                    # Check if card balance increased compared to previously stored value.
+                    if desired_balance > credit_account.prev_balance:
+                        # Verify that Monzo has sufficient funds before depositing.
+                        if monzo_balance < difference:
+                            log.error("Insufficient funds in Monzo account to deposit; disabling sync")
+                            settings_repository.save(Setting("enable_sync", "False"))
+                            monzo_account.send_notification(
+                                "Insufficient Funds for Sync",
+                                "Sync disabled due to low Monzo balance. Please top up and re-enable sync.",
+                                account_selection=account_selection
+                            )
+                            return
+                        log.info(f"Card balance increased from previous baseline ({credit_account.prev_balance}). Depositing immediately £{difference/100:.2f} into pot {pot_id}.")
                         selection = monzo_account.get_account_type(pot_id)
-                        monzo_account.add_to_pot(pot_id, deposit_amount, account_selection=selection)
+                        monzo_account.add_to_pot(pot_id, difference, account_selection=selection)
                         new_balance = monzo_account.get_pot_balance(pot_id)
                         account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None)
-                        # Do not update credit_account.prev_balance here; let the cooldown expire first.
-                        log.info(f"Deposit executed for {credit_account.type} pot {pot_id}; deposited £{deposit_amount/100:.2f}. New balance: {new_balance}. Prev_balance remains: {credit_account.prev_balance}.")
+                        credit_account.prev_balance = new_balance
                     else:
-                        log.info("Calculated deposit amount is not positive; no deposit executed.")
-                else:
-                    # Otherwise, if live balance has not increased, initiate a cooldown for a true drop.
-                    if pre_deposit_balance < credit_account.prev_balance:
+                        # Card balance unchanged; this is a true drop. Initiate a cooldown.
                         try:
                             deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                         except Exception:
                             deposit_cooldown_hours = 0
                         cooldown_duration = deposit_cooldown_hours * 3600
                         new_cooldown = now + cooldown_duration if cooldown_duration > 0 else None
-                        log.info(f"True drop detected (pre-deposit balance {pre_deposit_balance} < baseline {credit_account.prev_balance}). Initiating cooldown until {datetime.datetime.fromtimestamp(new_cooldown).strftime('%Y-%m-%d %H:%M:%S')}.")
+                        log.info(f"True drop detected (difference {difference}) with no card increase. Setting cooldown until {datetime.datetime.fromtimestamp(new_cooldown).strftime('%Y-%m-%d %H:%M:%S') if new_cooldown else 'None'} for pot {pot_id}. Deposit will execute after cooldown if drop persists.")
                         updated_account = account_repository.update_credit_account_fields(
                             credit_account.type, pot_id, pre_deposit_balance, new_cooldown
                         )
                         credit_account.cooldown_until = updated_account.cooldown_until
-                    else:
-                        log.info(f"Live balance unchanged (desired_balance {desired_balance} <= baseline {credit_account.prev_balance}). No deposit or cooldown triggered.")
+                else:
+                    log.info("No positive difference detected. No deposit or cooldown triggered.")
             else:
                 # For positive differential (withdrawal)
                 difference = abs(pot_diff)
