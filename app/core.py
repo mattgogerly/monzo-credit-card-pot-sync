@@ -46,18 +46,20 @@ def sync_balance():
         for credit_account in credit_accounts:
             try:
                 log.info(f"Checking if {credit_account.type} access token needs refreshing")
-                if (credit_account.is_token_within_expiry_window()):
+                if credit_account.is_token_within_expiry_window():
                     credit_account.refresh_access_token()
                     account_repository.save(credit_account)
-
                 log.info(f"Checking health of {credit_account.type} connection")
                 credit_account.ping()
                 log.info(f"{credit_account.type} connection is healthy")
-
             except AuthException as e:
                 error_message = str(e)
-                log.error(f"Failed to check health of {credit_account.type} connection; connection will be removed. Error: {error_message}")
-
+                if "The provider service is currently unavailable or experiencing technical difficulties. Please try again later." in error_message:
+                    log.error(f"{credit_account.type} token refresh failed due to provider issues: {error_message}. Exiting sync to try again later.")
+                    return  # Exit the sync cycle gracefully
+                else:
+                    log.error(f"Failed to check health of {credit_account.type} connection; connection will be removed. Error: {error_message}")
+        
                 # Try to extract the provider's error_description from the error message.
                 error_desc = ""
                 try:
@@ -154,36 +156,61 @@ def sync_balance():
 
             if pot_diff == 0:
                 log.info("No balance difference; no action required")
-            
+
              elif pot_diff < 0:
-                now = int(time())
-                # Retrieve the correct credit account using the stored credit type from pot_balance_map
-                key = f"{pot_id}_{pot_info['credit_type']}"
-                credit_account = pot_to_credit_account.get(key)
-                if credit_account is None:
-                    log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
-                    continue
-            
-                # Get current pot and desired balances
-                pre_deposit_balance = monzo_account.get_pot_balance(pot_id)
-                desired_balance = credit_account.get_total_balance()
-                deposit_amount = desired_balance - pre_deposit_balance
-            
-                # If a cooldown is active and not yet expired, skip deposit.
-                if credit_account.cooldown_until and now < credit_account.cooldown_until:
-                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
-                    log.info(f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
-                    continue
-            
-                # If there is a drop (i.e. deposit_amount > 0), deposit immediately.
-                if deposit_amount > 0:
-                    selection = monzo_account.get_account_type(pot_id)
-                    monzo_account.add_to_pot(pot_id, deposit_amount, account_selection=selection)
-                    new_balance = monzo_account.get_pot_balance(pot_id)
-                    account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None)
-                    credit_account.prev_balance = new_balance
-                    credit_account.cooldown_until = None
-                    log.info(f"Deposit executed for {credit_account.type} pot {pot_id}; deposited £{deposit_amount/100:.2f}. New balance: {new_balance}.")
+                 difference = abs(pot_diff)
+                 if monzo_balance < difference:
+                     log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
+                     settings_repository.save(Setting("enable_sync", "False"))
+                     monzo_account.send_notification(
+                         "Insufficient Funds for Sync",
+                         "Sync disabled due to low Monzo balance. Please top up and re-enable sync.",
+                         account_selection=account_selection
+                     )
+                     return
+
+                 credit_account = pot_to_credit_account.get(pot_id)
+                 if credit_account is None:
+                     log.error(f"No credit account found for pot {pot_id}. Skipping deposit.")
+                     continue
+
+                 # Get current pot balance
+                 pre_deposit_balance = monzo_account.get_pot_balance(pot_id)
+                 log.info(f"Pre-deposit balance for pot {pot_id} is {pre_deposit_balance}")
+
+                 now = int(time())
+                 # If a cooldown exists and is still active, skip deposit
+                 if credit_account.cooldown_until and now < credit_account.cooldown_until:
+                     human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                     log.info(f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
+                     continue
+
+                 # No active cooldown, so calculate the deposit amount immediately
+                 desired_balance = credit_account.get_total_balance()
+                 deposit_amount = desired_balance - pre_deposit_balance
+
+                 if deposit_amount > 0:
+                     selection = monzo_account.get_account_type(pot_id)
+                     monzo_account.add_to_pot(pot_id, deposit_amount, account_selection=selection)
+                     new_balance = monzo_account.get_pot_balance(pot_id)
+                     account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None)
+                     credit_account.prev_balance = new_balance
+                     # Optionally, set a new cooldown after deposit to throttle subsequent deposits:
+                     try:
+                         deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                     except Exception:
+                         deposit_cooldown_hours = 0
+                     if deposit_cooldown_hours > 0:
+                         new_cooldown = now + deposit_cooldown_hours * 3600
+                         updated_account = account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, new_cooldown)
+                         credit_account.cooldown_until = updated_account.cooldown_until
+                         log.info(f"Deposit executed for {credit_account.type} pot {pot_id}; deposited £{deposit_amount/100:.2f}. New balance: {new_balance}. New cooldown set until {datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')}.")
+                     else:
+                         credit_account.cooldown_until = None
+                         log.info(f"Deposit executed for {credit_account.type} pot {pot_id}; deposited £{deposit_amount/100:.2f}. New balance: {new_balance}.")
+                 else:
+                     log.info("No deposit required because live balance is not below persisted balance.")
+                     
             
                     # Optionally, set a new cooldown after deposit to throttle subsequent deposits.
                     try:
