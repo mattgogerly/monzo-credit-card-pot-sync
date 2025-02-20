@@ -209,7 +209,7 @@ def sync_balance():
                 log.info("Withdrawal completed; if a cooldown is set, it remains active until full period elapses.")
             # We always want to withdraw from our pot if its balance is larger than our total card balance
             elif pot_delta > 0:
-                withdraw_amount = abs(delta)
+                withdraw_amount = abs(pot_delta)
                 log.info(f"Card balance decreased by {withdraw_amount}; withdrawing from pot {pot_id}.")
                 monzo_account.withdraw_from_pot(pot_id, withdraw_amount, account_selection=account_selection)
                 new_cc = live_card_balance  # use live card balance here as well
