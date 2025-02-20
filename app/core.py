@@ -174,6 +174,10 @@ def sync_balance():
             baseline = credit_account.cooldown_start_balance
             delta = live_card_balance - baseline
 
+            # Compare pot balance to live card balance
+            
+            pot_delta = pot_diff - live_card_balance
+
             if delta > 0:
                 # Card balance increased (new spending) → deposit the extra funds.
                 if monzo_balance < delta:
@@ -192,11 +196,22 @@ def sync_balance():
                 account_repository.update_credit_account_fields(
                     credit_account.type, pot_id, new_cc, None, baseline, None)
                 credit_account.prev_balance = new_cc
-                log.info("Deposit completed; cooldown remains active until full period elapses.")
+                log.info("Deposit completed; if a cooldown is set, it remains active until full period elapses.")
             elif delta < 0:
                 # Card balance decreased (payment received) → withdraw the difference.
                 withdraw_amount = abs(delta)
                 log.info(f"Card decreased by {withdraw_amount}; withdrawing from pot {pot_id}.")
+                monzo_account.withdraw_from_pot(pot_id, withdraw_amount, account_selection=account_selection)
+                new_cc = live_card_balance  # use live card balance here as well
+                account_repository.update_credit_account_fields(
+                    credit_account.type, pot_id, new_cc, None, baseline, None)
+                credit_account.prev_balance = new_cc
+                log.info("Withdrawal completed; if a cooldown is set, it remains active until full period elapses.")
+            # We always want to withdraw from our pot if its balance is larger than our total card balance
+            elif pot_delta > 0:
+                # Card balance decreased (payment received) → withdraw the difference.
+                withdraw_amount = abs(delta)
+                log.info(f"Card balance decreased by {withdraw_amount}; withdrawing from pot {pot_id}.")
                 monzo_account.withdraw_from_pot(pot_id, withdraw_amount, account_selection=account_selection)
                 new_cc = live_card_balance  # use live card balance here as well
                 account_repository.update_credit_account_fields(
