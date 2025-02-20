@@ -219,10 +219,6 @@ def sync_balance():
                 baseline = credit_account.cooldown_start_balance if credit_account.cooldown_start_balance is not None else pre_deposit
                 drop = baseline - current_balance
                 if drop > 0:
-                    try:
-                        deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
-                    except Exception:
-                        deposit_cooldown_hours = 0
                     log.info(f"Post-cooldown deposit: depositing pending drop of {drop} into pot {credit_account.pot_id}.")
                     selection = monzo_account.get_account_type(credit_account.pot_id)
                     monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
