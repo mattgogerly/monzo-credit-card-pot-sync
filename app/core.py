@@ -170,11 +170,12 @@ def sync_balance():
             drop = baseline - current_pot
             log.info(f"Computed drop for {credit_account.type} (baseline {baseline} - current pot {current_pot}): {drop} pence")
 
-            # Compare live card balance to our fixed baseline.
+            # Compare live card balance to our fixed pre-cooldown baseline.
+            baseline = credit_account.cooldown_start_balance
             delta = live_card_balance - baseline
 
             if delta > 0:
-                # Card balance increased (new spending) → deposit the difference.
+                # Card balance increased (new spending) → deposit the extra funds.
                 if monzo_balance < delta:
                     log.error("Insufficient funds in Monzo account to deposit; disabling sync")
                     settings_repository.save(Setting("enable_sync", "False"))
@@ -186,20 +187,21 @@ def sync_balance():
                 log.info(f"Card increased by {delta}; depositing into pot {pot_id}.")
                 selection = monzo_account.get_account_type(pot_id)
                 monzo_account.add_to_pot(pot_id, delta, account_selection=selection)
-                new_balance = monzo_account.get_pot_balance(pot_id)
+                # Instead of updating prev_balance with the pot balance, update it with the live card balance.
+                new_cc = live_card_balance
                 account_repository.update_credit_account_fields(
-                    credit_account.type, pot_id, new_balance, None, baseline, None)
-                credit_account.prev_balance = new_balance
+                    credit_account.type, pot_id, new_cc, None, baseline, None)
+                credit_account.prev_balance = new_cc
                 log.info("Deposit completed; cooldown remains active until full period elapses.")
             elif delta < 0:
                 # Card balance decreased (payment received) → withdraw the difference.
                 withdraw_amount = abs(delta)
                 log.info(f"Card decreased by {withdraw_amount}; withdrawing from pot {pot_id}.")
                 monzo_account.withdraw_from_pot(pot_id, withdraw_amount, account_selection=account_selection)
-                new_balance = monzo_account.get_pot_balance(pot_id)
+                new_cc = live_card_balance  # use live card balance here as well
                 account_repository.update_credit_account_fields(
-                    credit_account.type, pot_id, new_balance, None, baseline, None)
-                credit_account.prev_balance = new_balance
+                    credit_account.type, pot_id, new_cc, None, baseline, None)
+                credit_account.prev_balance = new_cc
                 log.info("Withdrawal completed; cooldown remains active until full period elapses.")
             else:
                 log.info(f"Card and baseline balance equal for {credit_account.type}; no action taken. Maintaining cooldown until full period expires.")
