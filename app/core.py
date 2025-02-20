@@ -163,11 +163,14 @@ def sync_balance():
             live_card_balance = credit_account.get_total_balance()
             pot_balance_live = monzo_account.get_pot_balance(pot_id)
             
-            # If no cooldown is active, set the pre-cooldown balance from current card balance.
+            # If no cooldown is active, record current balance as pre-cooldown.
             if credit_account.cooldown_until is None:
                 credit_account.cooldown_start_balance = live_card_balance
+            # Ensure cooldown_start_balance is set (guard against None)
+            if credit_account.cooldown_start_balance is None:
+                credit_account.cooldown_start_balance = live_card_balance
 
-            # Calculate delta between live card balance and the stored pre-cooldown balance.
+            # Now compute delta safely.
             delta = live_card_balance - credit_account.cooldown_start_balance
 
             if delta > 0:
