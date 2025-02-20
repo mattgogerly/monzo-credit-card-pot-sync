@@ -161,7 +161,7 @@ def sync_balance():
 
             # Retrieve live card balance and live pot balance.
             live_card_balance = credit_account.get_total_balance()
-            current_pot = monzo_account.get_pot_balance(pot_id)
+            current_pot = monzo_account.get_pot_balance(credit_account.pot_id)
             # Ensure cooldown_start_balance is set: if None, initialize it with live_card_balance.
             if credit_account.cooldown_start_balance is None:
                 credit_account.cooldown_start_balance = live_card_balance
@@ -170,12 +170,33 @@ def sync_balance():
             drop = baseline - current_pot
             log.info(f"Computed drop for {credit_account.type} (baseline {baseline} - current pot {current_pot}): {drop} pence")
 
+            # Retrieve deposit cooldown hours setting from settings repository, defaulting to 3 if not found.
+            deposit_cooldown_hours_value = settings_repository.get("deposit_cooldown_hours")
+            try:
+                deposit_cooldown_hours = int(deposit_cooldown_hours_value) if deposit_cooldown_hours_value is not None else 3
+            except Exception as e:
+                log.error(f"Error parsing deposit_cooldown_hours setting: {e}. Defaulting to 3.")
+                deposit_cooldown_hours = 3
+
+            # New cooldown logic: if current pot balance is lower than live card balance,
+            # set a cooldown timer using deposit_cooldown_hours.
+            if current_pot < live_card_balance:
+                now = int(time())
+                # Only set a new cooldown if none is active or the previous one has expired.
+                if credit_account.cooldown_until is None or now >= credit_account.cooldown_until:
+                    cooldown_seconds = deposit_cooldown_hours * 3600
+                    credit_account.cooldown_until = now + cooldown_seconds
+                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')
+                    log.info(f"Setting cooldown for {credit_account.type} pot {credit_account.pot_id} until {human_readable}")
+                else:
+                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')
+                    log.info(f"Cooldown already active for {credit_account.type} pot {credit_account.pot_id} until {human_readable}")
+
             # Compare live card balance to our fixed pre-cooldown baseline.
             baseline = credit_account.cooldown_start_balance
             delta = live_card_balance - baseline
 
             # Compare pot balance to live card balance
-            
             pot_delta = current_pot - live_card_balance
 
             if delta > 0:
