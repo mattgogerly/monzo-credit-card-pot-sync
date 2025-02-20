@@ -159,19 +159,18 @@ def sync_balance():
                 log.error(f"No credit account found for pot {pot_id}. Skipping adjustments.")
                 continue
 
-            # Retrieve live card balance and live pot balance (current_pot already used)
+            # Retrieve live card balance and live pot balance.
             live_card_balance = credit_account.get_total_balance()
             current_pot = monzo_account.get_pot_balance(pot_id)
-            log.info(f"Live pot balance for pot {pot_id}: {current_pot} pence")
-            drop = baseline - current_pot
-            log.info(f"Computed drop for {credit_account.type} (baseline {baseline} - current pot {current_pot}): {drop} pence")
-            
             # Ensure cooldown_start_balance is set: if None, initialize it with live_card_balance.
             if credit_account.cooldown_start_balance is None:
                 credit_account.cooldown_start_balance = live_card_balance
+            baseline = credit_account.cooldown_start_balance
+            log.info(f"Live pot balance for pot {pot_id}: {current_pot} pence")
+            drop = baseline - current_pot
+            log.info(f"Computed drop for {credit_account.type} (baseline {baseline} - current pot {current_pot}): {drop} pence")
 
             # Compare live card balance to our fixed baseline.
-            baseline = credit_account.cooldown_start_balance
             delta = live_card_balance - baseline
 
             if delta > 0:
