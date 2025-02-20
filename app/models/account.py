@@ -1,12 +1,16 @@
 from app.extensions import db
+from sqlalchemy import Column, Integer, String  # ...existing imports...
 
 class AccountModel(db.Model):
-    type = db.Column(db.String(150), primary_key=True)
-    pot_id = db.Column(db.String(150))
-    access_token = db.Column(db.String(1024))
-    refresh_token = db.Column(db.String(1024))
-    token_expiry = db.Column(db.Integer)
-    account_id = db.Column(db.String(150), nullable=True)
-    cooldown_until = db.Column(db.Integer, nullable=True)
-    prev_balance = db.Column(db.Integer, default=0)
-    cooldown_start_balance = db.Column(db.Integer, nullable=True)  # new field
+    __tablename__ = "accounts"
+    id = Column(Integer, primary_key=True)
+    type = Column(String(50), nullable=False)
+    access_token = Column(String(255), nullable=False)
+    refresh_token = Column(String(255), nullable=False)
+    token_expiry = Column(Integer)
+    pot_id = Column(String(255))
+    account_id = Column(String(255))
+    cooldown_until = Column(Integer, nullable=True)
+    prev_balance = Column(Integer, default=0)
+    cooldown_start_balance = Column(Integer, nullable=True)  # new field
+    pending_drop = Column(Integer, nullable=True)  # new field

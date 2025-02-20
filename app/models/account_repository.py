@@ -20,7 +20,8 @@ class SqlAlchemyAccountRepository:
             account_id=account.account_id,
             cooldown_until=account.cooldown_until,
             prev_balance=account.prev_balance if isinstance(account.prev_balance, int) else 0,
-            cooldown_start_balance=account.cooldown_start_balance  # new field
+            cooldown_start_balance=account.cooldown_start_balance,  # new field
+            pending_drop=account.pending_drop  # new field
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
@@ -33,7 +34,8 @@ class SqlAlchemyAccountRepository:
             account_id=model.account_id,
             cooldown_until=(int(model.cooldown_until) if model.cooldown_until is not None else None),
             prev_balance=model.prev_balance,
-            cooldown_start_balance=model.cooldown_start_balance  # new field
+            cooldown_start_balance=model.cooldown_start_balance,  # new field
+            pending_drop=model.pending_drop  # new field
         )
 
     def get_all(self) -> list[Account]:
@@ -88,10 +90,12 @@ class SqlAlchemyAccountRepository:
 
     def update_credit_account_fields(self, account_type: str, pot_id: str, 
                                      new_balance: int, cooldown_until: int = None,
-                                     cooldown_start_balance: int = None) -> Account:
+                                     cooldown_start_balance: int = None,
+                                     pending_drop: int = None) -> Account:
         record: AccountModel = self._session.query(AccountModel).filter_by(type=account_type).one()
         record.prev_balance = new_balance
         record.cooldown_until = cooldown_until
         record.cooldown_start_balance = cooldown_start_balance
+        record.pending_drop = pending_drop
         self._session.commit()
         return self._to_domain(record)

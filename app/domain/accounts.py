@@ -20,7 +20,8 @@ class Account:
         account_id=None,
         cooldown_until=None,
         prev_balance=0,
-        cooldown_start_balance=None  # new field
+        cooldown_start_balance=None,  # new field
+        pending_drop=None             # new field
     ):
         self.type = type
         self.access_token = access_token
@@ -31,6 +32,7 @@ class Account:
         self.cooldown_until = cooldown_until
         self.prev_balance = prev_balance
         self.cooldown_start_balance = cooldown_start_balance  # new
+        self.pending_drop = pending_drop                    # new
 
 
     def is_token_within_expiry_window(self):
