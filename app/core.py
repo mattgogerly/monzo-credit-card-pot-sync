@@ -247,7 +247,7 @@ def sync_balance():
                     monzo_account.add_to_pot(credit_account.pot_id, pending, account_selection=selection)
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                     account_repository.update_credit_account_fields(
-                        credit_account.type, credit_account.pot_id, new_balance, None, None, None
+                        credit_account.type, credit_account.pot_id, new_balance, None, None
                     )
                     credit_account.prev_balance = new_balance
                     credit_account.pending_drop = None
@@ -347,12 +347,11 @@ def sync_balance():
 
             # Case 1: Card balance greater than pot balance
             if card_balance > pot_balance:
-                # Determine baseline: if on cooldown, use cooldown_start_balance; else use prev_balance.
+                # Use cooldown_start_balance if a cooldown is active; otherwise use prev_balance.
                 baseline = credit_account.cooldown_start_balance if credit_account.cooldown_until else credit_account.prev_balance
                 # If baseline not set, default to pot balance.
                 if baseline is None:
                     baseline = pot_balance
-                # New deposit amount is (current card balance - baseline)
                 deposit_amount = card_balance - baseline
                 if deposit_amount > 0:
                     log.info(f"Depositing £{deposit_amount/100:.2f} into pot {pot_id} for {credit_account.type}")
