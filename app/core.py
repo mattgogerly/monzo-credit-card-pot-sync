@@ -206,17 +206,22 @@ def sync_balance():
             else:
                 log.info(f"Card and baseline balance equal for {credit_account.type}; no action taken. Maintaining cooldown until full period expires.")
 
-        # Final deposit re-check loop: if cooldown has expired.
+        # Final deposit re‑check loop: if cooldown has expired.
         for credit_account in credit_accounts:
             if credit_account.pot_id and credit_account.cooldown_until:
-                if int(time()) < credit_account.cooldown_until:
+                # Always skip final deposit if cooldown_start_balance is still set (i.e. cooldown active)
+                now = int(time())
+                if now < credit_account.cooldown_until:
                     human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
-                    log.info(f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} until {human_readable}. Skipping deposit re-check.")
+                    log.info(f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} until {human_readable}. Skipping deposit re‑check.")
+                    continue
+                # Even if cooldown_until has expired, if cooldown_start_balance is still set, hold off deposit.
+                if credit_account.cooldown_start_balance is not None:
+                    log.info(f"Cooldown details still present for {credit_account.type}; skipping final deposit until full cooldown clearance.")
                     continue
                 pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
                 current_balance = monzo_account.get_pot_balance(credit_account.pot_id)
-                # Use the stored cooldown_start_balance as baseline if set.
-                baseline = credit_account.cooldown_start_balance if credit_account.cooldown_start_balance is not None else pre_deposit
+                baseline = pre_deposit  # Use persisted baseline when no active cooldown
                 drop = baseline - current_balance
                 if drop > 0:
                     log.info(f"Post-cooldown deposit: depositing pending drop of {drop} into pot {credit_account.pot_id}.")
