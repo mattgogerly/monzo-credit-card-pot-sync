@@ -223,7 +223,6 @@ def sync_balance():
                         deposit_cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                     except Exception:
                         deposit_cooldown_hours = 0
-                    cooldown_duration = deposit_cooldown_hours * 3600
                     log.info(f"Post-cooldown deposit: depositing pending drop of {drop} into pot {credit_account.pot_id}.")
                     selection = monzo_account.get_account_type(credit_account.pot_id)
                     monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
