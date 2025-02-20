@@ -2,9 +2,8 @@ from app.extensions import db
 from sqlalchemy import Column, Integer, String  # ...existing imports...
 
 class AccountModel(db.Model):
-    __tablename__ = "accounts"
     id = Column(Integer, primary_key=True)
-    type = Column(String(50), nullable=False)
+    type = Column(String(50), nullable=False, unique=True)
     access_token = Column(String(255), nullable=False)
     refresh_token = Column(String(255), nullable=False)
     token_expiry = Column(Integer)

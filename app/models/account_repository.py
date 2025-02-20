@@ -80,8 +80,23 @@ class SqlAlchemyAccountRepository:
         return self._to_domain(result)
 
     def save(self, account: Account) -> None:
-        model = self._to_model(account)
-        self._session.merge(model)
+        # Check if an account with the same type exists
+        existing = self._session.query(AccountModel).filter_by(type=account.type).one_or_none()
+        if existing:
+            # Update existing record
+            existing.access_token = account.access_token
+            existing.refresh_token = account.refresh_token
+            existing.token_expiry = account.token_expiry
+            existing.pot_id = account.pot_id
+            existing.account_id = account.account_id
+            existing.prev_balance = account.prev_balance
+            existing.cooldown_until = account.cooldown_until
+            existing.cooldown_start_balance = account.cooldown_start_balance
+            existing.pending_drop = account.pending_drop
+        else:
+            # No record exists, add new.
+            model = self._to_model(account)
+            self._session.merge(model)
         self._session.commit()
 
     def delete(self, type: str) -> None:
