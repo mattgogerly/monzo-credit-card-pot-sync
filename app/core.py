@@ -469,7 +469,7 @@ def sync_balance():
                 monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
                 new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
                 account_repository.update_credit_account_fields(
-                    credit_account.type, credit_account.pot_id, new_balance=new_pot,
+                    credit_account.type, credit_account.pot_id, new_balance=current_cc,
                     cooldown_until=credit_account.cooldown_until, cooldown_start_balance=current_cc, pending_drop=None
                 )
                 prev_cc = current_cc
@@ -531,7 +531,6 @@ def sync_balance():
                 cooldown_start_balance=pending_base, pending_drop=None
             )
             log.info(f"--- Finished processing account: {credit_account.type} ---")
-# ...existing code continues...
 
         for credit_account in credit_accounts:
             # (Persisted fields: prev_cc, pending_base, cooldown_until are refreshed)
@@ -547,13 +546,15 @@ def sync_balance():
             diff = current_cc - prev_cc
 
             if diff > 0:
-                # New spending: deposit 'diff' amount to pot
-                log.info(f"New spending detected: depositing {diff}.")
-                selection = monzo_account.get_account_type(credit_account.pot_id)
-                monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
-                prev_cc = current_cc
-                pending_base = current_cc
-                # Note: active cooldown remains if one was already set.
+                if cooldown_until:
+                    log.info(f"New spending detected: diff = {diff} but account {credit_account.type} is in cooldown until {cooldown_until}; postponing deposit.")
+                else:
+                    log.info(f"New spending detected: depositing {diff}.")
+                    selection = monzo_account.get_account_type(credit_account.pot_id)
+                    monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
+                    prev_cc = current_cc
+                    pending_base = current_cc
+                    log.info(f"After deposit, updated prev_cc and pending_base to {current_cc}.")
             elif diff < 0:
                 # Payment received: withdraw |diff| from pot, update baseline and clear cooldown.
                 withdraw_amt = abs(diff)
