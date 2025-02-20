@@ -1,5 +1,5 @@
 from app.extensions import db
-from sqlalchemy import Column, Integer, String  # ...existing imports...
+from sqlalchemy import Column, Integer, String
 
 class AccountModel(db.Model):
     id = Column(Integer, primary_key=True)
@@ -11,5 +11,5 @@ class AccountModel(db.Model):
     account_id = Column(String(255))
     cooldown_until = Column(Integer, nullable=True)
     prev_balance = Column(Integer, default=0)
-    cooldown_start_balance = Column(Integer, nullable=True)  # new field
-    pending_drop = Column(Integer, nullable=True)  # new field
+    cooldown_start_balance = Column(Integer, nullable=True)
+    pending_drop = Column(Integer, nullable=True)
