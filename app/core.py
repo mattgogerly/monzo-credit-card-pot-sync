@@ -205,7 +205,7 @@ def sync_balance():
                         new_cooldown = now + cooldown_duration if cooldown_duration > 0 else None
                         log.info(f"True drop detected (difference {difference}) with no card increase. Setting cooldown until {datetime.datetime.fromtimestamp(new_cooldown).strftime('%Y-%m-%d %H:%M:%S') if new_cooldown else 'None'} for pot {pot_id}, and storing pending drop of {difference}.")
                         updated_account = account_repository.update_credit_account_fields(
-                            credit_account.type, pot_id, pre_deposit_balance, new_cooldown, credit_account.cooldown_until if credit_account.cooldown_until else card_balance, difference
+                            credit_account.type, pot_id, pre_deposit_balance, new_cooldown, desired_balance, difference
                         )
                         credit_account.cooldown_until = updated_account.cooldown_until
                         credit_account.pending_drop = difference
