@@ -26,8 +26,11 @@ def save():
         else:
             repository.save(Setting("enable_sync", "False"))
 
-        override_cooldown_spending = "True" if request.form.get("override_cooldown_spending") == "on" else "False"
-        repository.save(Setting("override_cooldown_spending", override_cooldown_spending))
+        # Checkbox: POST request omits unchecked boxes, so set value accordingly
+        if request.form.get("override_cooldown_spending") is not None:
+            repository.save(Setting("override_cooldown_spending", "True"))
+        else:
+            repository.save(Setting("override_cooldown_spending", "False"))
 
         for key, val in request.form.items():
             if key in ["enable_sync", "override_cooldown_spending"]:
