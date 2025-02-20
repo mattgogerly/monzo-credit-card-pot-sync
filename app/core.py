@@ -271,18 +271,21 @@ def sync_balance():
             refreshed = account_repository.get(credit_account.type)
             prev_cc = refreshed.prev_balance
             cooldown_until = refreshed.cooldown_until
+
+            # Determine pending_base from cooldown_start_balance if set, otherwise use prev_cc
             pending_base = refreshed.cooldown_start_balance if refreshed.cooldown_start_balance is not None else prev_cc
 
             current_cc = credit_account.get_total_balance()
             current_pot = monzo_account.get_pot_balance(credit_account.pot_id)
             log.info(f"{credit_account.type}: current CC={current_cc}, pot={current_pot}, prev_cc={prev_cc}, pending_base={pending_base}")
 
-            # If cooldown active, check for override (only deposit if diff > 0)
-            if cooldown_until and now < cooldown_until:
+            # Check if cooldown is active:
+            if (cooldown_until is not None and now < cooldown_until) or (credit_account.cooldown_start_balance is not None):
+                # If override is enabled, check for new spending diff
                 if settings_repository.get("override_cooldown_spending") == "True":
                     diff = current_cc - prev_cc
                     if diff > 0:
-                        log.info(f"New spending of {diff} detected for {credit_account.type} during cooldown.")
+                        log.info(f"Override active for {credit_account.type}: new spending of {diff} detected during cooldown.")
                         selection = monzo_account.get_account_type(credit_account.pot_id)
                         monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
                         new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
@@ -295,47 +298,56 @@ def sync_balance():
                             pending_drop=credit_account.pending_drop
                         )
                         credit_account.prev_balance = current_cc
-                        log.info(f"Deposited {diff}, cooldown remains until {cooldown_until}.")
+                        log.info(f"Deposited override amount {diff}, cooldown remains active until {cooldown_until}.")
                     else:
-                        log.info(f"No new spending detected for {credit_account.type} during active cooldown.")
+                        log.info(f"No new spending detected for {credit_account.type} during active cooldown; skipping deposit override.")
                 else:
-                    log.info(f"Cooldown is still active for {credit_account.type} until {cooldown_until}; skipping deposit re‑check.")
+                    log.info(f"Cooldown active for {credit_account.type} (cooldown_until={cooldown_until}, cooldown_start_balance={credit_account.cooldown_start_balance}); skipping final drop deposit.")
                 continue
 
-            # Handle any pending drops or final deposit if needed
-            drop = pending_base - current_pot
-            if drop > 0:
-                selection = monzo_account.get_account_type(credit_account.pot_id)
-                log.info(f"Depositing final drop of {drop} into pot {credit_account.pot_id} for {credit_account.type}.")
-                monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
-                new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
-                account_repository.update_credit_account_fields(
-                    credit_account.type,
-                    credit_account.pot_id,
-                    new_balance,
-                    cooldown_until=None,
-                    cooldown_start_balance=None,
-                    pending_drop=None
-                )
-                credit_account.prev_balance = new_balance
-                credit_account.cooldown_start_balance = None
-                log.info(f"Final deposit completed, new pot balance={new_balance}")
+            # Handle any pending drops or final deposit if needed when no cooldown is active
+            # Added extra handling to verify no cooldown is active before depositing final drop.
+            if credit_account.cooldown_until is not None or credit_account.cooldown_start_balance is not None:
+                log.info(f"Cooldown is active for {credit_account.type} (cooldown_until={credit_account.cooldown_until}, "
+                         f"cooldown_start_balance={credit_account.cooldown_start_balance}); skipping final deposit.")
             else:
-                log.info(f"No pending drop for {credit_account.type}.")
+                drop = pending_base - current_pot
+                if drop > 0:
+                    selection = monzo_account.get_account_type(credit_account.pot_id)
+                    log.info(f"Depositing final drop of {drop} into pot {credit_account.pot_id} for {credit_account.type}.")
+                    monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
+                    new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
+                    account_repository.update_credit_account_fields(
+                        credit_account.type,
+                        credit_account.pot_id,
+                        new_balance,
+                        cooldown_until=None,
+                        cooldown_start_balance=None,
+                        pending_drop=credit_account.pending_drop
+                    )
+                    credit_account.prev_balance = new_balance
+                    credit_account.cooldown_start_balance = None
+                    log.info(f"Final deposit completed, new pot balance={new_balance}")
+                else:
+                    log.info(f"No pending drop for {credit_account.type}.")
 
-            # Optionally clear or update baseline if the card balance changed
+            # Optionally clear or update baseline if the card balance changed,
+            # but only if no cooldown is active.
             if current_cc != prev_cc:
-                log.info(f"Baseline changed from {prev_cc} to {current_cc} for {credit_account.type}.")
-                account_repository.update_credit_account_fields(
-                    credit_account.type,
-                    credit_account.pot_id,
-                    current_pot,
-                    cooldown_until=None,
-                    cooldown_start_balance=None,
-                    pending_drop=None
-                )
-                credit_account.prev_balance = current_cc
-                credit_account.cooldown_start_balance = None
+                if credit_account.cooldown_until is None and credit_account.cooldown_start_balance is None:
+                    log.info(f"Baseline changed from {prev_cc} to {current_cc} for {credit_account.type}.")
+                    account_repository.update_credit_account_fields(
+                        credit_account.type,
+                        credit_account.pot_id,
+                        current_pot,
+                        cooldown_until=None,
+                        cooldown_start_balance=None,
+                        pending_drop=credit_account.pending_drop
+                    )
+                    credit_account.prev_balance = current_cc
+                    credit_account.cooldown_start_balance = None
+                else:
+                    log.info(f"Cooldown active for {credit_account.type}; skipping baseline update.")
             else:
                 log.info(f"No baseline update needed for {credit_account.type}.")
 
