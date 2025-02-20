@@ -280,14 +280,13 @@ def sync_balance():
                     log.info(f"Cooldown expired for {credit_account.type} pot {credit_account.pot_id}; clearing cooldown.")
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, prev, None)
                     credit_account.cooldown_until = None
-                if live > prev:
+                if live != prev:
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
                     credit_account.prev_balance = live
                     log.info(f"Updated baseline for {credit_account.type} pot {credit_account.pot_id} to {live}.")
                 else:
                     log.info(f"Persisted baseline for {credit_account.type} pot {credit_account.pot_id} remains unchanged (prev: {prev}, live: {live})")
-
-        # Final deposit re-check loop: only run if cooldown has expired.
+                        # Final deposit re-check loop: only run if cooldown has expired.
         for credit_account in credit_accounts:
             if credit_account.pot_id and credit_account.cooldown_until and credit_account.cooldown_until > 0:
                 if current_time < credit_account.cooldown_until:
