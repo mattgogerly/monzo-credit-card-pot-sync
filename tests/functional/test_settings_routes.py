@@ -19,3 +19,11 @@ def test_settings_post(test_client, seed_data):
     response = test_client.get("/settings/")
     assert b"Monzo Client ID" in response.data
     assert b"123" in response.data
+
+def test_settings_post_override_cooldown(test_client, seed_data):
+    response = test_client.post("/settings/", data={"override_cooldown_spending": "on"})
+    assert response.status_code == 302
+
+    response = test_client.get("/settings/")
+    assert b"Override Cooldown Spending" in response.data
+    # ...verify it shows as checked or stored...
