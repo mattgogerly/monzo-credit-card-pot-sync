@@ -19,7 +19,8 @@ class Account:
         pot_id=None,
         account_id=None,
         cooldown_until=None,
-        prev_balance=0
+        prev_balance=0,
+        cooldown_start_balance=None  # new field
     ):
         self.type = type
         self.access_token = access_token
@@ -29,6 +30,7 @@ class Account:
         self.account_id = account_id
         self.cooldown_until = cooldown_until
         self.prev_balance = prev_balance
+        self.cooldown_start_balance = cooldown_start_balance  # new
 
 
     def is_token_within_expiry_window(self):

@@ -19,7 +19,8 @@ class SqlAlchemyAccountRepository:
             pot_id=account.pot_id,
             account_id=account.account_id,
             cooldown_until=account.cooldown_until,
-            prev_balance=account.prev_balance if isinstance(account.prev_balance, int) else 0
+            prev_balance=account.prev_balance if isinstance(account.prev_balance, int) else 0,
+            cooldown_start_balance=account.cooldown_start_balance  # new field
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
@@ -31,7 +32,8 @@ class SqlAlchemyAccountRepository:
             pot_id=model.pot_id,
             account_id=model.account_id,
             cooldown_until=(int(model.cooldown_until) if model.cooldown_until is not None else None),
-            prev_balance=model.prev_balance
+            prev_balance=model.prev_balance,
+            cooldown_start_balance=model.cooldown_start_balance  # new field
         )
 
     def get_all(self) -> list[Account]:
@@ -84,11 +86,12 @@ class SqlAlchemyAccountRepository:
         self._session.query(AccountModel).filter_by(type=type).delete()
         self._session.commit()
 
-    def update_credit_account_fields(self, account_type: str, pot_id: str, new_balance: int, cooldown_until: int = None) -> None:
+    def update_credit_account_fields(self, account_type: str, pot_id: str, 
+                                     new_balance: int, cooldown_until: int = None,
+                                     cooldown_start_balance: int = None) -> Account:
         record: AccountModel = self._session.query(AccountModel).filter_by(type=account_type).one()
         record.prev_balance = new_balance
-        if cooldown_until is not None:
-            record.cooldown_until = cooldown_until
+        record.cooldown_until = cooldown_until
+        record.cooldown_start_balance = cooldown_start_balance
         self._session.commit()
-        # Refresh and update the record in memory by returning the updated domain object.
         return self._to_domain(record)
