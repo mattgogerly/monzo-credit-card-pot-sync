@@ -9,3 +9,4 @@ class AccountModel(db.Model):
     account_id = db.Column(db.String(150), nullable=True)
     cooldown_until = db.Column(db.Integer, nullable=True)
     prev_balance = db.Column(db.Integer, default=0)
+    cooldown_start_balance = db.Column(db.Integer, nullable=True)  # new field
