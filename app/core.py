@@ -347,11 +347,11 @@ def sync_balance():
 
             # Case 1: Card balance greater than pot balance
             if card_balance > pot_balance:
-                # Use cooldown_start_balance if a cooldown is active; otherwise use prev_balance.
+                # Use the cooldown_start_balance if cooldown is active; otherwise, use prev_balance.
                 baseline = credit_account.cooldown_start_balance if credit_account.cooldown_until else credit_account.prev_balance
-                # If baseline not set, default to pot balance.
+                # Fallback if baseline is None (shouldn't happen if cooldown data is properly set)
                 if baseline is None:
-                    baseline = pot_balance
+                    baseline = credit_account.prev_balance
                 deposit_amount = card_balance - baseline
                 if deposit_amount > 0:
                     log.info(f"Depositing £{deposit_amount/100:.2f} into pot {pot_id} for {credit_account.type}")
