@@ -161,7 +161,6 @@ def sync_balance():
 
             # Retrieve live balances.
             live_card_balance = credit_account.get_total_balance()
-            pot_balance_live = monzo_account.get_pot_balance(pot_id)
             
             # Ensure cooldown_start_balance is set: if None, initialize it with live_card_balance.
             if credit_account.cooldown_start_balance is None:
