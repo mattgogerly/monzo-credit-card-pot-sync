@@ -197,10 +197,6 @@ def sync_balance():
                         new_balance = monzo_account.get_pot_balance(pot_id)
                         account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None, None, None)
                         credit_account.prev_balance = new_balance
-                        # Clear cooldown only after a successful deposit.
-                        credit_account.cooldown_until = None
-                        credit_account.cooldown_start_balance = None
-                        credit_account.pending_drop = None
                     else:
                         # No card increase: trigger (or extend) cooldown.
                         try:
@@ -230,7 +226,9 @@ def sync_balance():
                     continue
                 log.info(f"Withdrawing £{difference / 100:.2f} from credit card pot {pot_id}")
                 monzo_account.withdraw_from_pot(pot_id, difference, account_selection=account_selection)
-        # End Step 3
+                new_balance = monzo_account.get_pot_balance(pot_id)
+                account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None, None)
+                credit_account.prev_balance = new_balance
 
         # Final deposit re-check loop: if cooldown has expired.
         for credit_account in credit_accounts:
@@ -258,10 +256,6 @@ def sync_balance():
                         credit_account.type, credit_account.pot_id, new_balance, None, None, None
                     )
                     credit_account.prev_balance = new_balance
-                    # Only clear cooldown after deposit has been executed.
-                    credit_account.cooldown_until = None
-                    credit_account.cooldown_start_balance = None
-                    credit_account.pending_drop = None
                 else:
                     log.info(f"No pending drop persists for {credit_account.type} pot {credit_account.pot_id} after cooldown. Leaving deposit unexecuted.")
 
@@ -294,7 +288,7 @@ def sync_balance():
         for credit_account in credit_accounts:
             if (credit_account.pot_id and credit_account.cooldown_until):
                 if (current_time < credit_account.cooldown_until):
-                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%:%S")
                     log.info(f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} (cooldown until {human_readable}). Skipping deposit re-check.")
                     continue
                 pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
@@ -401,10 +395,6 @@ def sync_balance():
                             new_balance = monzo_account.get_pot_balance(pot_id)
                             account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None, None, None)
                             credit_account.prev_balance = new_balance
-                            # Clear cooldown after successful deposit.
-                            credit_account.cooldown_until = None
-                            credit_account.cooldown_start_balance = None
-                            credit_account.pending_drop = None
                         else:
                             # No card increase: start or extend cooldown.
                             now = int(time())
@@ -434,8 +424,6 @@ def sync_balance():
                 new_balance = monzo_account.get_pot_balance(pot_id)
                 account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None, None)
                 credit_account.prev_balance = new_balance
-                credit_account.cooldown_until = None
-                credit_account.cooldown_start_balance = None
             
             # If card balance equals pot balance, clear any expired cooldown.
             else:
@@ -493,10 +481,6 @@ def sync_balance():
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, new_balance, None, None, None)
                     credit_account.prev_balance = new_balance
-                    # Clear cooldown-related fields after successful deposit.
-                    credit_account.cooldown_until = None
-                    credit_account.cooldown_start_balance = None
-                    credit_account.pending_drop = None
                     log.info(f"Re‑check deposit complete for {credit_account.type}; new pot balance: {new_balance}.")
                 else:
                     log.info(f"No residual pending drop for {credit_account.type}; no deposit re‑check action taken.")

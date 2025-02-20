@@ -109,8 +109,12 @@ class SqlAlchemyAccountRepository:
                                      pending_drop: int = None) -> Account:
         record: AccountModel = self._session.query(AccountModel).filter_by(type=account_type).one()
         record.prev_balance = new_balance
-        record.cooldown_until = cooldown_until
-        record.cooldown_start_balance = cooldown_start_balance
-        record.pending_drop = pending_drop
+        if cooldown_until is not None:
+            record.cooldown_until = cooldown_until
+        # Only update cooldown_start_balance if provided
+        if cooldown_start_balance is not None:
+            record.cooldown_start_balance = cooldown_start_balance
+        if pending_drop is not None:
+            record.pending_drop = pending_drop
         self._session.commit()
         return self._to_domain(record)
