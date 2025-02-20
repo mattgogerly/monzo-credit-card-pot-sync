@@ -155,7 +155,6 @@ def sync_balance():
             if pot_diff == 0:
                 log.info("No balance difference; no action required")
             elif pot_diff < 0:
-                # Deposit scenario (i.e. a drop in pot balance relative to card balance)
                 difference = abs(pot_diff)
                 if monzo_balance < difference:
                     log.error("Insufficient funds in Monzo account to sync pot; disabling sync")
@@ -179,54 +178,32 @@ def sync_balance():
 
                 now = int(time())
                 deposit_executed = False
-                desired_balance = credit_account.get_total_balance()
-
-                # NEW: Handle case where a cooldown exists
+                # FIRST: check if a cooldown exists.
                 if credit_account.cooldown_until is not None:
                     if now < credit_account.cooldown_until:
-                        # Active cooldown – allow deposit only if the card balance has increased.
-                        if desired_balance > credit_account.prev_balance:
-                            deposit_amount = desired_balance - pre_deposit_balance
-                            if deposit_amount > 0:
-                                try:
-                                    selection = monzo_account.get_account_type(pot_id)
-                                    monzo_account.add_to_pot(pot_id, deposit_amount, account_selection=selection)
-                                    new_balance = monzo_account.get_pot_balance(pot_id)
-                                    # Update fields but retain the cooldown
-                                    account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, credit_account.cooldown_until)
-                                    credit_account.prev_balance = desired_balance  # update baseline to the new (increased) value
-                                    deposit_executed = True
-                                    log.info(f"In-cooldown deposit executed for {credit_account.type} pot {pot_id}; deposited £{deposit_amount/100:.2f}. New balance: {new_balance}.")
-                                except Exception as e:
-                                    log.error(f"Error during in-cooldown deposit for {credit_account.type} pot {pot_id}: {str(e)}")
-                            else:
-                                log.info(f"In cooldown for {credit_account.type} pot {pot_id} but deposit amount not positive; skipping deposit.")
-                        else:
-                            log.info(f"In cooldown for {credit_account.type} pot {pot_id} and no increase detected (desired_balance: {desired_balance}, prev_balance: {credit_account.prev_balance}). Skipping deposit.")
-                        continue  # Either way, don’t run further deposit logic when cooldown is active.
+                        human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                        log.info(f"Cooldown active for {credit_account.type} pot {pot_id} until {human_readable}. Skipping deposit.")
+                        continue
                     else:
-                        # Cooldown expired – clear it and execute deposit normally.
+                        # Cooldown expired: execute deposit only once.
                         log.info(f"Cooldown expired for {credit_account.type} pot {pot_id}. Executing deposit now.")
-                        try:
-                            deposit_amount = desired_balance - pre_deposit_balance
-                            if deposit_amount > 0:
-                                selection = monzo_account.get_account_type(pot_id)
-                                monzo_account.add_to_pot(pot_id, deposit_amount, account_selection=selection)
-                                new_balance = monzo_account.get_pot_balance(pot_id)
-                                account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None)
-                                credit_account.prev_balance = new_balance
-                                credit_account.cooldown_until = None
-                                deposit_executed = True
-                                log.info(f"Post-cooldown deposit executed for {credit_account.type} pot {pot_id}; deposited £{deposit_amount/100:.2f}. New balance: {new_balance}.")
-                            else:
-                                log.info("No deposit needed after cooldown expired; deposit not executed.")
-                        except Exception as e:
-                            log.error(f"Error during post-cooldown deposit for {credit_account.type} pot {pot_id}: {str(e)}")
+                        desired_balance = credit_account.get_total_balance()
+                        deposit_amount = desired_balance - pre_deposit_balance
+                        if deposit_amount > 0:
+                            selection = monzo_account.get_account_type(pot_id)
+                            monzo_account.add_to_pot(pot_id, deposit_amount, account_selection=selection)
+                            new_balance = monzo_account.get_pot_balance(pot_id)
+                            account_repository.update_credit_account_fields(credit_account.type, pot_id, new_balance, None)
+                            credit_account.prev_balance = new_balance
+                            credit_account.cooldown_until = None
+                            deposit_executed = True
+                            log.info(f"Post-cooldown deposit executed for {credit_account.type} pot {pot_id}; deposited £{deposit_amount/100:.2f}. New balance: {new_balance}.")
+                        else:
+                            log.info("No drop remains after cooldown; deposit not needed.")
                         if deposit_executed:
                             continue
-
-                # NORMAL (non-cooldown) deposit logic
-                if credit_account.cooldown_until is None:
+                # Only if no deposit was executed, check for deposit requirement and set a new cooldown.
+                if not deposit_executed:
                     log.info("No active cooldown. Checking for deposit requirement.")
                     desired_balance = credit_account.get_total_balance()
                     drop = desired_balance - pre_deposit_balance
@@ -246,13 +223,8 @@ def sync_balance():
                         credit_account.cooldown_until = updated_account.cooldown_until
                     else:
                         log.info("Calculated drop is not positive. No cooldown or deposit triggered.")
-
             else:
-                # For positive differential (withdrawal) – note that withdrawals are NOT allowed during a cooldown.
-                if credit_account.cooldown_until is not None:
-                    log.info(f"In cooldown for {credit_account.type} pot {pot_id}; withdrawals are not allowed. Skipping withdrawal.")
-                    continue
-
+                # For positive differential (withdrawal)
                 difference = abs(pot_diff)
                 key = f"{pot_id}_{pot_info['credit_type']}"
                 credit_account = pot_to_credit_account.get(key)
@@ -280,13 +252,14 @@ def sync_balance():
                     log.info(f"Cooldown expired for {credit_account.type} pot {credit_account.pot_id}; clearing cooldown.")
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, prev, None)
                     credit_account.cooldown_until = None
-                if live != prev:
+                if live > prev:
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
                     credit_account.prev_balance = live
                     log.info(f"Updated baseline for {credit_account.type} pot {credit_account.pot_id} to {live}.")
                 else:
                     log.info(f"Persisted baseline for {credit_account.type} pot {credit_account.pot_id} remains unchanged (prev: {prev}, live: {live})")
-                        # Final deposit re-check loop: only run if cooldown has expired.
+
+        # Final deposit re-check loop: only run if cooldown has expired.
         for credit_account in credit_accounts:
             if credit_account.pot_id and credit_account.cooldown_until and credit_account.cooldown_until > 0:
                 if current_time < credit_account.cooldown_until:
