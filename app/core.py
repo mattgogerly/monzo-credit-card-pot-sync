@@ -233,15 +233,16 @@ def sync_balance():
                 else:
                     log.info(f"No pending drop persists for {credit_account.type} pot {credit_account.pot_id} after cooldown. Leaving deposit unexecuted.")
 
-        # Final loop: update persisted baseline; if the cooldown period has expired and no deposit is needed,
-        # then clear the cooldown flag.
+        # Final loop: update persisted baseline; if the cooldown period has expired and no
+        # new confirmed spending or payment is detected, do not update prev_balance.
         current_time = int(time())
         for credit_account in credit_accounts:
-            if (credit_account.pot_id):
+            if credit_account.pot_id:
                 live = credit_account.get_total_balance()
                 prev = credit_account.get_prev_balance(credit_account.pot_id)
-                if (credit_account.cooldown_until):
-                    if (current_time < credit_account.cooldown_until):
+                # Only update baseline if confirmed change occurred (live > prev or live < prev)
+                if credit_account.cooldown_until:
+                    if current_time < credit_account.cooldown_until:
                         log.info(
                             f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} "
                             f"(cooldown until {datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')}). "
@@ -251,12 +252,13 @@ def sync_balance():
                     log.info(f"Cooldown expired for {credit_account.type} pot {credit_account.pot_id}; clearing cooldown.")
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, prev, None)
                     credit_account.cooldown_until = None
-                if (live > prev):
+                # Only update baseline when there is a confirmed change (i.e. spending or payments)
+                if live != prev:
+                    log.info(f"Updating baseline for {credit_account.type} pot {credit_account.pot_id} from {prev} to {live} due to confirmed change.")
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
                     credit_account.prev_balance = live
-                    log.info(f"Updated baseline for {credit_account.type} pot {credit_account.pot_id} to {live}.")
                 else:
-                    log.info(f"Persisted baseline for {credit_account.type} pot {credit_account.pot_id} remains unchanged (prev: {prev}, live: {live})")
+                    log.info(f"Persisted baseline for {credit_account.type} pot {credit_account.pot_id} remains unchanged (prev: {prev}, live: {live}).")
 
         # Final deposit re-check loop: only process if cooldown has expired.
         for credit_account in credit_accounts:
@@ -460,22 +462,23 @@ def sync_balance():
 
             diff = current_cc - prev_cc
 
-            if diff > 0:
-                # New spending has occurred.
+            # Only treat as new spending if there is an active increase AND no active cooldown.
+            if diff > 0 and not credit_account.cooldown_until:
                 log.info(f"New spending detected: diff = {diff}. Depositing this amount into pot {credit_account.pot_id}.")
                 selection = monzo_account.get_account_type(credit_account.pot_id)
                 monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
                 new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
                 account_repository.update_credit_account_fields(
                     credit_account.type, credit_account.pot_id, new_balance=new_pot,
-                    cooldown_until=cooldown_until, cooldown_start_balance=current_cc, pending_drop=None
+                    cooldown_until=credit_account.cooldown_until, cooldown_start_balance=current_cc, pending_drop=None
                 )
-                # Update persisted values for new spending.
                 prev_cc = current_cc
                 pending_base = current_cc
-                # We do not clear an active cooldown here; new spending is applied in addition.
                 log.info(f"After deposit, updated prev_cc and pending_base to {current_cc}.")
-            elif diff < 0:
+            else:
+                log.info("No new confirmed spending detected; pending drop remains under cooldown.")
+
+            if diff < 0:
                 # Payment has been received.
                 withdraw_amt = abs(diff)
                 log.info(f"Payment received: diff = {diff}; withdrawing {withdraw_amt} from pot {credit_account.pot_id}.")
