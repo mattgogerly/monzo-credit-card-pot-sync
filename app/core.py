@@ -534,8 +534,9 @@ def sync_balance():
             )
             log.info(f"--- Finished processing account: {credit_account.type} ---")
 
+        # Replace the final repeated transaction loops with a unified processing flow.
         for credit_account in credit_accounts:
-            # (Persisted fields: prev_cc, pending_base, cooldown_until are refreshed)
+            # Refresh persisted fields
             refreshed = account_repository.get(credit_account.type)
             prev_cc = refreshed.prev_balance
             cooldown_until = refreshed.cooldown_until
@@ -544,64 +545,44 @@ def sync_balance():
             current_cc = credit_account.get_total_balance()
             current_pot = monzo_account.get_pot_balance(credit_account.pot_id)
             log.info(f"{credit_account.type}: current CC = {current_cc}, current Pot = {current_pot}, prev_cc = {prev_cc}, pending_base = {pending_base}")
-
+            
             diff = current_cc - prev_cc
 
             if diff > 0:
                 if cooldown_until:
-                    log.info(f"New spending detected: diff = {diff} but account {credit_account.type} is in cooldown until {cooldown_until}; postponing deposit.")
+                    log.info(f"New spending detected: diff = {diff} but {credit_account.type} is in cooldown until {cooldown_until}; skipping further processing.")
                 else:
-                    log.info(f"New spending detected: depositing {diff}.")
                     selection = monzo_account.get_account_type(credit_account.pot_id)
+                    log.info(f"New spending detected for {credit_account.type}: Depositing {diff}.")
                     monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
-                    prev_cc = current_cc
-                    pending_base = current_cc
-                    log.info(f"After deposit, updated prev_cc and pending_base to {current_cc}.")
+                    account_repository.update_credit_account_fields(
+                        credit_account.type,
+                        credit_account.pot_id,
+                        new_balance=current_cc,
+                        cooldown_until=None,
+                        cooldown_start_balance=current_cc,
+                        pending_drop=None
+                    )
+                    log.info(f"Deposit completed; updated persisted CC balance to {current_cc}.")
+                continue  # Exit processing for this account
+
             elif diff < 0:
-                # Payment received: withdraw |diff| from pot, update baseline and clear cooldown.
                 withdraw_amt = abs(diff)
-                log.info(f"Payment received: withdrawing {withdraw_amt}.")
                 selection = monzo_account.get_account_type(credit_account.pot_id)
+                log.info(f"Payment received for {credit_account.type}: Withdrawing {withdraw_amt}.")
                 monzo_account.withdraw_from_pot(credit_account.pot_id, withdraw_amt, account_selection=selection)
-                prev_cc = current_cc
-                pending_base = current_cc
-                cooldown_until = None
+                account_repository.update_credit_account_fields(
+                    credit_account.type,
+                    credit_account.pot_id,
+                    new_balance=current_pot,
+                    cooldown_until=None,
+                    cooldown_start_balance=current_cc,
+                    pending_drop=None
+                )
+                log.info(f"Withdrawal completed; updated persisted CC balance to {current_cc}.")
+                continue  # Exit processing for this account
+
             else:
-                # No change in card balance – check for pending drop due to delayed payment processing.
-                pending_drop = pending_base - current_pot
-                THRESHOLD = 50  # adjust threshold as needed
-                log.info(f"No CC change: computed pending_drop = {pending_drop}.")
-                if pending_drop > THRESHOLD:
-                    now = int(time())
-                    if not cooldown_until:
-                        # Initiate cooldown if none is active.
-                        cooldown_duration = int(settings_repository.get("deposit_cooldown_hours")) * 3600
-                        cooldown_until = now + cooldown_duration
-                        account_repository.update_credit_account_fields(
-                            credit_account.type, credit_account.pot_id,
-                            new_balance=current_pot, cooldown_until=cooldown_until,
-                            cooldown_start_balance=pending_base, pending_drop=pending_drop
-                        )
-                        log.info(f"Initiating cooldown until {cooldown_until}.")
-                    elif now >= cooldown_until:
-                        # Cooldown expired: deposit the pending drop.
-                        log.info(f"Cooldown expired, depositing pending drop {pending_drop}.")
-                        selection = monzo_account.get_account_type(credit_account.pot_id)
-                        monzo_account.add_to_pot(credit_account.pot_id, pending_drop, account_selection=selection)
-                        new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
-                        account_repository.update_credit_account_fields(
-                            credit_account.type, credit_account.pot_id, new_balance=new_pot,
-                            cooldown_until=None, cooldown_start_balance=pending_base, pending_drop=None
-                        )
-                    else:
-                        log.info(f"Cooldown active until {cooldown_until}; not depositing pending drop.")
-                else:
-                    log.info("No significant pending drop detected.")
-                    
-            # Persist updated prev_cc and pending_base for next run.
-            account_repository.update_credit_account_fields(
-                credit_account.type, credit_account.pot_id,
-                new_balance=current_pot, cooldown_until=cooldown_until,
-                cooldown_start_balance=pending_base, pending_drop=None
-            )
-            log.info(f"Finished processing {credit_account.type}.")
+                log.info(f"No balance differential detected for {credit_account.type}; no action taken.")
+
+# ...existing code after final processing loops (if any)...
