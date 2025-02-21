@@ -59,8 +59,9 @@ class Account:
             self.access_token = tokens["access_token"]
             self.refresh_token = tokens["refresh_token"]
             self.token_expiry = int(time()) + tokens["expires_in"]
+            token_expiry_hr = datetime.datetime.fromtimestamp(self.token_expiry).strftime("%Y-%m-%d %H:%M:%S")
 
-            log.info(f"Successfully refreshed {self.type} access token, new expiry time is {self.token_expiry}")
+            log.info(f"Successfully refreshed {self.type} access token, new expiry time is {token_expiry_hr}")
 
         except KeyError as e:
             log.error(f"KeyError while refreshing {self.type} token: {str(e)} - Response: {sanitized_tokens}")
