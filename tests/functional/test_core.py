@@ -36,6 +36,9 @@ def test_core_flow_successful_no_change_required(mocker, test_client, requests_m
     # Add a mock for feed notification
     requests_mock.post("https://api.monzo.com/feed", json={}, status_code=200)
 
+    # Add a mock for pot deposit
+    requests_mock.put("https://api.monzo.com/pots/pot_id/deposit", json={"status": "ok"}, status_code=200)
+
     ### When ###
     sync_balance()
 
@@ -120,6 +123,9 @@ def test_core_flow_successful_withdrawal(mocker, test_client, requests_mock, see
 
     # Add a mock for feed notification
     requests_mock.post("https://api.monzo.com/feed", json={}, status_code=200)
+
+    # Add a mock for pot deposit
+    requests_mock.put("https://api.monzo.com/pots/pot_id/deposit", json={"status": "ok"}, status_code=200)
 
     ### When ###
     sync_balance()
