@@ -21,7 +21,7 @@ class Account:
         cooldown_until=None,
         prev_balance=0,
         cooldown_start_balance=None,  # new field
-        last_cooldown_expired=None
+        last_cooldown_expired=None,
         pending_drop=None             # new field
     ):
         self.type = type
