@@ -149,22 +149,33 @@ def sync_balance():
                         credit_account.stable_pot_balance = pot_balance  # Reset baseline after withdrawal
                         account_repository.save(credit_account)
 
-            # 4) If cooldown expired => check if pot < card -> top up
+            # 4) If cooldown expired => check if pot < card -> top up and reset stable baseline
             if cooldown_expired:
                 hr_cooldown_expired = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
                 log.info(f"Cooldown expired for {credit_account.type}, previously set until {hr_cooldown_expired}")
-                ref_card = credit_account.cooldown_ref_card_balance or card_balance
+                # Use the current card balance as the reference
+                ref_card = card_balance
                 if pot_balance < ref_card:
                     diff = ref_card - pot_balance
                     monzo_account_balance = monzo_account.get_balance(account_selection=account_selection)
                     if monzo_account_balance >= diff:
                         monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=account_selection)
-                        log.info(f"Cooldown expired for {credit_account.type}, topped up {diff}.")
+                        log.info(f"Cooldown expired for {credit_account.type}, topped up {diff} to match card balance.")
+                        # Update pot_balance after deposit
+                        pot_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                     else:
-                        log.warning("Cooldown expired but insufficient funds to top up pot.")
+                        log.warning(f"Cooldown expired for {credit_account.type} but insufficient funds to top up pot. Disabling sync.")
+                        settings_repository.save(Setting("enable_sync", "False"))
+                        monzo_account.send_notification(
+                            "Insufficient Funds for Sync",
+                            "Please top up your Monzo account and re-enable sync.",
+                            account_selection=account_selection,
+                        )
+                # Reset cooldown and update stable baseline with the current card balance
                 credit_account.cooldown_until = None
                 credit_account.cooldown_ref_card_balance = None
                 credit_account.cooldown_ref_pot_balance = None
+                credit_account.stable_pot_balance = pot_balance  # or set to card_balance if desired
                 account_repository.save(credit_account)
 
             # 5) If cooldown is active => handle partial top-ups & possible cooldown ending
