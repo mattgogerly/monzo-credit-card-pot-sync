@@ -85,7 +85,7 @@ def sync_balance():
                 prev_card = credit_account.prev_balance or 0
                 log.info(f"PotBalance={pot_balance}, CardBalance={card_balance}, PrevCard={prev_card}")
                 
-                # NEW: Set stable baseline once if not already set
+                # Set stable baseline once if not already set
                 if credit_account.stable_pot_balance is None:
                     credit_account.stable_pot_balance = pot_balance
                     log.info(f"{credit_account.type} stable baseline set to {pot_balance}.")

@@ -22,7 +22,7 @@ class Account:
         prev_balance=0,
         cooldown_ref_card_balance=None,
         cooldown_ref_pot_balance=None,
-        stable_pot_balance=None      # NEW parameter
+        stable_pot_balance=None
     ):
         self.type = type
         self.access_token = access_token
@@ -34,7 +34,7 @@ class Account:
         self.prev_balance = prev_balance
         self.cooldown_ref_card_balance = cooldown_ref_card_balance
         self.cooldown_ref_pot_balance = cooldown_ref_pot_balance
-        self.stable_pot_balance = stable_pot_balance  # NEW field
+        self.stable_pot_balance = stable_pot_balance
 
 
     def is_token_within_expiry_window(self):
