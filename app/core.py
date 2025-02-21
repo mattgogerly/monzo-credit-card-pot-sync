@@ -328,7 +328,7 @@ def sync_balance():
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
                     credit_account.prev_balance = live
                 else:
-                    log.info(f"[Baseline Update] {credit_account.type}: Baseline remains unchanged (prev: £{prev / 100:.2f}, live: £{live / 100:.2f}}).")
+                    log.info(f"[Baseline Update] {credit_account.type}: Baseline remains unchanged (prev: £{prev / 100:.2f}, live: £{live / 100:.2f}).")
 
         # --------------------------------------------------------------------
         # END OF SYNC LOOP
