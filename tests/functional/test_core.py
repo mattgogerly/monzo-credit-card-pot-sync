@@ -75,6 +75,7 @@ def test_core_flow_successful_deposit(mocker, test_client, requests_mock, seed_d
 
     # Mock pot deposit call
     requests_mock.put("https://api.monzo.com/pots/pot_id/deposit")
+    requests_mock.put("https://api.monzo.com/pots/pot_id/deposit", json={"status": "ok"}, status_code=200)
 
     ### When ###
     sync_balance()
@@ -115,6 +116,7 @@ def test_core_flow_successful_withdrawal(mocker, test_client, requests_mock, see
 
     # Mock pot withdrawal call
     requests_mock.put("https://api.monzo.com/pots/pot_id/withdraw")
+    requests_mock.put("https://api.monzo.com/pots/pot_id/withdraw", json={"status": "ok"}, status_code=200)
 
     # Add a mock for feed notification
     requests_mock.post("https://api.monzo.com/feed", json={}, status_code=200)
