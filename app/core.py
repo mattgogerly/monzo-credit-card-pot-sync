@@ -83,15 +83,10 @@ def sync_balance():
                 pot_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                 card_balance = credit_account.get_total_balance()
                 prev_card = credit_account.prev_balance or 0
-                # StablePot is the persistent baseline pot balance (set initially or reset on normal activity)
-                log.info(f"{credit_account.type}: Live Pot Balance (PotBalance) = {pot_balance}")
-                log.info(f"{credit_account.type}: Live Card Balance (CardBalance) = {card_balance}")
-                log.info(f"{credit_account.type}: Previous Sync Recorded Card Balance (PrevCard) = {prev_card}")
-                log.info(f"{credit_account.type}: Persistent Baseline Pot Balance - Set Initially or Reset on Normal Activity) (StablePot) = {credit_account.stable_pot_balance}")
                 # Set stable baseline once if not already set
                 if credit_account.stable_pot_balance is None:
                     credit_account.stable_pot_balance = pot_balance
-                    log.info(f"{credit_account.type}: StablePot set to {pot_balance} as initial baseline.")
+                    log.info(f"{credit_account.type}: StablePot uninitialized. StablePot set to {pot_balance} as initial baseline.")
                     account_repository.save(credit_account)
                 # Also, if this account is new (prev_balance == 0) set it to card_balance
                 if prev_card == 0 and card_balance > 0:
@@ -99,6 +94,11 @@ def sync_balance():
                     credit_account.prev_balance = card_balance
                     account_repository.save(credit_account)
                     prev_card = card_balance
+                # StablePot is the persistent baseline pot balance (set initially or reset on normal activity)
+                log.info(f"{credit_account.type}: Live Pot Balance (PotBalance) = {pot_balance}")
+                log.info(f"{credit_account.type}: Live Card Balance (CardBalance) = {card_balance}")
+                log.info(f"{credit_account.type}: Previous Sync Recorded Card Balance (PrevCard) = {prev_card}")
+                log.info(f"{credit_account.type}: Persistent Baseline Pot Balance - Set Initially or Reset on Normal Activity) (StablePot) = {credit_account.stable_pot_balance}")
             except Exception as e:
                 log.error(f"{credit_account.type}: Exception retrieving balances: {e}")
                 continue

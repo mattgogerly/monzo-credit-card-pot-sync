@@ -67,7 +67,13 @@ class SqlAlchemyAccountRepository:
         accounts = list(map(self._to_domain, results))
         return [
             TrueLayerAccount(
-                a.type, a.access_token, a.refresh_token, a.token_expiry, a.pot_id, prev_balance=a.prev_balance
+                a.type,
+                a.access_token,
+                a.refresh_token,
+                a.token_expiry,
+                a.pot_id,
+                prev_balance=a.prev_balance,
+                stable_pot_balance=a.stable_pot_balance
             )
             for a in accounts
         ]
