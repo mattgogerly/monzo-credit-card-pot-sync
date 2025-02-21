@@ -173,7 +173,7 @@ def sync_balance():
                     credit_account.cooldown_until = None
                     credit_account.cooldown_ref_card_balance = None
                     account_repository.update_credit_account_fields(
-                        credit_account.type, credit_account.pot_id, new_balance, None, None, None
+                        credit_account.type, credit_account.pot_id, new_balance, None
                     )
                     log.info(f"[Cooldown Expiration] {credit_account.type}: Updated pot balance is {new_balance}.")
                 else:
@@ -182,7 +182,7 @@ def sync_balance():
                     credit_account.cooldown_ref_card_balance = None
                     current_pot = monzo_account.get_pot_balance(credit_account.pot_id)
                     account_repository.update_credit_account_fields(
-                        credit_account.type, credit_account.pot_id, current_pot, None, None, None
+                        credit_account.type, credit_account.pot_id, current_pot, None
                     )
 
         # --------------------------------------------------------------------
@@ -255,7 +255,7 @@ def sync_balance():
                     monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                     credit_account.stable_pot_balance = new_balance
-                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, new_balance, None, None, None)
+                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, new_balance, None)
                     credit_account.prev_balance = new_balance
                 else:
                     log.info(f"[Final Re-check] No residual drop for {credit_account.type} after cooldown; no deposit executed.")
