@@ -1,10 +1,8 @@
 import logging
-import ast
 from sqlalchemy.exc import NoResultFound
 from time import time
 import datetime  # Add import if not already present
 
-from app.domain.accounts import MonzoAccount, TrueLayerAccount
 from app.errors import AuthException
 from app.domain.settings import Setting
 from app.extensions import db, scheduler
@@ -140,7 +138,6 @@ def sync_balance():
                 hr_cooldown_expired = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
                 log.info(f"Cooldown expired for {credit_account.type}, previously set until {hr_cooldown_expired}")
                 ref_card = credit_account.cooldown_ref_card_balance or card_balance
-                ref_pot = credit_account.cooldown_ref_pot_balance or pot_balance
                 if pot_balance < ref_card:
                     diff = ref_card - pot_balance
                     monzo_account_balance = monzo_account.get_balance(account_selection=account_selection)

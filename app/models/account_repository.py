@@ -20,9 +20,6 @@ class SqlAlchemyAccountRepository:
             account_id=account.account_id,
             cooldown_until=account.cooldown_until,
             prev_balance=account.prev_balance if isinstance(account.prev_balance, int) else 0,
-            cooldown_start_balance=account.cooldown_start_balance,  # new field
-            last_cooldown_expired=account.last_cooldown_expired,
-            pending_drop=account.pending_drop,  # new field
             pot_snapshot_balance=account.pot_snapshot_balance,
             pot_snapshot_timestamp=account.pot_snapshot_timestamp,
             cooldown_ref_card_balance=account.cooldown_ref_card_balance,
@@ -39,9 +36,6 @@ class SqlAlchemyAccountRepository:
             account_id=model.account_id,
             cooldown_until=(int(model.cooldown_until) if model.cooldown_until is not None else None),
             prev_balance=model.prev_balance,
-            cooldown_start_balance=model.cooldown_start_balance,  # new field
-            last_cooldown_expired=(int(model.last_cooldown_expired) if model.last_cooldown_expired is not None else None),
-            pending_drop=model.pending_drop,  # new field
             pot_snapshot_balance=model.pot_snapshot_balance,
             pot_snapshot_timestamp=model.pot_snapshot_timestamp,
             cooldown_ref_card_balance=model.cooldown_ref_card_balance,
@@ -101,9 +95,6 @@ class SqlAlchemyAccountRepository:
             existing.account_id = account.account_id
             existing.prev_balance = account.prev_balance
             existing.cooldown_until = account.cooldown_until
-            existing.cooldown_start_balance = account.cooldown_start_balance
-            existing.last_cooldown_expired = account.last_cooldown_expired
-            existing.pending_drop = account.pending_drop
             existing.pot_snapshot_balance = account.pot_snapshot_balance
             existing.pot_snapshot_timestamp = account.pot_snapshot_timestamp
             existing.cooldown_ref_card_balance = account.cooldown_ref_card_balance
@@ -119,20 +110,10 @@ class SqlAlchemyAccountRepository:
         self._session.commit()
 
     def update_credit_account_fields(self, account_type: str, pot_id: str, 
-                                     new_balance: int, cooldown_until: int = None,
-                                     cooldown_start_balance: int = None, 
-                                     last_cooldown_expired: int = None,
-                                     pending_drop: int = None) -> Account:
+                                     new_balance: int, cooldown_until: int = None) -> Account:
         record: AccountModel = self._session.query(AccountModel).filter_by(type=account_type).one()
         record.prev_balance = new_balance
         if cooldown_until is not None:
             record.cooldown_until = cooldown_until
-        if last_cooldown_expired is not None:
-            record.last_cooldown_expired = last_cooldown_expired
-        # Only update cooldown_start_balance if provided
-        if cooldown_start_balance is not None:
-            record.cooldown_start_balance = cooldown_start_balance
-        if pending_drop is not None:
-            record.pending_drop = pending_drop
         self._session.commit()
         return self._to_domain(record)

@@ -20,9 +20,6 @@ class Account:
         account_id=None,
         cooldown_until=None,
         prev_balance=0,
-        cooldown_start_balance=None,  # new field
-        last_cooldown_expired=None,
-        pending_drop=None,             # new field
         pot_snapshot_balance=None,
         pot_snapshot_timestamp=None,
         cooldown_ref_card_balance=None,
@@ -36,9 +33,6 @@ class Account:
         self.account_id = account_id
         self.cooldown_until = cooldown_until
         self.prev_balance = prev_balance
-        self.cooldown_start_balance = cooldown_start_balance  # new
-        self.last_cooldown_expired = last_cooldown_expired
-        self.pending_drop = pending_drop                    # new
         self.pot_snapshot_balance = pot_snapshot_balance
         self.pot_snapshot_timestamp = pot_snapshot_timestamp
         self.cooldown_ref_card_balance = cooldown_ref_card_balance
