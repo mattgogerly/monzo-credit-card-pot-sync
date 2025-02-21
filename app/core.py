@@ -215,7 +215,7 @@ def sync_balance():
 
                 log.debug("Cooldown recently cleared, waiting for top-up to take effect before setting new cooldown.")
             else:
-                if current_pot < credit_account.cooldown_start_balance and live_card_balance == credit_account.cooldown_start_balance:
+                if current_pot < live_card_balance == credit_account.cooldown_start_balance:
                     if now < credit_account.cooldown_until:
                         log.info(f"Cooldown already active until {datetime.datetime.fromtimestamp(credit_account.cooldown_until)}. Skipping new cooldown.")
                     else:
