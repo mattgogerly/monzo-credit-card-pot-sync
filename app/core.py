@@ -186,6 +186,7 @@ def sync_balance():
                 if credit_account.cooldown_until is None or now >= credit_account.cooldown_until:
                     cooldown_seconds = deposit_cooldown_hours * 3600
                     credit_account.cooldown_until = now + cooldown_seconds
+                    account_repository.save(credit_account)  # Persist the updated cooldown immediately.
                     human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')
                     log.info(f"Setting cooldown for {credit_account.type} pot {credit_account.pot_id} until {human_readable}")
                 else:
@@ -250,10 +251,6 @@ def sync_balance():
                     human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
                     log.info(f"Cooldown still active for {credit_account.type} pot {credit_account.pot_id} until {human_readable}. Skipping deposit re‑check.")
                     continue
-                # Even if cooldown_until has expired, if cooldown_start_balance is still set, hold off deposit.
-                if credit_account.cooldown_start_balance is not None:
-                    log.info(f"Cooldown details still present for {credit_account.type}; skipping final deposit until full cooldown clearance.")
-                    continue
                 pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
                 current_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                 baseline = pre_deposit  # Use persisted baseline when no active cooldown
@@ -315,7 +312,7 @@ def sync_balance():
             log.info(f"{credit_account.type}: current CC={current_cc}, pot={current_pot}, prev_cc={prev_cc}, pending_base={pending_base}")
 
             # Check if cooldown is active:
-            if (cooldown_until is not None and now < cooldown_until) or (credit_account.cooldown_start_balance is not None):
+            if (cooldown_until is not None and now < cooldown_until):
                 # If override is enabled, check for new spending diff
                 if settings_repository.get("override_cooldown_spending") == "True":
                     diff = current_cc - prev_cc
@@ -342,7 +339,7 @@ def sync_balance():
 
             # Handle any pending drops or final deposit if needed when no cooldown is active
             # Added extra handling to verify no cooldown is active before depositing final drop.
-            if credit_account.cooldown_until is not None or credit_account.cooldown_start_balance is not None:
+            if credit_account.cooldown_until is not None:
                 log.info(f"Cooldown is active for {credit_account.type} (cooldown_until={credit_account.cooldown_until}, "
                          f"cooldown_start_balance={credit_account.cooldown_start_balance}); skipping final deposit.")
             else:
@@ -369,7 +366,7 @@ def sync_balance():
             # Optionally clear or update baseline if the card balance changed,
             # but only if no cooldown is active.
             if current_cc != prev_cc:
-                if credit_account.cooldown_until is None and credit_account.cooldown_start_balance is None:
+                if credit_account.cooldown_until is None:
                     log.info(f"Baseline changed from {prev_cc} to {current_cc} for {credit_account.type}.")
                     account_repository.update_credit_account_fields(
                         credit_account.type,
