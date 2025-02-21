@@ -77,28 +77,30 @@ def sync_balance():
             # 2) Retrieve pot & card balances
             try:
                 if not credit_account.pot_id:
-                    log.info(f"No pot allocated for {credit_account.type}; skipping.")
+                    log.info(f"{credit_account.type}: No pot allocated; skipping.")
                     continue
                 account_selection = monzo_account.get_account_type(credit_account.pot_id)
                 pot_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                 card_balance = credit_account.get_total_balance()
                 prev_card = credit_account.prev_balance or 0
-                log.info(f"PotBalance={pot_balance}, CardBalance={card_balance}, PrevCard={prev_card}")
-                
+                # StablePot is the persistent baseline pot balance (set initially or reset on normal activity)
+                log.info(f"{credit_account.type}: Live Pot Balance (PotBalance) = {pot_balance}")
+                log.info(f"{credit_account.type}: Live Card Balance (CardBalance) = {card_balance}")
+                log.info(f"{credit_account.type}: Previous Sync Recorded Card Balance (PrevCard) = {prev_card}")
+                log.info(f"{credit_account.type}: Persistent Baseline Pot Balance - Set Initially or Reset on Normal Activity) (StablePot) = {credit_account.stable_pot_balance}")
                 # Set stable baseline once if not already set
                 if credit_account.stable_pot_balance is None:
                     credit_account.stable_pot_balance = pot_balance
-                    log.info(f"{credit_account.type} stable baseline set to {pot_balance}.")
+                    log.info(f"{credit_account.type}: StablePot set to {pot_balance} as initial baseline.")
                     account_repository.save(credit_account)
-                
                 # Also, if this account is new (prev_balance == 0) set it to card_balance
                 if prev_card == 0 and card_balance > 0:
-                    log.info(f"{credit_account.type} baseline uninitialized. Setting PrevCard to {card_balance}.")
+                    log.info(f"{credit_account.type}: PrevCard uninitialized. Setting PrevCard to {card_balance}.")
                     credit_account.prev_balance = card_balance
                     account_repository.save(credit_account)
                     prev_card = card_balance
             except Exception as e:
-                log.error(f"Exception retrieving balances for {credit_account.type}: {e}")
+                log.error(f"{credit_account.type}: Exception retrieving balances: {e}")
                 continue
 
             now = int(time())
@@ -110,7 +112,7 @@ def sync_balance():
                 # Use stable baseline for pot for cooldown detection
                 stable_pot = credit_account.stable_pot_balance
                 # (a) If pot dropped significantly below stable baseline and card balance unchanged => trigger cooldown
-                if pot_balance < stable_pot and card_balance == prev_card:
+                if (pot_balance < stable_pot and card_balance == prev_card):
                     log.info(f"Detected unexpected pot drop for {credit_account.type} (stable baseline {stable_pot} -> current {pot_balance}). Initiating cooldown.")
                     cooldown_hours = int(settings_repository.get("deposit_cooldown_hours") or 3)
                     credit_account.cooldown_until = now + (cooldown_hours * 3600)
