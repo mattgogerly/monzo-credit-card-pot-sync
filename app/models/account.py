@@ -12,4 +12,5 @@ class AccountModel(db.Model):
     cooldown_until = Column(Integer, nullable=True)
     prev_balance = Column(Integer, default=0)
     cooldown_start_balance = Column(Integer, nullable=True)
+    last_cooldown_expired = Column(Integer, nullable=True)
     pending_drop = Column(Integer, nullable=True)
