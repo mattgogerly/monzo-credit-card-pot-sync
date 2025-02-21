@@ -211,16 +211,15 @@ def sync_balance():
 
             # (b) STANDARD ADJUSTMENT:
             if live_card_balance > credit_account.prev_balance:
-                if credit_account.cooldown_until:
-                    log.info(f"[Standard] {credit_account.type}: Cooldown active; deposit postponed despite card increase from {credit_account.prev_balance} to {live_card_balance}.")
-                else:
-                    diff = live_card_balance - current_pot
-                    selection = monzo_account.get_account_type(credit_account.pot_id)
-                    monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
-                    log.info(f"[Standard] {credit_account.type}: Deposited {diff} pence as card increased from {credit_account.prev_balance} to {live_card_balance}.")
-                    credit_account.prev_balance = live_card_balance
-                    account_repository.save(credit_account)
+                # Regular spending: deposit the difference and update baseline immediately.
+                diff = live_card_balance - current_pot
+                selection = monzo_account.get_account_type(credit_account.pot_id)
+                monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
+                log.info(f"[Standard] {credit_account.type}: Deposited {diff} pence as card increased from {credit_account.prev_balance} to {live_card_balance}.")
+                credit_account.prev_balance = live_card_balance
+                account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live_card_balance, None)
             elif live_card_balance == credit_account.prev_balance:
+                # No confirmed spending; if pot dropped below card balance, trigger cooldown.
                 if current_pot < live_card_balance and not credit_account.cooldown_until:
                     try:
                         cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
@@ -228,16 +227,17 @@ def sync_balance():
                         cooldown_hours = 3
                     new_cooldown = int(time()) + cooldown_hours * 3600
                     credit_account.cooldown_until = new_cooldown
-                    new_cooldown_human_readable = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
-                    log.info(f"[Standard] {credit_account.type}: No card increase detected, but pot dropped. Initiating cooldown until {new_cooldown_human_readable}.")
+                    hr_cooldown = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
+                    log.info(f"[Standard] {credit_account.type}: No card increase detected, but pot dropped. Initiating cooldown until {hr_cooldown}.")
                     account_repository.save(credit_account)
                 else:
                     log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
             elif live_card_balance < current_pot:
+                # If pot balance exceeds card balance, always withdraw the difference.
                 diff = current_pot - live_card_balance
                 selection = monzo_account.get_account_type(credit_account.pot_id)
                 monzo_account.withdraw_from_pot(credit_account.pot_id, diff, account_selection=selection)
-                log.info(f"[Standard] {credit_account.type}: Withdrew {diff} pence from pot {credit_account.pot_id} as card decreased.")
+                log.info(f"[Standard] {credit_account.type}: Withdrew {diff} pence as pot exceeded card balance.")
                 credit_account.prev_balance = live_card_balance
                 account_repository.save(credit_account)
 
