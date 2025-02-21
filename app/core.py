@@ -182,30 +182,41 @@ def sync_balance():
             baseline = credit_account.cooldown_start_balance
 
             now = int(time())
-            # New cooldown logic: Trigger only if the pot balance drops below the baseline and
-            # the live card balance has not increased (i.e. equals the baseline)
-            if current_pot < baseline and live_card_balance == baseline:
-                # Check if a cooldown is already active:
-                if credit_account.cooldown_until is not None and now < credit_account.cooldown_until:
-                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')
-                    log.info(f"Cooldown already active for {credit_account.type} pot {credit_account.pot_id} until {human_readable}. Not setting a new cooldown.")
+            
+            # Step 1: Check if cooldown has expired and if a top-up is needed
+            if credit_account.cooldown_until is not None and now >= credit_account.cooldown_until:
+                if current_pot < credit_account.cooldown_start_balance:
+                    log.info(f"Cooldown expired, pot balance is still low for {credit_account.type} pot {credit_account.pot_id}. Topping up balance.")
+            
+                    # Call add_to_pot to restore balance
+                    add_to_pot(credit_account)
+            
+                    # Clear cooldown to allow normal operations after top-up
+                    credit_account.cooldown_until = None  
+                    credit_account.cooldown_start_balance = live_card_balance  # Reset baseline to new balance
+            
                 else:
-                    # If no active cooldown, set one.
-                    cooldown_seconds = deposit_cooldown_hours * 3600
-                    credit_account.cooldown_until = now + cooldown_seconds
-                    account_repository.save(credit_account)  # Persist the new cooldown immediately.
-                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')
-                    log.info(f"Setting cooldown for {credit_account.type} pot {credit_account.pot_id} until {human_readable}")
+                    log.info(f"Cooldown expired, but pot balance is fine. Updating baseline.")
+                    credit_account.cooldown_start_balance = live_card_balance  # Reset to new safe baseline
+            
+                account_repository.save(credit_account)
+                # Stop further cooldown logic to avoid immediate retrigger
+                return
+            
+            # Step 2: Only trigger cooldown if it's NOT in a "post-expiry" state
+            if credit_account.cooldown_until is None:  
+                log.debug("Cooldown recently cleared, waiting for top-up to take effect before setting new cooldown.")
             else:
-                # If conditions do not hold, clear the baseline if needed so that a new cooldown isn't triggered.
-                # This assumes that a clearing event (pot drop) has been handled.
-                if credit_account.cooldown_until is not None and now >= credit_account.cooldown_until:
-                    log.info(f"Cooldown expired for {credit_account.type} pot {credit_account.pot_id}. Clearing cooldown and updating baseline.")
-                    credit_account.cooldown_until = None
-                    # Update the baseline to the current live card balance so that the condition no longer holds.
-                    credit_account.cooldown_start_balance = live_card_balance
-                    account_repository.save(credit_account)
-
+                if current_pot < credit_account.cooldown_start_balance and live_card_balance == credit_account.cooldown_start_balance:
+                    if now < credit_account.cooldown_until:
+                        log.info(f"Cooldown already active until {datetime.datetime.fromtimestamp(credit_account.cooldown_until)}. Skipping new cooldown.")
+                    else:
+                        # If no active cooldown, set one
+                        cooldown_seconds = deposit_cooldown_hours * 3600
+                        credit_account.cooldown_until = now + cooldown_seconds
+                        account_repository.save(credit_account)
+                        log.info(f"New cooldown set until {datetime.datetime.fromtimestamp(credit_account.cooldown_until)}")
+            
             # Compare live card balance to our fixed pre-cooldown baseline.
             baseline = credit_account.cooldown_start_balance
             delta = live_card_balance - baseline
