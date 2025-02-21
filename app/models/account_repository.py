@@ -94,7 +94,7 @@ class SqlAlchemyAccountRepository:
             existing.prev_balance = account.prev_balance
             existing.cooldown_until = account.cooldown_until
             existing.cooldown_start_balance = account.cooldown_start_balance
-            exisiting.last_cooldown_expired = account.last_cooldown_expired
+            existing.last_cooldown_expired = account.last_cooldown_expired
             existing.pending_drop = account.pending_drop
         else:
             # No record exists, add new.
