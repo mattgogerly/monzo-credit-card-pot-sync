@@ -228,7 +228,8 @@ def sync_balance():
                         cooldown_hours = 3
                     new_cooldown = int(time()) + cooldown_hours * 3600
                     credit_account.cooldown_until = new_cooldown
-                    log.info(f"[Standard] {credit_account.type}: No card increase detected, but pot dropped. Initiating cooldown until {new_cooldown}.")
+                    new_cooldown_human_readable = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
+                    log.info(f"[Standard] {credit_account.type}: No card increase detected, but pot dropped. Initiating cooldown until {new_cooldown_human_readable}.")
                     account_repository.save(credit_account)
                 else:
                     log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
