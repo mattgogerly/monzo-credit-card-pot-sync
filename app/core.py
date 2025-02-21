@@ -178,15 +178,18 @@ def sync_balance():
                 log.error(f"Error parsing deposit_cooldown_hours setting: {e}. Defaulting to 3.")
                 deposit_cooldown_hours = 3
 
-            # New cooldown logic: if current pot balance is lower than live card balance,
-            # set a cooldown timer using deposit_cooldown_hours.
-            if current_pot < live_card_balance:
+            # Use the stored baseline (cooldown_start_balance) as the reference for the credit card's balance.
+            baseline = credit_account.cooldown_start_balance
+
+            # New cooldown logic: Trigger only if the pot balance drops below the baseline and
+            # the live card balance has not increased (i.e. equals the baseline).
+            if current_pot < baseline and live_card_balance == baseline:
                 now = int(time())
                 # Only set a new cooldown if none is active or the previous one has expired.
                 if credit_account.cooldown_until is None or now >= credit_account.cooldown_until:
                     cooldown_seconds = deposit_cooldown_hours * 3600
                     credit_account.cooldown_until = now + cooldown_seconds
-                    account_repository.save(credit_account)  # Persist the updated cooldown immediately.
+                    account_repository.save(credit_account)  # Persist the new cooldown immediately.
                     human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime('%Y-%m-%d %H:%M:%S')
                     log.info(f"Setting cooldown for {credit_account.type} pot {credit_account.pot_id} until {human_readable}")
                 else:
