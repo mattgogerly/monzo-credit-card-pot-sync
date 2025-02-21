@@ -276,10 +276,32 @@ class MonzoAccount(Account):
 
 
 class TrueLayerAccount(Account):
-    def __init__(self, account_type, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None, prev_balance=0):
-        super().__init__(account_type, access_token, refresh_token, token_expiry, pot_id, account_id, prev_balance=prev_balance)
+    def __init__(
+        self,
+        account_type,
+        access_token=None,
+        refresh_token=None,
+        token_expiry=None,
+        pot_id=None,
+        account_id=None,
+        prev_balance=0,
+        stable_pot_balance=None,
+        cooldown_ref_card_balance=None,
+        cooldown_ref_pot_balance=None
+    ):
+        super().__init__(
+            account_type,
+            access_token,
+            refresh_token,
+            token_expiry,
+            pot_id,
+            account_id,
+            prev_balance=prev_balance,
+            stable_pot_balance=stable_pot_balance,
+            cooldown_ref_card_balance=cooldown_ref_card_balance,
+            cooldown_ref_pot_balance=cooldown_ref_pot_balance
+        )
         from app.domain.auth_providers import TrueLayerAuthProvider
-        # Determine the proper icon based on account_type
         if account_type.lower() == "american express":
             icon = "amex.svg"
         elif account_type.lower() == "barclaycard":
@@ -290,7 +312,6 @@ class TrueLayerAccount(Account):
             icon = "natwest.svg"
         else:
             icon = "truelayer.svg"
-
         self.auth_provider = TrueLayerAuthProvider(
             name="TrueLayer",
             type="truelayer",
