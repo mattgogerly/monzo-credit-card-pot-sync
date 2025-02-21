@@ -35,7 +35,7 @@ def sync_balance():
         try:
             log.info("Loading Monzo account (if any)")
             monzo_account = account_repository.get_monzo_account()
-            if monzo_account.is_token_within_expiry_window():
+            if (monzo_account.is_token_within_expiry_window()):
                 monzo_account.refresh_access_token()
                 account_repository.save(monzo_account)
             monzo_account.ping()
@@ -84,6 +84,14 @@ def sync_balance():
                 card_balance = credit_account.get_total_balance()
                 prev_card = credit_account.prev_balance or 0
                 log.info(f"PotBalance={pot_balance}, CardBalance={card_balance}, PrevCard={prev_card}")
+                
+                # NEW: If this is a new account (prev_balance==0) but card_balance is nonzero,
+                # set the baseline to the current card balance.
+                if prev_card == 0 and card_balance > 0:
+                    log.info(f"{credit_account.type} baseline uninitialized. Setting PrevCard to {card_balance}.")
+                    credit_account.prev_balance = card_balance
+                    account_repository.save(credit_account)
+                    prev_card = card_balance
             except Exception as e:
                 log.error(f"Exception retrieving balances for {credit_account.type}: {e}")
                 continue
