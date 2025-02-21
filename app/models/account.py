@@ -11,7 +11,6 @@ class AccountModel(db.Model):
     account_id = Column(String(255))
     cooldown_until = Column(Integer, nullable=True)
     prev_balance = Column(Integer, default=0)
-    pot_snapshot_balance = Column(Integer, nullable=True, default=0)
-    pot_snapshot_timestamp = Column(Integer, nullable=True)
     cooldown_ref_card_balance = Column(Integer, default=0)
     cooldown_ref_pot_balance = Column(Integer, default=0)
+    stable_pot_balance = Column(Integer, nullable=True)

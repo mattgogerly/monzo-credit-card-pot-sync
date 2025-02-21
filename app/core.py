@@ -85,8 +85,13 @@ def sync_balance():
                 prev_card = credit_account.prev_balance or 0
                 log.info(f"PotBalance={pot_balance}, CardBalance={card_balance}, PrevCard={prev_card}")
                 
-                # NEW: If this is a new account (prev_balance==0) but card_balance is nonzero,
-                # set the baseline to the current card balance.
+                # NEW: Set stable baseline once if not already set
+                if credit_account.stable_pot_balance is None:
+                    credit_account.stable_pot_balance = pot_balance
+                    log.info(f"{credit_account.type} stable baseline set to {pot_balance}.")
+                    account_repository.save(credit_account)
+                
+                # Also, if this account is new (prev_balance == 0) set it to card_balance
                 if prev_card == 0 and card_balance > 0:
                     log.info(f"{credit_account.type} baseline uninitialized. Setting PrevCard to {card_balance}.")
                     credit_account.prev_balance = card_balance
@@ -102,10 +107,11 @@ def sync_balance():
 
             # 3) If not in cooldown, handle normal activity
             if not cooldown_active and not cooldown_expired:
-                prev_pot_snapshot = credit_account.pot_snapshot_balance or pot_balance
-                # (a) If pot dropped & card balance not changed => start cooldown first
-                if pot_balance < prev_pot_snapshot and card_balance == prev_card:
-                    log.info(f"Detected pot-only drop for {credit_account.type}. Initiating cooldown.")
+                # Use stable baseline for pot for cooldown detection
+                stable_pot = credit_account.stable_pot_balance
+                # (a) If pot dropped significantly below stable baseline and card balance unchanged => trigger cooldown
+                if pot_balance < stable_pot and card_balance == prev_card:
+                    log.info(f"Detected unexpected pot drop for {credit_account.type} (stable baseline {stable_pot} -> current {pot_balance}). Initiating cooldown.")
                     cooldown_hours = int(settings_repository.get("deposit_cooldown_hours") or 3)
                     credit_account.cooldown_until = now + (cooldown_hours * 3600)
                     hr_cooldown = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
@@ -114,10 +120,9 @@ def sync_balance():
                     credit_account.cooldown_ref_pot_balance = pot_balance
                     account_repository.save(credit_account)
                 else:
-                    # (b) If card went up => deposit difference
+                    # (b) If card went up => deposit difference; update stable baseline on normal activity.
                     if card_balance > prev_card:
                         diff = card_balance - prev_card
-                        # Check if Monzo has enough funds
                         monzo_account_balance = monzo_account.get_balance(account_selection=account_selection)
                         if monzo_account_balance < diff:
                             log.error("Insufficient Monzo funds to deposit. Disabling sync.")
@@ -130,15 +135,16 @@ def sync_balance():
                             return
                         monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=account_selection)
                         log.info(f"Deposited {diff} into pot for {credit_account.type}.")
+                        # Update both prev_balance and stable baseline to the new card balance
                         credit_account.prev_balance = card_balance
+                        credit_account.stable_pot_balance = pot_balance  # Reset baseline after normal deposit
                         account_repository.save(credit_account)
-
-                    # (c) If card went down => withdraw difference
                     elif card_balance < prev_card:
                         diff = prev_card - card_balance
                         monzo_account.withdraw_from_pot(credit_account.pot_id, diff, account_selection=account_selection)
                         log.info(f"Withdrew {diff} from pot for {credit_account.type}.")
                         credit_account.prev_balance = card_balance
+                        credit_account.stable_pot_balance = pot_balance  # Reset baseline after withdrawal
                         account_repository.save(credit_account)
 
             # 4) If cooldown expired => check if pot < card -> top up
@@ -177,12 +183,6 @@ def sync_balance():
                     credit_account.cooldown_ref_card_balance = None
                     credit_account.cooldown_ref_pot_balance = None
                     account_repository.save(credit_account)
-
-            # 6) Update pot snapshot if changed
-            if pot_balance != (credit_account.pot_snapshot_balance or pot_balance):
-                credit_account.pot_snapshot_balance = pot_balance
-                credit_account.pot_snapshot_timestamp = now
-                account_repository.save(credit_account)
 
             log.info(f"Processing {credit_account.type} complete.")
     log.info("All credit accounts processed.")

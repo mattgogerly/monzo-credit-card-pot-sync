@@ -20,10 +20,9 @@ class SqlAlchemyAccountRepository:
             account_id=account.account_id,
             cooldown_until=account.cooldown_until,
             prev_balance=account.prev_balance if isinstance(account.prev_balance, int) else 0,
-            pot_snapshot_balance=account.pot_snapshot_balance,
-            pot_snapshot_timestamp=account.pot_snapshot_timestamp,
             cooldown_ref_card_balance=account.cooldown_ref_card_balance,
-            cooldown_ref_pot_balance=account.cooldown_ref_pot_balance
+            cooldown_ref_pot_balance=account.cooldown_ref_pot_balance,
+            stable_pot_balance=account.stable_pot_balance
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
@@ -36,10 +35,9 @@ class SqlAlchemyAccountRepository:
             account_id=model.account_id,
             cooldown_until=(int(model.cooldown_until) if model.cooldown_until is not None else None),
             prev_balance=model.prev_balance,
-            pot_snapshot_balance=model.pot_snapshot_balance,
-            pot_snapshot_timestamp=model.pot_snapshot_timestamp,
             cooldown_ref_card_balance=model.cooldown_ref_card_balance,
-            cooldown_ref_pot_balance=model.cooldown_ref_pot_balance
+            cooldown_ref_pot_balance=model.cooldown_ref_pot_balance,
+            stable_pot_balance=model.stable_pot_balance
         )
 
     def get_all(self) -> list[Account]:
@@ -95,10 +93,9 @@ class SqlAlchemyAccountRepository:
             existing.account_id = account.account_id
             existing.prev_balance = account.prev_balance
             existing.cooldown_until = account.cooldown_until
-            existing.pot_snapshot_balance = account.pot_snapshot_balance
-            existing.pot_snapshot_timestamp = account.pot_snapshot_timestamp
             existing.cooldown_ref_card_balance = account.cooldown_ref_card_balance
             existing.cooldown_ref_pot_balance = account.cooldown_ref_pot_balance
+            existing.stable_pot_balance = account.stable_pot_balance
         else:
             # No record exists, add new.
             model = self._to_model(account)
