@@ -210,22 +210,35 @@ def sync_balance():
                     continue
 
             # (b) STANDARD ADJUSTMENT
-            if (live_card_balance > current_pot):
+            if live_card_balance > credit_account.prev_balance:
+                # New spending detected; deposit the difference.
                 diff = live_card_balance - current_pot
                 selection = monzo_account.get_account_type(credit_account.pot_id)
                 monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
-                log.info(f"[Standard] {credit_account.type}: Deposited {diff} pence into pot {credit_account.pot_id}.")
+                log.info(f"[Standard] {credit_account.type}: Deposited {diff} pence, as card increased from {credit_account.prev_balance} to {live_card_balance}.")
                 credit_account.prev_balance = live_card_balance
                 account_repository.save(credit_account)
-            elif (live_card_balance < current_pot):
+            elif live_card_balance == credit_account.prev_balance:
+                if current_pot < live_card_balance:
+                    # No confirmed spending; pot dropped unexpectedly.
+                    # Initiate cooldown instead of immediate deposit.
+                    try:
+                        cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                    except Exception:
+                        cooldown_hours = 3
+                    new_cooldown = int(time()) + cooldown_hours * 3600
+                    credit_account.cooldown_until = new_cooldown
+                    log.info(f"[Standard] {credit_account.type}: No card increase detected, but pot dropped. Initiating cooldown until {new_cooldown}.")
+                    account_repository.save(credit_account)
+                else:
+                    log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
+            elif live_card_balance < current_pot:
                 diff = current_pot - live_card_balance
                 selection = monzo_account.get_account_type(credit_account.pot_id)
                 monzo_account.withdraw_from_pot(credit_account.pot_id, diff, account_selection=selection)
-                log.info(f"[Standard] {credit_account.type}: Withdrew {diff} pence from pot {credit_account.pot_id}.")
+                log.info(f"[Standard] {credit_account.type}: Withdrew {diff} pence from pot {credit_account.pot_id} as card balance decreased.")
                 credit_account.prev_balance = live_card_balance
                 account_repository.save(credit_account)
-            else:
-                log.info(f"[Standard] {credit_account.type}: Card and pot balance equal; no deposit or withdrawal performed.")
 
             log.info(f"--- Finished processing account: {credit_account.type} ---")
 
