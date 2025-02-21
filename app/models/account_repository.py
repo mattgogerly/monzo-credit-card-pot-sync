@@ -22,7 +22,11 @@ class SqlAlchemyAccountRepository:
             prev_balance=account.prev_balance if isinstance(account.prev_balance, int) else 0,
             cooldown_start_balance=account.cooldown_start_balance,  # new field
             last_cooldown_expired=account.last_cooldown_expired,
-            pending_drop=account.pending_drop  # new field
+            pending_drop=account.pending_drop,  # new field
+            pot_snapshot_balance=account.pot_snapshot_balance,
+            pot_snapshot_timestamp=account.pot_snapshot_timestamp,
+            cooldown_ref_card_balance=account.cooldown_ref_card_balance,
+            cooldown_ref_pot_balance=account.cooldown_ref_pot_balance
         )
 
     def _to_domain(self, model: AccountModel) -> Account:
@@ -37,7 +41,11 @@ class SqlAlchemyAccountRepository:
             prev_balance=model.prev_balance,
             cooldown_start_balance=model.cooldown_start_balance,  # new field
             last_cooldown_expired=(int(model.last_cooldown_expired) if model.last_cooldown_expired is not None else None),
-            pending_drop=model.pending_drop  # new field
+            pending_drop=model.pending_drop,  # new field
+            pot_snapshot_balance=model.pot_snapshot_balance,
+            pot_snapshot_timestamp=model.pot_snapshot_timestamp,
+            cooldown_ref_card_balance=model.cooldown_ref_card_balance,
+            cooldown_ref_pot_balance=model.cooldown_ref_pot_balance
         )
 
     def get_all(self) -> list[Account]:
@@ -96,6 +104,10 @@ class SqlAlchemyAccountRepository:
             existing.cooldown_start_balance = account.cooldown_start_balance
             existing.last_cooldown_expired = account.last_cooldown_expired
             existing.pending_drop = account.pending_drop
+            existing.pot_snapshot_balance = account.pot_snapshot_balance
+            existing.pot_snapshot_timestamp = account.pot_snapshot_timestamp
+            existing.cooldown_ref_card_balance = account.cooldown_ref_card_balance
+            existing.cooldown_ref_pot_balance = account.cooldown_ref_pot_balance
         else:
             # No record exists, add new.
             model = self._to_model(account)

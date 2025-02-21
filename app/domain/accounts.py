@@ -22,7 +22,11 @@ class Account:
         prev_balance=0,
         cooldown_start_balance=None,  # new field
         last_cooldown_expired=None,
-        pending_drop=None             # new field
+        pending_drop=None,             # new field
+        pot_snapshot_balance=None,
+        pot_snapshot_timestamp=None,
+        cooldown_ref_card_balance=None,
+        cooldown_ref_pot_balance=None
     ):
         self.type = type
         self.access_token = access_token
@@ -35,6 +39,10 @@ class Account:
         self.cooldown_start_balance = cooldown_start_balance  # new
         self.last_cooldown_expired = last_cooldown_expired
         self.pending_drop = pending_drop                    # new
+        self.pot_snapshot_balance = pot_snapshot_balance
+        self.pot_snapshot_timestamp = pot_snapshot_timestamp
+        self.cooldown_ref_card_balance = cooldown_ref_card_balance
+        self.cooldown_ref_pot_balance = cooldown_ref_pot_balance
 
 
     def is_token_within_expiry_window(self):
