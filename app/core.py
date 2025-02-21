@@ -1,5 +1,4 @@
 import logging
-import ast
 from sqlalchemy.exc import NoResultFound
 from time import time
 import datetime  # Needed for human-readable time conversions
@@ -17,24 +16,14 @@ settings_repository = SqlAlchemySettingRepository(db)
 
 def sync_balance():
     with scheduler.app.app_context():
-        # Section 1–2: Connect to Monzo and validate credit accounts.
-        # Section 3: Calculate differential balance for each pot.
-        # Section 4: Refresh persisted fields.
-        # Section 5: Immediately process expired cooldowns (deposit shortfall and clear cooldown) so that subsequent logic works on updated baselines.
-        # Section 6: Standard adjustment processing (handling deposit if spending, withdrawal if payment, or nothing if balanced).
-        # Section 7: Final re‑check after an extra delay on pending drop deposit (if any).
-        # Section 8: Update persisted baseline so that future runs compare correctly.
-
         # --------------------------------------------------------------------
         # SECTION 1: INITIALIZATION AND CONNECTION VALIDATION
-        # - Retrieve and validate Monzo connection.
-        # - Refresh token if needed and ping the connection.
         # --------------------------------------------------------------------
         try:
             log.info("Retrieving Monzo connection")
             monzo_account: MonzoAccount = account_repository.get_monzo_account()
             log.info("Checking if Monzo access token needs refreshing")
-            if (monzo_account.is_token_within_expiry_window()):
+            if monzo_account.is_token_within_expiry_window():
                 monzo_account.refresh_access_token()
                 account_repository.save(monzo_account)
             log.info("Pinging Monzo connection to verify health")
@@ -50,9 +39,6 @@ def sync_balance():
 
         # --------------------------------------------------------------------
         # SECTION 2: RETRIEVE AND VALIDATE CREDIT ACCOUNTS
-        # - Retrieve credit card connections.
-        # - Refresh tokens and validate each connection.
-        # - Remove accounts with authentication issues.
         # --------------------------------------------------------------------
         log.info("Retrieving credit card connections")
         credit_accounts: list[TrueLayerAccount] = account_repository.get_credit_accounts()
@@ -60,7 +46,7 @@ def sync_balance():
         for credit_account in credit_accounts:
             try:
                 log.info(f"Checking if {credit_account.type} access token needs refreshing")
-                if (credit_account.is_token_within_expiry_window()):
+                if credit_account.is_token_within_expiry_window():
                     credit_account.refresh_access_token()
                     account_repository.save(credit_account)
                 log.info(f"Checking health of {credit_account.type} connection")
@@ -68,7 +54,6 @@ def sync_balance():
                 log.info(f"{credit_account.type} connection is healthy")
             except AuthException as e:
                 error_message = str(e)
-                # If the error indicates provider unavailability, skip; otherwise, remove the account.
                 if "currently unavailable" not in error_message:
                     if monzo_account is not None:
                         monzo_account.send_notification(
@@ -85,8 +70,6 @@ def sync_balance():
 
         # --------------------------------------------------------------------
         # SECTION 3: CALCULATE BALANCE DIFFERENTIALS PER POT
-        # - Build a mapping for each pot showing its live balance differential
-        #   by subtracting the aggregated credit card balances.
         # --------------------------------------------------------------------
         pot_balance_map = {}
         for credit_account in credit_accounts:
@@ -117,12 +100,8 @@ def sync_balance():
             log.info("Balance sync is disabled; exiting sync loop")
             return
 
-        # Build mapping for quick look-up later.
-        pot_to_credit_account = {f"{ac.pot_id}_{ac.type}": ac for ac in credit_accounts if ac.pot_id}
-
         # --------------------------------------------------------------------
         # SECTION 4: REFRESH PERSISTED ACCOUNT DATA
-        # - Refresh each credit account’s persisted values (cooldown, prev_balance).
         # --------------------------------------------------------------------
         for i, credit_account in enumerate(credit_accounts):
             refreshed = account_repository.get(credit_account.type)
@@ -131,11 +110,7 @@ def sync_balance():
         log.info("Refreshed credit account data including cooldown values.")
 
         # --------------------------------------------------------------------
-        # SECTION 5: EXPIRED COOLDOWN CHECK (PROCESS BEFORE FURTHER ADJUSTMENTS)
-        # - For any account with cooldown that has expired, immediately:
-        #   #  a) Calculate shortfall.
-        #   #  b) Deposit the shortfall.
-        #   #  c) Update stable baseline and clear cooldown fields.
+        # SECTION 5: EXPIRED COOLDOWN CHECK
         # --------------------------------------------------------------------
         now = int(time())
         for credit_account in credit_accounts:
@@ -150,7 +125,6 @@ def sync_balance():
                     selection = monzo_account.get_account_type(credit_account.pot_id)
                     monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
-                    # Reset baseline to new balance and clear cooldown.
                     credit_account.stable_pot_balance = new_balance
                     credit_account.prev_balance = new_balance
                     credit_account.cooldown_until = None
@@ -170,32 +144,17 @@ def sync_balance():
 
         # --------------------------------------------------------------------
         # SECTION 6: PER-ACCOUNT BALANCE ADJUSTMENT PROCESSING (DEPOSIT / WITHDRAWAL)
-        # - Process each credit account sequentially.
-        # - For each account:
-        #    a) Refresh persisted account values.
-        #    b) Retrieve live card balance and pot balance.
-        #    c) If the override flag is enabled and a cooldown is active, then if the card balance 
-        #       exceeds the previous balance, deposit the difference immediately (override branch).
-        #    d) Otherwise, if card > pot then deposit the difference.
-        #    e) If card < pot, withdraw the difference.
-        #    f) If equal, do nothing.
         # --------------------------------------------------------------------
         for credit_account in credit_accounts:
             log.info(f"--- Processing account: {credit_account.type} ---")
-            # Refresh persisted fields for this account.
             refreshed = account_repository.get(credit_account.type)
             credit_account.cooldown_until = refreshed.cooldown_until
             credit_account.prev_balance = refreshed.prev_balance
 
-            # Retrieve live balances.
             live_card_balance = credit_account.get_total_balance()
             current_pot = monzo_account.get_pot_balance(credit_account.pot_id)
 
-            # ------------------------
-            # (a) OVERRIDE BRANCH:
-            # If override is enabled and a cooldown is active, then
-            # deposit the difference even before cooldown expires.
-            # ------------------------
+            # (a) OVERRIDE BRANCH
             if settings_repository.get("override_cooldown_spending") == "True" and credit_account.cooldown_until:
                 if live_card_balance > credit_account.prev_balance:
                     diff = live_card_balance - credit_account.prev_balance
@@ -204,16 +163,10 @@ def sync_balance():
                     log.info(f"[Override] {credit_account.type}: Override deposit of {diff} pence executed.")
                     credit_account.prev_balance = live_card_balance
                     account_repository.save(credit_account)
-                    # Continue to next account; skip standard branch.
                     log.info(f"--- Finished processing account: {credit_account.type} (override applied) ---")
                     continue
 
-            # ------------------------
-            # (b) STANDARD ADJUSTMENT:
-            # Check live card vs pot:
-            # - If card balance exceeds pot, deposit the difference.
-            # - If card balance is lower than pot, withdraw the difference.
-            # ------------------------
+            # (b) STANDARD ADJUSTMENT
             if live_card_balance > current_pot:
                 diff = live_card_balance - current_pot
                 selection = monzo_account.get_account_type(credit_account.pot_id)
@@ -235,14 +188,14 @@ def sync_balance():
 
         # --------------------------------------------------------------------
         # SECTION 7: FINAL DEPOSIT RE-CHECK (AFTER COOLDOWN)
-        # - After a delay following cooldown expiration, check for any residual pending drop.
-        # - Deposit any pending shortfall and update baseline.
         # --------------------------------------------------------------------
         EXTRA_WAIT_SECONDS = 600  # e.g. 10 minutes delay after cooldown expiration
         for credit_account in credit_accounts:
             if credit_account.pot_id and credit_account.cooldown_until:
                 if int(time()) < credit_account.cooldown_until + EXTRA_WAIT_SECONDS:
-                    human_readable = datetime.datetime.fromtimestamp(credit_account.cooldown_until + EXTRA_WAIT_SECONDS).strftime("%Y-%m-%d %H:%M:%S")
+                    human_readable = datetime.datetime.fromtimestamp(
+                        credit_account.cooldown_until + EXTRA_WAIT_SECONDS
+                    ).strftime("%Y-%m-%d %H:%M:%S")
                     log.info(f"[Final Re-check] Waiting until at least {human_readable} before re‑check for {credit_account.type}.")
                     continue
                 pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
@@ -254,16 +207,16 @@ def sync_balance():
                     selection = monzo_account.get_account_type(credit_account.pot_id)
                     monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
-                    credit_account.stable_pot_balance = new_balance  # Reset baseline
-                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, new_balance, None, None, None)
+                    credit_account.stable_pot_balance = new_balance
+                    account_repository.update_credit_account_fields(
+                        credit_account.type, credit_account.pot_id, new_balance, None, None, None
+                    )
                     credit_account.prev_balance = new_balance
                 else:
                     log.info(f"[Final Re-check] No residual drop for {credit_account.type} after cooldown; no deposit executed.")
 
         # --------------------------------------------------------------------
         # SECTION 8: UPDATE BASELINE PERSISTENCE
-        # - For accounts where there is a confirmed change (spending or payment),
-        #   update persisted baseline (prev_balance) so that subsequent runs use the new value.
         # --------------------------------------------------------------------
         current_time = int(time())
         for credit_account in credit_accounts:
@@ -281,6 +234,6 @@ def sync_balance():
                     log.info(f"[Baseline Update] {credit_account.type}: Baseline remains unchanged (prev: {prev}, live: {live}).")
 
         # --------------------------------------------------------------------
-        # END OF SYNC LOOP – ALL ACCOUNTS PROCESSED
+        # END OF SYNC LOOP
         # --------------------------------------------------------------------
         log.info("All credit accounts processed.")
