@@ -21,7 +21,7 @@ class SqlAlchemyAccountRepository:
             cooldown_until=account.cooldown_until,
             prev_balance=account.prev_balance if isinstance(account.prev_balance, int) else 0,
             cooldown_start_balance=account.cooldown_start_balance,  # new field
-            last_cooldown_expired=account.last_cooldown_expired
+            last_cooldown_expired=account.last_cooldown_expired,
             pending_drop=account.pending_drop  # new field
         )
 
