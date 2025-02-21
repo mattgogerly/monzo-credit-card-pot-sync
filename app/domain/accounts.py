@@ -33,7 +33,7 @@ class Account:
         self.cooldown_until = cooldown_until
         self.prev_balance = prev_balance
         self.cooldown_start_balance = cooldown_start_balance  # new
-        self.last_cooldown_expired
+        self.last_cooldown_expired = last_cooldown_expired
         self.pending_drop = pending_drop                    # new
 
 
