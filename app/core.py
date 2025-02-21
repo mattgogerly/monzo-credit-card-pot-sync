@@ -164,7 +164,7 @@ def sync_balance():
                 )
                 drop = baseline - current_pot
                 if (drop > 0):
-                    log.info(f"[Cooldown Expiration] {credit_account.type}: Depositing shortfall of {drop} pence for pot {credit_account.pot_id}.")
+                    log.info(f"[Cooldown Expiration] {credit_account.type}: Depositing shortfall of £{drop / 100:.2f} for pot {credit_account.pot_id}.")
                     selection = monzo_account.get_account_type(credit_account.pot_id)
                     monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
@@ -175,7 +175,7 @@ def sync_balance():
                     account_repository.update_credit_account_fields(
                         credit_account.type, credit_account.pot_id, new_balance, None
                     )
-                    log.info(f"[Cooldown Expiration] {credit_account.type}: Updated pot balance is {new_balance}.")
+                    log.info(f"[Cooldown Expiration] {credit_account.type}: Updated pot balance is £{new_balance / 100:.2f}.")
                 else:
                     log.info(f"[Cooldown Expiration] {credit_account.type}: No shortfall detected; clearing cooldown.")
                     credit_account.cooldown_until = None
@@ -202,12 +202,12 @@ def sync_balance():
 
             # Log current account and pot status details
             log.info(
-                f"Account '{credit_account.type}': Live Card Balance = {live_card_balance} pence; "
-                f"Previous Card Baseline = {credit_account.prev_balance} pence."
+                f"Account '{credit_account.type}': Live Card Balance = £{live_card_balance / 100:.2f}; "
+                f"Previous Card Baseline = £{credit_account.prev_balance / 100:.2f}."
             )
             log.info(
-                f"Pot '{credit_account.pot_id}': Current Pot Balance = {current_pot} pence; "
-                f"Stable Pot Balance = {stable_pot} pence."
+                f"Pot '{credit_account.pot_id}': Current Pot Balance = £{current_pot / 100:.2f}; "
+                f"Stable Pot Balance = £{stable_pot / 100:.2f}."
             )
             if credit_account.cooldown_until:
                 hr_cooldown = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
@@ -226,8 +226,8 @@ def sync_balance():
                     selection = monzo_account.get_account_type(credit_account.pot_id)
                     monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
                     log.info(
-                        f"[Override] {credit_account.type}: Override deposit of {diff} pence executed "
-                        f"as card increased from {credit_account.prev_balance} to {live_card_balance}."
+                        f"[Override] {credit_account.type}: Override deposit of £{diff / 100:.2f} executed "
+                        f"as card increased from £{credit_account.prev_balance / 100:.2f} to £{live_card_balance / 100:.2f}."
                     )
                     credit_account.prev_balance = live_card_balance
                     account_repository.save(credit_account)
@@ -242,8 +242,8 @@ def sync_balance():
                 monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
                 new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
                 log.info(
-                    f"[Standard] {credit_account.type}: Deposited {diff} pence. "
-                    f"Pot updated from {current_pot} to {new_pot}; card increased from {credit_account.prev_balance} to {live_card_balance}."
+                    f"[Standard] {credit_account.type}: Deposited £{diff / 100:.2f}."
+                    f"Pot updated from £{current_pot / 100:.2f} to £{new_pot / 100:.2f}; card increased from £{credit_account.prev_balance / 100:.2f} to £{live_card_balance / 100:.2f}."
                 )
                 credit_account.prev_balance = live_card_balance
                 account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live_card_balance, None)
@@ -259,7 +259,7 @@ def sync_balance():
                     credit_account.cooldown_until = new_cooldown
                     hr_cooldown = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
                     log.info(
-                        f"[Standard] {credit_account.type}: Initiating cooldown because pot ({current_pot} pence) is less than card ({live_card_balance} pence). "
+                        f"[Standard] {credit_account.type}: Initiating cooldown because pot (£{current_pot / 100:.2f}) is less than card (£{live_card_balance / 100:.2f} pence). "
                         f"Cooldown set until {hr_cooldown} (epoch: {new_cooldown})."
                     )
                     account_repository.save(credit_account)
@@ -272,8 +272,8 @@ def sync_balance():
                 monzo_account.withdraw_from_pot(credit_account.pot_id, diff, account_selection=selection)
                 new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
                 log.info(
-                    f"[Standard] {credit_account.type}: Withdrew {diff} pence as pot exceeded card. "
-                    f"Pot changed from {current_pot} to {new_pot} while card remains at {live_card_balance} pence."
+                    f"[Standard] {credit_account.type}: Withdrew £{diff / 100:.2f} as pot exceeded card. "
+                    f"Pot changed from £{current_pot / 100:.2f} to £{new_pot / 100:.2f} while card remains at £{live_card_balance / 100:.2f}."
                 )
                 credit_account.prev_balance = live_card_balance
                 account_repository.save(credit_account)
@@ -302,7 +302,7 @@ def sync_balance():
                 )
                 drop = baseline - current_balance
                 if (drop > 0):
-                    log.info(f"[Final Re-check] Depositing pending drop of {drop} for {credit_account.type} into pot {credit_account.pot_id}.")
+                    log.info(f"[Final Re-check] Depositing pending drop of £{drop / 100:.2f} for {credit_account.type} into pot {credit_account.pot_id}.")
                     selection = monzo_account.get_account_type(credit_account.pot_id)
                     monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
@@ -324,11 +324,11 @@ def sync_balance():
                     log.info(f"[Baseline Update] {credit_account.type}: Cooldown active; baseline not updated.")
                     continue
                 if (live != prev):
-                    log.info(f"[Baseline Update] {credit_account.type}: Updating baseline from {prev} to {live}.")
+                    log.info(f"[Baseline Update] {credit_account.type}: Updating baseline from £{prev / 100:.2f} to £{live / 100:.2f}.")
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
                     credit_account.prev_balance = live
                 else:
-                    log.info(f"[Baseline Update] {credit_account.type}: Baseline remains unchanged (prev: {prev}, live: {live}).")
+                    log.info(f"[Baseline Update] {credit_account.type}: Baseline remains unchanged (prev: £{prev / 100:.2f}, live: £{live / 100:.2f}}).")
 
         # --------------------------------------------------------------------
         # END OF SYNC LOOP
