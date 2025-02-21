@@ -211,7 +211,10 @@ def sync_balance():
             )
             if credit_account.cooldown_until:
                 hr_cooldown = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
-                log.info(f"Cooldown active until {hr_cooldown} (epoch: {credit_account.cooldown_until}).")
+                if int(time()) < credit_account.cooldown_until:
+                    log.info(f"Cooldown active until {hr_cooldown} (epoch: {credit_account.cooldown_until}).")
+                else:
+                    log.info(f"Cooldown expired at {hr_cooldown} (epoch: {credit_account.cooldown_until}).")
             else:
                 log.info("No active cooldown on this account.")
 
