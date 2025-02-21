@@ -190,6 +190,7 @@ def sync_balance():
                     cooldown_expired_top_up_diff = credit_account.cooldown_start_balance - current_pot
                     
                     # Call add_to_pot to restore balance
+                    selection = monzo_account.get_account_type(pot_id)
                     monzo_account.add_to_pot(credit_account.pot_id, cooldown_expired_top_up_diff, account_selection=selection)
             
                     # Clear cooldown to allow normal operations after top-up
