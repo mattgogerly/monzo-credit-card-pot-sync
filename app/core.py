@@ -187,40 +187,67 @@ def sync_balance():
 
         # --------------------------------------------------------------------
         # SECTION 6: PER-ACCOUNT BALANCE ADJUSTMENT PROCESSING (DEPOSIT / WITHDRAWAL)
-        # --------------------------------------------------------------------
+        # Process one account at a time with detailed logging.
         for credit_account in credit_accounts:
-            log.info(f"--- Processing account: {credit_account.type} ---")
+            log.info("-------------------------------------------------------------")
+            log.info(f"Step: Start processing account '{credit_account.type}'.")
             refreshed = account_repository.get(credit_account.type)
             credit_account.cooldown_until = refreshed.cooldown_until
             credit_account.prev_balance = refreshed.prev_balance
 
+            # Retrieve current live figures
             live_card_balance = credit_account.get_total_balance()
             current_pot = monzo_account.get_pot_balance(credit_account.pot_id)
+            stable_pot = credit_account.stable_pot_balance if credit_account.stable_pot_balance is not None else 0
+
+            # Log current account and pot status details
+            log.info(
+                f"Account '{credit_account.type}': Live Card Balance = {live_card_balance} pence; "
+                f"Previous Card Baseline = {credit_account.prev_balance} pence."
+            )
+            log.info(
+                f"Pot '{credit_account.pot_id}': Current Pot Balance = {current_pot} pence; "
+                f"Stable Pot Balance = {stable_pot} pence."
+            )
+            if credit_account.cooldown_until:
+                hr_cooldown = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                log.info(f"Cooldown active until {hr_cooldown} (epoch: {credit_account.cooldown_until}).")
+            else:
+                log.info("No active cooldown on this account.")
 
             # (a) OVERRIDE BRANCH
             if (settings_repository.get("override_cooldown_spending") == "True" and credit_account.cooldown_until):
+                log.info("Step: OVERRIDE branch activated due to cooldown flag.")
                 if (live_card_balance > credit_account.prev_balance):
                     diff = live_card_balance - credit_account.prev_balance
                     selection = monzo_account.get_account_type(credit_account.pot_id)
                     monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
-                    log.info(f"[Override] {credit_account.type}: Override deposit of {diff} pence executed.")
+                    log.info(
+                        f"[Override] {credit_account.type}: Override deposit of {diff} pence executed "
+                        f"as card increased from {credit_account.prev_balance} to {live_card_balance}."
+                    )
                     credit_account.prev_balance = live_card_balance
                     account_repository.save(credit_account)
-                    log.info(f"--- Finished processing account: {credit_account.type} (override applied) ---")
-                    continue
+                log.info(f"Step: Finished OVERRIDE branch for account '{credit_account.type}'.")
+                continue
 
             # (b) STANDARD ADJUSTMENT:
             if live_card_balance > credit_account.prev_balance:
-                # Regular spending: deposit the difference and update baseline immediately.
+                log.info("Step: Regular spending detected (card balance increased).")
                 diff = live_card_balance - current_pot
                 selection = monzo_account.get_account_type(credit_account.pot_id)
                 monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
-                log.info(f"[Standard] {credit_account.type}: Deposited {diff} pence as card increased from {credit_account.prev_balance} to {live_card_balance}.")
+                new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
+                log.info(
+                    f"[Standard] {credit_account.type}: Deposited {diff} pence. "
+                    f"Pot updated from {current_pot} to {new_pot}; card increased from {credit_account.prev_balance} to {live_card_balance}."
+                )
                 credit_account.prev_balance = live_card_balance
                 account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live_card_balance, None)
             elif live_card_balance == credit_account.prev_balance:
-                # No confirmed spending; if pot dropped below card balance, trigger cooldown.
+                log.info("Step: No increase in card balance detected.")
                 if current_pot < live_card_balance and not credit_account.cooldown_until:
+                    log.info("Situation: Pot dropped below card balance without confirmed spending.")
                     try:
                         cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
                     except Exception:
@@ -228,20 +255,28 @@ def sync_balance():
                     new_cooldown = int(time()) + cooldown_hours * 3600
                     credit_account.cooldown_until = new_cooldown
                     hr_cooldown = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
-                    log.info(f"[Standard] {credit_account.type}: No card increase detected, but pot dropped. Initiating cooldown until {hr_cooldown}.")
+                    log.info(
+                        f"[Standard] {credit_account.type}: Initiating cooldown because pot ({current_pot} pence) is less than card ({live_card_balance} pence). "
+                        f"Cooldown set until {hr_cooldown} (epoch: {new_cooldown})."
+                    )
                     account_repository.save(credit_account)
                 else:
                     log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
             elif live_card_balance < current_pot:
-                # If pot balance exceeds card balance, always withdraw the difference.
+                log.info("Step: Withdrawal due to pot exceeding card balance.")
                 diff = current_pot - live_card_balance
                 selection = monzo_account.get_account_type(credit_account.pot_id)
                 monzo_account.withdraw_from_pot(credit_account.pot_id, diff, account_selection=selection)
-                log.info(f"[Standard] {credit_account.type}: Withdrew {diff} pence as pot exceeded card balance.")
+                new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
+                log.info(
+                    f"[Standard] {credit_account.type}: Withdrew {diff} pence as pot exceeded card. "
+                    f"Pot changed from {current_pot} to {new_pot} while card remains at {live_card_balance} pence."
+                )
                 credit_account.prev_balance = live_card_balance
                 account_repository.save(credit_account)
 
-            log.info(f"--- Finished processing account: {credit_account.type} ---")
+            log.info(f"Step: Finished processing account '{credit_account.type}'.")
+            log.info("-------------------------------------------------------------")
 
         # --------------------------------------------------------------------
         # SECTION 7: FINAL DEPOSIT RE-CHECK (AFTER COOLDOWN)
