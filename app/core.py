@@ -221,12 +221,20 @@ def sync_balance():
                 log.info("No active cooldown on this account.")
 
             # Log debug information before the cooldown check
-            hr_cooldown = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
-            log.debug(
-                f"Before adjustment: credit_account.prev_balance={credit_account.prev_balance}, "
-                f"live_card_balance={live_card_balance}, current_pot={current_pot}, "
-                f"cooldown_until={hr_cooldown}"
-            )
+            if credit_account.cooldown_until is not None:
+                hr_cooldown = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+                log.debug(
+                    f"Before adjustment: credit_account.prev_balance={credit_account.prev_balance}, "
+                    f"live_card_balance={live_card_balance}, current_pot={current_pot}, "
+                    f"cooldown_until={hr_cooldown}"
+                )
+            else:
+                log.debug(
+                    f"Before adjustment: credit_account.prev_balance={credit_account.prev_balance}, "
+                    f"live_card_balance={live_card_balance}, current_pot={current_pot}, "
+                    f"cooldown_until=None"
+                )
+
             # (a) OVERRIDE BRANCH
             if (settings_repository.get("override_cooldown_spending") == "True" and credit_account.cooldown_until and int(time()) < credit_account.cooldown_until):
                 log.info("Step: OVERRIDE branch activated due to cooldown flag.")
