@@ -173,7 +173,7 @@ def sync_balance():
                     available_funds = monzo_account.get_balance(selection)
                     if available_funds < drop:
                         insufficent_diff = drop - available_funds
-                        log.error(f"Insufficient funds in Monzo account to sync pot; required: £{drop/100:.2f}, available: £{available_funds/100:.2f}; disabling sync")
+                        log.error(f"Insufficient funds in Monzo account to sync pot; required: £{drop/100:.2f}, available: £{available_funds/100:.2f}; diff required £{insufficent_diff/100:.2f}; disabling sync")
                         settings_repository.save(Setting("enable_sync", "False"))
                         monzo_account.send_notification(
                             f"Lacking £{insufficent_diff/100:.2f} - Insufficient Funds, Sync Disabled",
@@ -273,7 +273,7 @@ def sync_balance():
                 available_funds = monzo_account.get_balance(selection)
                 if available_funds < diff:
                     insufficent_diff = diff - available_funds
-                    log.error(f"Insufficient funds in Monzo account to sync pot; required: £{diff/100:.2f}, available: £{available_funds/100:.2f}; disabling sync")
+                    log.error(f"Insufficient funds in Monzo account to sync pot; required: £{diff/100:.2f}, available: £{available_funds/100:.2f}; diff required £{insufficent_diff/100:.2f}; disabling sync")
                     settings_repository.save(Setting("enable_sync", "False"))
                     monzo_account.send_notification(
                         f"Lacking £{insufficent_diff/100:.2f} - Insufficient Funds, Sync Disabled",
