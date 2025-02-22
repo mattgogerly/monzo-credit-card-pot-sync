@@ -147,9 +147,8 @@ def sync_balance():
         # --------------------------------------------------------------------
         for i, credit_account in enumerate(credit_accounts):
             db.session.commit()
-            db.session.expire_all()  # Force a reload of persisted state, preventing stale cached values.
+            db.session.expire_all()  # Clear all caches before reload.
             refreshed = account_repository.get(credit_account.type)
-            # Preserve in‑memory cooldown if refreshed data is empty
             if not refreshed.cooldown_until and credit_account.cooldown_until:
                 refreshed.cooldown_until = credit_account.cooldown_until
             credit_accounts[i].cooldown_until = refreshed.cooldown_until
@@ -161,7 +160,13 @@ def sync_balance():
         # --------------------------------------------------------------------
         now = int(time())
         for credit_account in credit_accounts:
-            if (credit_account.pot_id and credit_account.cooldown_until and now >= credit_account.cooldown_until):
+            # Force fresh reload of this account’s persisted values
+            db.session.commit()
+            db.session.expire(credit_account)
+            refreshed = account_repository.get(credit_account.type)
+            credit_account.cooldown_until = refreshed.cooldown_until
+            credit_account.prev_balance = refreshed.prev_balance
+            if credit_account.pot_id and credit_account.cooldown_until and now >= credit_account.cooldown_until:
                 log.info(f"[Cooldown Expiration] {credit_account.type}: Expired cooldown detected.")
                 pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
                 current_pot = monzo_account.get_pot_balance(credit_account.pot_id)
@@ -210,11 +215,13 @@ def sync_balance():
         # SECTION 6: PER-ACCOUNT BALANCE ADJUSTMENT PROCESSING (DEPOSIT / WITHDRAWAL)
         # Process one account at a time with detailed logging.
         for credit_account in credit_accounts:
-            log.info("-------------------------------------------------------------")
-            log.info(f"Step: Start processing account '{credit_account.type}'.")
+            db.session.commit()
+            db.session.expire(credit_account)
             refreshed = account_repository.get(credit_account.type)
             credit_account.cooldown_until = refreshed.cooldown_until
             credit_account.prev_balance = refreshed.prev_balance
+            log.info("-------------------------------------------------------------")
+            log.info(f"Step: Start processing account '{credit_account.type}'.")
 
             # Retrieve current live figures
             live_card_balance = credit_account.get_total_balance()
@@ -374,6 +381,11 @@ def sync_balance():
         # --------------------------------------------------------------------
         current_time = int(time())
         for credit_account in credit_accounts:
+            db.session.commit()
+            db.session.expire(credit_account)
+            refreshed = account_repository.get(credit_account.type)
+            # Ensure we have the latest prev_balance.
+            credit_account.prev_balance = refreshed.prev_balance
             if (credit_account.pot_id):
                 live = credit_account.get_total_balance()
                 prev = credit_account.get_prev_balance(credit_account.pot_id)
@@ -383,6 +395,7 @@ def sync_balance():
                 if (live != prev):
                     log.info(f"[Baseline Update] {credit_account.type}: Updating baseline from £{prev / 100:.2f} to £{live / 100:.2f}.")
                     account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
+                    db.session.commit()
                     credit_account.prev_balance = live
                 else:
                     log.info(f"[Baseline Update] {credit_account.type}: Baseline remains unchanged (prev: £{prev / 100:.2f}, live: £{live / 100:.2f}).")
