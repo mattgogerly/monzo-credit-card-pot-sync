@@ -54,6 +54,10 @@ log = logging.getLogger("core")
 account_repository = SqlAlchemyAccountRepository(db)
 settings_repository = SqlAlchemySettingRepository(db)
 
+# Add helper function for converting settings to a boolean
+def bool_from_setting(value) -> bool:
+    return str(value).strip().lower() in ("true", "1", "yes")
+
 def sync_balance():
     with scheduler.app.app_context():
         # --------------------------------------------------------------------
@@ -293,7 +297,7 @@ def sync_balance():
             elif live_card_balance == credit_account.prev_balance:
                 log.info("Step: No increase in card balance detected.")
                 if current_pot < live_card_balance:
-                    if settings_repository.get("enable_sync") != "True":
+                    if not bool_from_setting(settings_repository.get("enable_sync")):
                         log.info(f"[Standard] {credit_account.type}: Sync disabled; not initiating cooldown.")
                     elif credit_account.cooldown_until is None or credit_account.cooldown_until <= int(time()):
                         log.info("Situation: Pot dropped below card balance without confirmed spending.")
