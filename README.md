@@ -28,6 +28,10 @@ This project provides a robust system to keep your Monzo pot in sync with your c
 
 For cards like American Express and Barclaycard, pending transactions are now taken into account to calculate the true balance. This ensures the Monzo pot will adjust accurately to reflect your spending even when transactions are still pending.
 
+## Upgrade Notice
+
+**Important:** If you are upgrading from a previous version, you will need to recreate your database, relink your accounts, and remap your pots again due to new fields being added.
+
 ## Installation
 
 1. Clone the repository:
