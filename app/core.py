@@ -274,7 +274,7 @@ def sync_balance():
                     log.error(f"Insufficient funds in Monzo account to sync pot; required: £{diff/100:.2f}, available: £{available_funds/100:.2f}; disabling sync")
                     settings_repository.save(Setting("enable_sync", "False"))
                     monzo_account.send_notification(
-                        f"Lacking £{drop/100:.2f} - Insufficient Funds, Sync Disabled",
+                        f"Lacking £{diff/100:.2f} - Insufficient Funds, Sync Disabled",
                         f"Sync disabled due to insufficient funds. Required deposit: £{diff/100:.2f}, available: £{available_funds/100:.2f}. Please top up and re-enable sync.",
                         account_selection=selection
                     )
