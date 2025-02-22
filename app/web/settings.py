@@ -15,8 +15,8 @@ account_repository = SqlAlchemyAccountRepository(db)
 @settings_bp.route("/", methods=["GET"])
 def index():
     settings = {s.key: s.value for s in repository.get_all()}
-    # Pass settings as 'data' for compatibility with the template
-    return render_template("settings/index.html", data=settings)
+    accounts = account_repository.get_credit_accounts()  # Pass available credit accounts
+    return render_template("settings/index.html", data=settings, accounts=accounts)
 
 @settings_bp.route("/", methods=["POST"])
 def save():
@@ -56,15 +56,21 @@ def save():
 def clear_cooldown():
     # Clear cooldown by setting cooldown_until to 10 minutes in the past
     now_minus_10 = int(time()) - 600
-    credit_accounts = account_repository.get_credit_accounts()
+    selected_type = request.form.get("account_type")
+    if selected_type:
+        credit_accounts = [
+            acct for acct in account_repository.get_credit_accounts()
+            if acct.type == selected_type
+        ]
+    else:
+        credit_accounts = account_repository.get_credit_accounts()
     for account in credit_accounts:
         account.cooldown_until = now_minus_10
         try:
-            # Attempt to update prev_balance to the pot balance
             new_baseline = account.get_pot_balance(account.pot_id)
         except Exception:
             new_baseline = account.get_total_balance()
         account.prev_balance = new_baseline
         account_repository.save(account)
-    flash("Cooldown cleared—baseline updated.")
+    flash("Cooldown cleared—baseline updated for selected account(s).")
     return redirect(url_for("settings.index"))
