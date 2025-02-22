@@ -220,8 +220,15 @@ def sync_balance():
             else:
                 log.info("No active cooldown on this account.")
 
+            # Log debug information before the cooldown check
+            hr_cooldown = datetime.datetime.fromtimestamp(credit_account.cooldown_until).strftime("%Y-%m-%d %H:%M:%S")
+            log.debug(
+                f"Before adjustment: credit_account.prev_balance={credit_account.prev_balance}, "
+                f"live_card_balance={live_card_balance}, current_pot={current_pot}, "
+                f"cooldown_until={hr_cooldown}"
+            )
             # (a) OVERRIDE BRANCH
-            if (settings_repository.get("override_cooldown_spending") == "True" and credit_account.cooldown_until):
+            if (settings_repository.get("override_cooldown_spending") == "True" and credit_account.cooldown_until and int(time()) < credit_account.cooldown_until):
                 log.info("Step: OVERRIDE branch activated due to cooldown flag.")
                 if (live_card_balance > credit_account.prev_balance):
                     diff = live_card_balance - credit_account.prev_balance
@@ -251,7 +258,7 @@ def sync_balance():
                 account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live_card_balance, None)
             elif live_card_balance == credit_account.prev_balance:
                 log.info("Step: No increase in card balance detected.")
-                if current_pot < live_card_balance and not credit_account.cooldown_until:
+                if current_pot < live_card_balance and (credit_account.cooldown_until is None or credit_account.cooldown_until <= int(time())):
                     log.info("Situation: Pot dropped below card balance without confirmed spending.")
                     try:
                         cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
