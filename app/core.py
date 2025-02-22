@@ -104,9 +104,7 @@ def sync_balance():
                             "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
                         )
                     account_repository.delete(credit_account.type)
-                else:
-                    log.info(f"Service provider for {credit_account.type} is currently unavailable, will retry later.")
-
+       
         if (monzo_account is None or len(credit_accounts) == 0):
             log.info("Either Monzo connection is invalid, or there are no valid credit card connections; exiting sync loop")
             return
