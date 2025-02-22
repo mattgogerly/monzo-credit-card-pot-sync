@@ -2,9 +2,18 @@ import pytest
 from time import time
 from urllib import parse
 from flask import Flask
+from app.extensions import db
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
 
 app = Flask(__name__)
+# Adjust test configuration so that URL building and SQLAlchemy work properly.
+app.config.update({
+    "TESTING": True,
+    "SERVER_NAME": "localhost",  # Required for url_for when outside a request
+    "SQLALCHEMY_DATABASE_URI": "sqlite://",  # In-memory database for testing
+    "SECRET_KEY": "testing",
+})
+db.init_app(app)
 
 def test_new_monzo_account():
     account = MonzoAccount("access_token", "refresh_token", 1000, "pot")
