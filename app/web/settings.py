@@ -43,8 +43,8 @@ def save():
                     scheduler.modify_job(id="sync_balance", trigger="interval", seconds=int(val))
 
         flash("Settings saved")
-    except Exception:
-        log.exception("Failed to save settings")
-        flash("Error saving settings, check logs for more details", "error")
+    except Exception as e:
+        log.error("Failed to save settings", exc_info=e)
+        flash("Error saving settings", "error")
 
     return redirect(url_for("settings.index"))
