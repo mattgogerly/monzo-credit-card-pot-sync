@@ -172,11 +172,12 @@ def sync_balance():
                     # NEW: Check if enough funds in Monzo account before deposit
                     available_funds = monzo_account.get_balance(selection)
                     if available_funds < drop:
+                        insufficent_diff = drop - available_funds
                         log.error(f"Insufficient funds in Monzo account to sync pot; required: £{drop/100:.2f}, available: £{available_funds/100:.2f}; disabling sync")
                         settings_repository.save(Setting("enable_sync", "False"))
                         monzo_account.send_notification(
-                            f"Lacking £{drop/100:.2f} - Insufficient Funds, Sync Disabled",
-                            f"Sync disabled due to insufficient funds. Required deposit: £{drop/100:.2f}, available: £{available_funds/100:.2f}. Please top up and re-enable sync.",
+                            f"Lacking £{insufficent_diff/100:.2f} - Insufficient Funds, Sync Disabled",
+                            f"Sync disabled due to insufficient funds. Required deposit: £{drop/100:.2f}, available: £{available_funds/100:.2f}. Please top up at least £{insufficent_diff/100:.2f} and re-enable sync.",
                             account_selection=selection
                         )
                         continue
@@ -271,11 +272,12 @@ def sync_balance():
                 # NEW: Check if enough funds in Monzo account before depositing the difference
                 available_funds = monzo_account.get_balance(selection)
                 if available_funds < diff:
+                    insufficent_diff = diff - available_funds
                     log.error(f"Insufficient funds in Monzo account to sync pot; required: £{diff/100:.2f}, available: £{available_funds/100:.2f}; disabling sync")
                     settings_repository.save(Setting("enable_sync", "False"))
                     monzo_account.send_notification(
-                        f"Lacking £{diff/100:.2f} - Insufficient Funds, Sync Disabled",
-                        f"Sync disabled due to insufficient funds. Required deposit: £{diff/100:.2f}, available: £{available_funds/100:.2f}. Please top up and re-enable sync.",
+                        f"Lacking £{insufficent_diff/100:.2f} - Insufficient Funds, Sync Disabled",
+                        f"Sync disabled due to insufficient funds. Required deposit: £{diff/100:.2f}, available: £{available_funds/100:.2f}. Please top up at least £{insufficent_diff/100:.2f} and re-enable sync.",
                         account_selection=selection
                     )
                     continue
