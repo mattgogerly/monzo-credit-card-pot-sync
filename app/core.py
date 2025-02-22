@@ -232,8 +232,6 @@ def sync_balance():
                         f"as card increased from £{credit_account.prev_balance / 100:.2f} to £{live_card_balance / 100:.2f}."
                     )
                     credit_account.prev_balance = live_card_balance
-                    # Update the baseline so that cooldown expiration only deposits any additional spending
-                    credit_account.cooldown_ref_card_balance = live_card_balance
                     account_repository.save(credit_account)
                 log.info(f"Step: Finished OVERRIDE branch for account '{credit_account.type}'.")
                 continue
@@ -253,12 +251,7 @@ def sync_balance():
                 account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live_card_balance, None)
             elif live_card_balance == credit_account.prev_balance:
                 log.info("Step: No increase in card balance detected.")
-                # Only set a new cooldown if:
-                #   - The pot is below the card balance, AND
-                #   - Either there is no cooldown set OR the existing cooldown has already expired.
-                if current_pot < live_card_balance and (
-                    not credit_account.cooldown_until or int(time()) >= credit_account.cooldown_until
-                ):
+                if current_pot < live_card_balance and not credit_account.cooldown_until:
                     log.info("Situation: Pot dropped below card balance without confirmed spending.")
                     try:
                         cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
@@ -268,7 +261,7 @@ def sync_balance():
                     credit_account.cooldown_until = new_cooldown
                     hr_cooldown = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
                     log.info(
-                        f"[Standard] {credit_account.type}: Initiating cooldown because pot (£{current_pot / 100:.2f}) is less than card (£{live_card_balance / 100:.2f}). "
+                        f"[Standard] {credit_account.type}: Initiating cooldown because pot (£{current_pot / 100:.2f}) is less than card (£{live_card_balance / 100:.2f} pence). "
                         f"Cooldown set until {hr_cooldown} (epoch: {new_cooldown})."
                     )
                     account_repository.save(credit_account)
