@@ -291,20 +291,25 @@ def sync_balance():
                 account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live_card_balance, None)
             elif live_card_balance == credit_account.prev_balance:
                 log.info("Step: No increase in card balance detected.")
-                if current_pot < live_card_balance and (credit_account.cooldown_until is None or credit_account.cooldown_until <= int(time())):
-                    log.info("Situation: Pot dropped below card balance without confirmed spending.")
-                    try:
-                        cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
-                    except Exception:
-                        cooldown_hours = 3
-                    new_cooldown = int(time()) + cooldown_hours * 3600
-                    credit_account.cooldown_until = new_cooldown
-                    hr_cooldown = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
-                    log.info(
-                        f"[Standard] {credit_account.type}: Initiating cooldown because pot (£{current_pot / 100:.2f}) is less than card (£{live_card_balance / 100:.2f} pence). "
-                        f"Cooldown set until {hr_cooldown} (epoch: {new_cooldown})."
-                    )
-                    account_repository.save(credit_account)
+                if current_pot < live_card_balance:
+                    if settings_repository.get("enable_sync") != "True":
+                        log.info(f"[Standard] {credit_account.type}: Sync disabled; not initiating cooldown.")
+                    elif credit_account.cooldown_until is None or credit_account.cooldown_until <= int(time()):
+                        log.info("Situation: Pot dropped below card balance without confirmed spending.")
+                        try:
+                            cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                        except Exception:
+                            cooldown_hours = 3
+                        new_cooldown = int(time()) + cooldown_hours * 3600
+                        credit_account.cooldown_until = new_cooldown
+                        hr_cooldown = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
+                        log.info(
+                            f"[Standard] {credit_account.type}: Initiating cooldown because pot (£{current_pot / 100:.2f}) is less than card (£{live_card_balance / 100:.2f} pence). "
+                            f"Cooldown set until {hr_cooldown} (epoch: {new_cooldown})."
+                        )
+                        account_repository.save(credit_account)
+                    else:
+                        log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
                 else:
                     log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
             elif live_card_balance < current_pot:
