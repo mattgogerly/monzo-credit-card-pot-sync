@@ -30,8 +30,6 @@ def test_settings_post_override_cooldown(test_client, seed_data):
     # ...verify it shows as checked or stored...
 
 def test_settings_index(test_client, monkeypatch):
-    # Ensure GET returns proper template with settings data
-    # Monkey-patch repository.get_all() to return dummy settings.
     dummy_settings = [
         type("DummySetting", (), {"key": "monzo_client_id", "value": "test_id"}),
         type("DummySetting", (), {"key": "enable_sync", "value": "True"}),
@@ -44,7 +42,6 @@ def test_settings_index(test_client, monkeypatch):
     assert b"test_id" in response.data
 
 def test_settings_save_success(test_client, monkeypatch):
-    # Test POST success: both checkboxes checked, and an extra field changes.
     dummy_settings = {
         "monzo_client_id": "id_old",
         "monzo_client_secret": "secret_old",
@@ -55,15 +52,11 @@ def test_settings_save_success(test_client, monkeypatch):
         "deposit_cooldown_hours": "3",
         "override_cooldown_spending": "False"
     }
-    # Patch repository.get_all to return dummy settings as Domain objects.
     monkeypatch.setattr("app.web.settings.repository.get_all", lambda: [type("S", (), s) for s in [
         {"key": k, "value": v} for k, v in dummy_settings.items()
     ]])
-    # Patch repository.save as a no-op.
     monkeypatch.setattr("app.web.settings.repository.save", lambda setting: None)
-    # Patch scheduler.modify_job as a no-op.
     monkeypatch.setattr("app.web.settings.scheduler.modify_job", lambda **kwargs: None)
-
     form_data = {
         "monzo_client_id": "id_new",
         "monzo_client_secret": "secret_new",
@@ -78,16 +71,24 @@ def test_settings_save_success(test_client, monkeypatch):
         url = url_for("settings.save")
     response = test_client.post(url, data=form_data, follow_redirects=True)
     assert response.status_code == 200
-    # Expect success flash message
     assert b"Settings saved" in response.data
 
 def test_settings_save_error(test_client, monkeypatch):
-    # Force an exception in the POST route to trigger error flash message.
-    def raise_exception():
-        raise Exception("Forced error")
-    monkeypatch.setattr("app.web.settings.repository.get_all", lambda: raise_exception())
+    # Define a side-effect function that raises an exception only on the first call.
+    def side_effect():
+        if not hasattr(side_effect, "called"):
+            side_effect.called = True
+            raise Exception("Forced error")
+        else:
+            # Return dummy settings for subsequent calls (e.g. in the index view)
+            return [
+                type("DummySetting", (), {"key": "monzo_client_id", "value": "default_id"}),
+                type("DummySetting", (), {"key": "enable_sync", "value": "False"}),
+            ]
+    monkeypatch.setattr("app.web.settings.repository.get_all", side_effect)
     with test_client.application.test_request_context():
         url = url_for("settings.save")
     response = test_client.post(url, data={}, follow_redirects=True)
     assert response.status_code == 200
+    # The flashed message should indicate an error saving settings.
     assert b"Error saving settings" in response.data
