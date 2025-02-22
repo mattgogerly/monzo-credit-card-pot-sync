@@ -48,6 +48,7 @@ from app.errors import AuthException
 from app.extensions import db, scheduler
 from app.models.account_repository import SqlAlchemyAccountRepository
 from app.models.setting_repository import SqlAlchemySettingRepository
+from app.domain.settings import Setting
 
 log = logging.getLogger("core")
 account_repository = SqlAlchemyAccountRepository(db)
@@ -168,6 +169,17 @@ def sync_balance():
                 if (drop > 0):
                     log.info(f"[Cooldown Expiration] {credit_account.type}: Depositing shortfall of £{drop / 100:.2f} for pot {credit_account.pot_id}.")
                     selection = monzo_account.get_account_type(credit_account.pot_id)
+                    # NEW: Check if enough funds in Monzo account before deposit
+                    available_funds = monzo_account.get_balance(selection)
+                    if available_funds < drop:
+                        log.error(f"Insufficient funds in Monzo account to sync pot; required: {drop}, available: {available_funds}; disabling sync")
+                        settings_repository.save(Setting("enable_sync", "False"))
+                        monzo_account.send_notification(
+                            "Insufficient Funds for Sync",
+                            f"Sync disabled due to insufficient funds. Required deposit: £{drop/100:.2f}, available: £{available_funds/100:.2f}. Please top up and re-enable sync.",
+                            account_selection=selection
+                        )
+                        continue
                     monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                     credit_account.stable_pot_balance = new_balance
@@ -256,6 +268,17 @@ def sync_balance():
                 log.info("Step: Regular spending detected (card balance increased).")
                 diff = live_card_balance - current_pot
                 selection = monzo_account.get_account_type(credit_account.pot_id)
+                # NEW: Check if enough funds in Monzo account before depositing the difference
+                available_funds = monzo_account.get_balance(selection)
+                if available_funds < diff:
+                    log.error(f"Insufficient funds in Monzo account to sync pot; required: {diff}, available: {available_funds}; disabling sync")
+                    settings_repository.save(Setting("enable_sync", "False"))
+                    monzo_account.send_notification(
+                        "Insufficient Funds for Sync",
+                        f"Sync disabled due to insufficient funds. Required deposit: £{diff/100:.2f}, available: £{available_funds/100:.2f}. Please top up and re-enable sync.",
+                        account_selection=selection
+                    )
+                    continue
                 monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
                 new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
                 log.info(
