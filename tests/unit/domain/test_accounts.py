@@ -1,8 +1,9 @@
+from flask import Flask
+app = Flask(__name__)
 import pytest
 from time import time
 from urllib import parse
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
-from app import app
 
 def test_new_monzo_account():
     account = MonzoAccount("access_token", "refresh_token", 1000, "pot")
