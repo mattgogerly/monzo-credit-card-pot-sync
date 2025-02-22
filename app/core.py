@@ -251,18 +251,19 @@ def sync_balance():
             # (a) OVERRIDE BRANCH
             if (settings_repository.get("override_cooldown_spending") == "True" and credit_account.cooldown_until and int(time()) < credit_account.cooldown_until):
                 log.info("Step: OVERRIDE branch activated due to cooldown flag.")
-                if (live_card_balance > credit_account.prev_balance):
-                    diff = live_card_balance - credit_account.prev_balance
-                    selection = monzo_account.get_account_type(credit_account.pot_id)
+                selection = monzo_account.get_account_type(credit_account.pot_id)
+                # Calculate deposit as the additional spending since the previous baseline.
+                diff = live_card_balance - credit_account.prev_balance
+                if diff > 0:
                     monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
                     log.info(
-                        f"[Override] {credit_account.type}: Override deposit of £{diff / 100:.2f} executed "
-                        f"as card increased from £{credit_account.prev_balance / 100:.2f} to £{live_card_balance / 100:.2f}."
+                        f"[Override] {credit_account.type}: Override deposit of £{diff/100:.2f} executed "
+                        f"as card increased from £{credit_account.prev_balance/100:.2f} to £{live_card_balance/100:.2f}."
                     )
+                    # Update card baseline but keep the previous shortfall queued (cooldown remains active).
                     credit_account.prev_balance = live_card_balance
                     account_repository.save(credit_account)
                 log.info(f"Step: Finished OVERRIDE branch for account '{credit_account.type}'.")
-                continue
 
             # (b) STANDARD ADJUSTMENT:
             if live_card_balance > credit_account.prev_balance:
