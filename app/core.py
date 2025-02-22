@@ -146,10 +146,10 @@ def sync_balance():
         # SECTION 4: REFRESH PERSISTED ACCOUNT DATA
         # --------------------------------------------------------------------
         for i, credit_account in enumerate(credit_accounts):
-            # Ensure all prior updates are committed
             db.session.commit()
+            db.session.expire_all()  # Force a reload of persisted state, preventing stale cached values.
             refreshed = account_repository.get(credit_account.type)
-            # If refreshed data doesn't include a cooldown but the in‑memory account does, keep it.
+            # Preserve in‑memory cooldown if refreshed data is empty
             if not refreshed.cooldown_until and credit_account.cooldown_until:
                 refreshed.cooldown_until = credit_account.cooldown_until
             credit_accounts[i].cooldown_until = refreshed.cooldown_until
