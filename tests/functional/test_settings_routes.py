@@ -37,7 +37,9 @@ def test_settings_index(test_client, monkeypatch):
         type("DummySetting", (), {"key": "enable_sync", "value": "True"}),
     ]
     monkeypatch.setattr("app.web.settings.repository.get_all", lambda: dummy_settings)
-    response = test_client.get(url_for("settings.index"))
+    with test_client.application.test_request_context():
+        url = url_for("settings.index")
+    response = test_client.get(url)
     assert response.status_code == 200
     assert b"test_id" in response.data
 
@@ -72,7 +74,9 @@ def test_settings_save_success(test_client, monkeypatch):
         "enable_sync": "on",
         "override_cooldown_spending": "on",
     }
-    response = test_client.post(url_for("settings.save"), data=form_data, follow_redirects=True)
+    with test_client.application.test_request_context():
+        url = url_for("settings.save")
+    response = test_client.post(url, data=form_data, follow_redirects=True)
     assert response.status_code == 200
     # Expect success flash message
     assert b"Settings saved" in response.data
@@ -82,6 +86,8 @@ def test_settings_save_error(test_client, monkeypatch):
     def raise_exception():
         raise Exception("Forced error")
     monkeypatch.setattr("app.web.settings.repository.get_all", lambda: raise_exception())
-    response = test_client.post(url_for("settings.save"), data={}, follow_redirects=True)
+    with test_client.application.test_request_context():
+        url = url_for("settings.save")
+    response = test_client.post(url, data={}, follow_redirects=True)
     assert response.status_code == 200
     assert b"Error saving settings" in response.data

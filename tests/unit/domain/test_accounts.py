@@ -223,7 +223,9 @@ def test_monzo_account_refresh_access_token_success(monkeypatch, requests_mock):
     account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
     monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
     with app.app_context():
+        db.create_all()
         account.refresh_access_token()
+        db.drop_all()  # cleanup
     assert account.access_token == "new_access"
     assert account.refresh_token == "new_refresh"
 
@@ -236,7 +238,9 @@ def test_monzo_account_refresh_access_token_keyerror(monkeypatch, requests_mock)
     account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
     monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
     with app.app_context():
+        db.create_all()
         account.refresh_access_token()
+        db.drop_all()
     # Expect the exception from the try/except KeyError block
 
 def test_monzo_account_refresh_access_token_authexception(monkeypatch, requests_mock):
@@ -249,5 +253,7 @@ def test_monzo_account_refresh_access_token_authexception(monkeypatch, requests_
     account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
     monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
     with app.app_context():
+        db.create_all()
         with pytest.raises(AuthException):
             account.refresh_access_token()
+        db.drop_all()
