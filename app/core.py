@@ -232,6 +232,8 @@ def sync_balance():
                         f"as card increased from £{credit_account.prev_balance / 100:.2f} to £{live_card_balance / 100:.2f}."
                     )
                     credit_account.prev_balance = live_card_balance
+                    # Update the baseline so that cooldown expiration only deposits any additional spending
+                    credit_account.cooldown_ref_card_balance = live_card_balance
                     account_repository.save(credit_account)
                 log.info(f"Step: Finished OVERRIDE branch for account '{credit_account.type}'.")
                 continue
