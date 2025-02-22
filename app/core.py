@@ -162,7 +162,8 @@ def sync_balance():
         for credit_account in credit_accounts:
             # Force fresh reload of this account’s persisted values
             db.session.commit()
-            db.session.expire(credit_account)
+            if hasattr(credit_account, "_sa_instance_state"):
+                db.session.expire(credit_account)
             refreshed = account_repository.get(credit_account.type)
             credit_account.cooldown_until = refreshed.cooldown_until
             credit_account.prev_balance = refreshed.prev_balance
@@ -216,7 +217,8 @@ def sync_balance():
         # Process one account at a time with detailed logging.
         for credit_account in credit_accounts:
             db.session.commit()
-            db.session.expire(credit_account)
+            if hasattr(credit_account, "_sa_instance_state"):
+                db.session.expire(credit_account)
             refreshed = account_repository.get(credit_account.type)
             credit_account.cooldown_until = refreshed.cooldown_until
             credit_account.prev_balance = refreshed.prev_balance
@@ -310,8 +312,18 @@ def sync_balance():
                 if current_pot < live_card_balance:
                     if settings_repository.get("enable_sync") == "False":
                         log.info(f"[Standard] {credit_account.type}: Sync disabled; not initiating cooldown.")
-                    elif credit_account.cooldown_until is not None and credit_account.cooldown_until > int(time()):
-                        log.info(f"[Standard] {credit_account.type}: Cooldown already active; no new cooldown initiated.")
+                    elif credit_account.cooldown_until is not None:
+                        # Double-check persistence of the cooldown value
+                        db.session.commit()
+                        if hasattr(credit_account, "_sa_instance_state"):
+                            db.session.expire(credit_account)
+                        refreshed = account_repository.get(credit_account.type)
+                        if refreshed.cooldown_until and refreshed.cooldown_until > int(time()):
+                            log.info(f"[Standard] {credit_account.type}: Cooldown already active; no new cooldown initiated.")
+                            # Skip initiating a new cooldown.
+                        else:
+                            # Fall-through to cooldown initiation below.
+                            log.info("Persisted cooldown check not active; proceeding to initiate cooldown.")
                     else:
                         log.info("Situation: Pot dropped below card balance without confirmed spending.")
                         try:
@@ -327,6 +339,12 @@ def sync_balance():
                         )
                         account_repository.save(credit_account)
                         db.session.commit()
+                        # Double-check persistence by reloading the account
+                        refreshed = account_repository.get(credit_account.type)
+                        if refreshed.cooldown_until != new_cooldown:
+                            log.error(f"[Standard] {credit_account.type}: Cooldown persistence error: expected {new_cooldown}, got {refreshed.cooldown_until}.")
+                        else:
+                            log.info(f"[Standard] {credit_account.type}: Cooldown persisted successfully.")
                 else:
                     log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
             elif live_card_balance < current_pot:
@@ -382,7 +400,8 @@ def sync_balance():
         current_time = int(time())
         for credit_account in credit_accounts:
             db.session.commit()
-            db.session.expire(credit_account)
+            if hasattr(credit_account, "_sa_instance_state"):
+                db.session.expire(credit_account)
             refreshed = account_repository.get(credit_account.type)
             # Ensure we have the latest prev_balance.
             credit_account.prev_balance = refreshed.prev_balance
