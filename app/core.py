@@ -190,6 +190,7 @@ def sync_balance():
                     account_repository.update_credit_account_fields(
                         credit_account.type, credit_account.pot_id, new_balance, None
                     )
+                    db.session.commit()
                     log.info(f"[Cooldown Expiration] {credit_account.type}: Updated pot balance is £{new_balance / 100:.2f}.")
                 else:
                     log.info(f"[Cooldown Expiration] {credit_account.type}: No shortfall detected; clearing cooldown.")
@@ -263,6 +264,7 @@ def sync_balance():
                     # Update card baseline but keep the previous shortfall queued (cooldown remains active).
                     credit_account.prev_balance = live_card_balance
                     account_repository.save(credit_account)
+                    db.session.commit()
                 log.info(f"Step: Finished OVERRIDE branch for account '{credit_account.type}'.")
 
             # (b) STANDARD ADJUSTMENT:
@@ -290,12 +292,15 @@ def sync_balance():
                 )
                 credit_account.prev_balance = live_card_balance
                 account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live_card_balance, None)
+                db.session.commit()
             elif live_card_balance == credit_account.prev_balance:
                 log.info("Step: No increase in card balance detected.")
                 if current_pot < live_card_balance:
                     if settings_repository.get("enable_sync") == "False":
                         log.info(f"[Standard] {credit_account.type}: Sync disabled; not initiating cooldown.")
-                    elif credit_account.cooldown_until is None or credit_account.cooldown_until <= int(time()):
+                    elif credit_account.cooldown_until is not None and credit_account.cooldown_until > int(time()):
+                        log.info(f"[Standard] {credit_account.type}: Cooldown already active; no new cooldown initiated.")
+                    else:
                         log.info("Situation: Pot dropped below card balance without confirmed spending.")
                         try:
                             cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
@@ -309,8 +314,7 @@ def sync_balance():
                             f"Cooldown set until {hr_cooldown} (epoch: {new_cooldown})."
                         )
                         account_repository.save(credit_account)
-                    else:
-                        log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
+                        db.session.commit()
                 else:
                     log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
             elif live_card_balance < current_pot:
