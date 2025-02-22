@@ -92,9 +92,13 @@ def sync_balance():
                 credit_account.ping()
                 log.info(f"{credit_account.type} connection is healthy")
             except AuthException as e:
-                error_message = str(e)
-                if ("currently unavailable" not in error_message):
-                    if (monzo_account is not None):
+                # Suppose the exception carries a details attribute
+                details = getattr(e, 'details', {})
+                description = details.get('error_description', '')
+                if "currently unavailable" in description or details.get('error') == 'provider_error':
+                    log.info(f"Service provider for {credit_account.type} is currently unavailable, will retry later.")
+                else:
+                    if monzo_account is not None:
                         monzo_account.send_notification(
                             f"{credit_account.type} Pot Sync Access Expired",
                             "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
