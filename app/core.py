@@ -172,10 +172,10 @@ def sync_balance():
                     # NEW: Check if enough funds in Monzo account before deposit
                     available_funds = monzo_account.get_balance(selection)
                     if available_funds < drop:
-                        log.error(f"Insufficient funds in Monzo account to sync pot; required: {drop}, available: {available_funds}; disabling sync")
+                        log.error(f"Insufficient funds in Monzo account to sync pot; required: {drop/100:.2f}, available: {available_funds/100:.2f}; disabling sync")
                         settings_repository.save(Setting("enable_sync", "False"))
                         monzo_account.send_notification(
-                            "Insufficient Funds for Sync",
+                            f"Insufficient Funds for Sync - £{drop/100:.2f} Required",
                             f"Sync disabled due to insufficient funds. Required deposit: £{drop/100:.2f}, available: £{available_funds/100:.2f}. Please top up and re-enable sync.",
                             account_selection=selection
                         )
@@ -271,10 +271,10 @@ def sync_balance():
                 # NEW: Check if enough funds in Monzo account before depositing the difference
                 available_funds = monzo_account.get_balance(selection)
                 if available_funds < diff:
-                    log.error(f"Insufficient funds in Monzo account to sync pot; required: {diff}, available: {available_funds}; disabling sync")
+                    log.error(f"Insufficient funds in Monzo account to sync pot; required: {diff/100:.2f}, available: {available_funds/100:.2f}; disabling sync")
                     settings_repository.save(Setting("enable_sync", "False"))
                     monzo_account.send_notification(
-                        "Insufficient Funds for Sync",
+                        f"Insufficient Funds for Sync - £{drop/100:.2f} Required",
                         f"Sync disabled due to insufficient funds. Required deposit: £{diff/100:.2f}, available: £{available_funds/100:.2f}. Please top up and re-enable sync.",
                         account_selection=selection
                     )
