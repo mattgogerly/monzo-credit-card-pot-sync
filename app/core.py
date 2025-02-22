@@ -305,7 +305,7 @@ def sync_balance():
                         credit_account.cooldown_until = new_cooldown
                         hr_cooldown = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
                         log.info(
-                            f"[Standard] {credit_account.type}: Initiating cooldown because pot (£{current_pot / 100:.2f}) is less than card (£{live_card_balance / 100:.2f} pence). "
+                            f"[Standard] {credit_account.type}: Initiating cooldown because pot (£{current_pot / 100:.2f}) is less than card (£{live_card_balance / 100:.2f}). "
                             f"Cooldown set until {hr_cooldown} (epoch: {new_cooldown})."
                         )
                         account_repository.save(credit_account)
