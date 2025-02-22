@@ -2,6 +2,7 @@ import pytest
 from time import time
 from urllib import parse
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
+from app import app
 
 def test_new_monzo_account():
     account = MonzoAccount("access_token", "refresh_token", 1000, "pot")
@@ -210,7 +211,8 @@ def test_monzo_account_refresh_access_token_success(monkeypatch, requests_mock):
     })
     account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
     monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
-    account.refresh_access_token()
+    with app.app_context():
+        account.refresh_access_token()
     assert account.access_token == "new_access"
     assert account.refresh_token == "new_refresh"
 
@@ -222,8 +224,9 @@ def test_monzo_account_refresh_access_token_keyerror(monkeypatch, requests_mock)
     requests_mock.post("https://api.monzo.com/oauth2/token", json={})
     account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
     monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
+    with app.app_context():
+        account.refresh_access_token()
     # Expect the exception from the try/except KeyError block
-    account.refresh_access_token()
 
 def test_monzo_account_refresh_access_token_authexception(monkeypatch, requests_mock):
     """
@@ -234,5 +237,6 @@ def test_monzo_account_refresh_access_token_authexception(monkeypatch, requests_
     requests_mock.post("https://api.monzo.com/oauth2/token", json={"error": "invalid_grant"}, status_code=400)
     account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
     monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
-    with pytest.raises(AuthException):
-        account.refresh_access_token()
+    with app.app_context():
+        with pytest.raises(AuthException):
+            account.refresh_access_token()

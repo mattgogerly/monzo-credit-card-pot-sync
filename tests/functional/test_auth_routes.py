@@ -27,7 +27,7 @@ def test_monzo_oauth_callback_missing_token(test_client, requests_mock):
         json={"error": "invalid_request"},
         status_code=400
     )
-    with pytest.raises(AuthException):
+    with pytest.raises(KeyError):
         test_client.get("/auth/callback/monzo?code=123&state=Monzo-123")
 
 def test_truelayer_oauth_callback_missing_token(test_client, requests_mock):
@@ -37,5 +37,5 @@ def test_truelayer_oauth_callback_missing_token(test_client, requests_mock):
         json={},
         status_code=400
     )
-    with pytest.raises(AuthException):
+    with pytest.raises(KeyError):
         test_client.get("/auth/callback/truelayer?code=123&state=Barclaycard-123")

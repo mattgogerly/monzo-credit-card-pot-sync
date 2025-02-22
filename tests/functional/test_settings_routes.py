@@ -29,7 +29,7 @@ def test_settings_post_override_cooldown(test_client, seed_data):
     assert b"Override Cooldown Spending" in response.data
     # ...verify it shows as checked or stored...
 
-def test_settings_index(client, monkeypatch):
+def test_settings_index(test_client, monkeypatch):
     # Ensure GET returns proper template with settings data
     # Monkey-patch repository.get_all() to return dummy settings.
     dummy_settings = [
@@ -37,11 +37,11 @@ def test_settings_index(client, monkeypatch):
         type("DummySetting", (), {"key": "enable_sync", "value": "True"}),
     ]
     monkeypatch.setattr("app.web.settings.repository.get_all", lambda: dummy_settings)
-    response = client.get(url_for("settings.index"))
+    response = test_client.get(url_for("settings.index"))
     assert response.status_code == 200
     assert b"test_id" in response.data
 
-def test_settings_save_success(client, monkeypatch):
+def test_settings_save_success(test_client, monkeypatch):
     # Test POST success: both checkboxes checked, and an extra field changes.
     dummy_settings = {
         "monzo_client_id": "id_old",
@@ -72,16 +72,16 @@ def test_settings_save_success(client, monkeypatch):
         "enable_sync": "on",
         "override_cooldown_spending": "on",
     }
-    response = client.post(url_for("settings.save"), data=form_data, follow_redirects=True)
+    response = test_client.post(url_for("settings.save"), data=form_data, follow_redirects=True)
     assert response.status_code == 200
     # Expect success flash message
     assert b"Settings saved" in response.data
 
-def test_settings_save_error(client, monkeypatch):
+def test_settings_save_error(test_client, monkeypatch):
     # Force an exception in the POST route to trigger error flash message.
     def raise_exception():
         raise Exception("Forced error")
     monkeypatch.setattr("app.web.settings.repository.get_all", lambda: raise_exception())
-    response = client.post(url_for("settings.save"), data={}, follow_redirects=True)
+    response = test_client.post(url_for("settings.save"), data={}, follow_redirects=True)
     assert response.status_code == 200
     assert b"Error saving settings" in response.data
