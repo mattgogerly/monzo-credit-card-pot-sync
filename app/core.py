@@ -251,7 +251,10 @@ def sync_balance():
                 account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live_card_balance, None)
             elif live_card_balance == credit_account.prev_balance:
                 log.info("Step: No increase in card balance detected.")
-                if current_pot < live_card_balance and not credit_account.cooldown_until:
+                # Only set a new cooldown if none exists or if the existing one has expired.
+                if current_pot < live_card_balance and (
+                    not credit_account.cooldown_until or int(time()) >= credit_account.cooldown_until
+                ):
                     log.info("Situation: Pot dropped below card balance without confirmed spending.")
                     try:
                         cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
