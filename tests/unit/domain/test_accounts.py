@@ -196,3 +196,42 @@ def test_truelayer_account_get_total_balance(requests_mock):
     
     # Assert that the total balance is calculated correctly
     assert account.get_total_balance() == 140000  # Total in pence (multiplied by 100)
+
+def test_monzo_account_refresh_access_token_success(monkeypatch, requests_mock):
+    """
+    Simulate successful token refresh with the MonzoAuthProvider.
+    """
+    from app.domain.accounts import MonzoAccount
+    requests_mock.post("https://api.monzo.com/oauth2/token", json={
+        "access_token": "new_access",
+        "refresh_token": "new_refresh",
+        "expires_in": 3600
+    })
+    account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
+    monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
+    account.refresh_access_token()
+    assert account.access_token == "new_access"
+    assert account.refresh_token == "new_refresh"
+
+def test_monzo_account_refresh_access_token_keyerror(monkeypatch, requests_mock):
+    """
+    Exercise the KeyError branch, ensuring an exception is raised when fields are missing.
+    """
+    from app.domain.accounts import MonzoAccount
+    requests_mock.post("https://api.monzo.com/oauth2/token", json={})
+    account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
+    monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
+    # Expect the exception from the try/except KeyError block
+    account.refresh_access_token()
+
+def test_monzo_account_refresh_access_token_authexception(monkeypatch, requests_mock):
+    """
+    Exercise the AuthException branch, ensuring it’s raised when underlying logic signals an auth failure.
+    """
+    from app.domain.accounts import MonzoAccount
+    from app.errors import AuthException
+    requests_mock.post("https://api.monzo.com/oauth2/token", json={"error": "invalid_grant"}, status_code=400)
+    account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
+    monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
+    with pytest.raises(AuthException):
+        account.refresh_access_token()

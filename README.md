@@ -13,6 +13,26 @@ This project is a tool to sync the balance of your credit cards and a Monzo pot.
 - Connect all of your credit card providers to keep your pot up to date
 - **Support for joint Monzo accounts:** Seamlessly sync funds from both personal and joint accounts
 
+### Extended Logic for Credit Card Providers
+We've introduced enhanced processes for certain credit cards, such as American Express and Barclaycard, where pending transactions are considered. This ensures your Monzo pot always has enough funds to match your latest (including pending) card balance.
+
+### Cooldown Logic
+We employ a cooldown mechanism whenever the pot unexpectedly drops below the card balance without new spending. This logic applies to all configured credit accounts (including multiple cards) and works seamlessly with both personal and joint Monzo accounts.
+
+There are four main scenarios:
+1. Card balance increases (new spend): The pot is topped up to match the new card balance.  
+2. Pot balance exceeds card balance: We withdraw the excess from the pot.  
+3. Pot balance is below the card balance with no new spend (suspected direct pot payment):  
+   - We trigger a cooldown period to wait for the final card balance to settle.  
+   - If the cooldown expires but the card balance remains higher than the pot, the difference is deposited automatically.  
+4. Override spending mode: If override is enabled and the card balance increases during cooldown, we still deposit the new difference immediately, leaving the original shortfall to be resolved once the cooldown ends.
+
+Example:
+1. Your card shows £200, pot has £100.  
+2. Without new transactions, pot suddenly dips to £90 => triggers cooldown.  
+3. During cooldown, you spend more => card goes to £110 => override logic deposits £20 to match that extra spend (bringing pot to £110).  
+4. Cooldown stays active for the original shortfall. If, by cooldown’s end, the pot is still under the card balance, we deposit the difference.
+
 ## Installation
 
 1. Clone the repository:
