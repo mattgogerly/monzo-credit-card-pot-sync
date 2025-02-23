@@ -120,11 +120,6 @@ class SqlAlchemyAccountRepository:
                                      new_balance: int, cooldown_until: int = None) -> Account:
         record: AccountModel = self._session.query(AccountModel).filter_by(type=account_type).one()
         record.prev_balance = new_balance
-        # Only update the cooldown value if explicitly provided.
-        if cooldown_until is not None:
-            record.cooldown_until = cooldown_until
-        else:
-            # Retain existing cooldown if new value is not provided.
-            record.cooldown_until = record.cooldown_until
+        record.cooldown_until = cooldown_until
         self._session.commit()
         return self._to_domain(record)
