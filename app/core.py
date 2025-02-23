@@ -172,6 +172,28 @@ def sync_balance():
             refreshed = account_repository.get(credit_account.type)
             credit_account.cooldown_until = refreshed.cooldown_until
             credit_account.prev_balance = refreshed.prev_balance
+        
+            # Immediately clear cooldown if pot and live balance match
+            if credit_account.pot_id and credit_account.cooldown_until and now < credit_account.cooldown_until:
+                pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
+                current_pot = monzo_account.get_pot_balance(credit_account.pot_id)
+                baseline = (
+                    credit_account.cooldown_ref_card_balance
+                    if credit_account.cooldown_ref_card_balance is not None
+                    else pre_deposit
+                )
+                drop = baseline - current_pot
+                if drop <= 0:
+                    log.info(f"[Cooldown Expiration] {credit_account.type}: Pot and live balance match; clearing cooldown immediately.")
+                    credit_account.cooldown_until = None
+                    credit_account.cooldown_ref_card_balance = None
+                    account_repository.update_credit_account_fields(
+                        credit_account.type, credit_account.pot_id, current_pot, credit_account.cooldown_until
+                    )
+                    db.session.commit()
+                    continue
+        
+            # Process expired cooldowns
             if credit_account.pot_id and credit_account.cooldown_until and now >= credit_account.cooldown_until:
                 log.info(f"[Cooldown Expiration] {credit_account.type}: Expired cooldown detected.")
                 pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
