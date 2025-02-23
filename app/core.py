@@ -289,7 +289,7 @@ def sync_balance():
                 )
 
             # (a) OVERRIDE BRANCH
-            if override_cooldown_spending and int(time()) < credit_account.cooldown_until:
+            if override_cooldown_spending and (credit_account.cooldown_until is not None and int(time()) < credit_account.cooldown_until):
                 log.info("Step: OVERRIDE branch activated due to cooldown flag.")
                 selection = monzo_account.get_account_type(credit_account.pot_id)
                 # Calculate deposit as the additional spending since the previous baseline.
