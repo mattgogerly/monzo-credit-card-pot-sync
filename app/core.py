@@ -186,7 +186,32 @@ def sync_balance():
                 )
                 drop = baseline - current_pot
                 if (drop > 0):
-                    # ... (deposit logic remains the same) ...
+                    if (drop > 0):
+                    log.info(f"[Cooldown Expiration] {credit_account.type}: Depositing shortfall of £{drop / 100:.2f} for pot {credit_account.pot_id}.")
+                    selection = monzo_account.get_account_type(credit_account.pot_id)
+                    # NEW: Check if enough funds in Monzo account before deposit
+                    available_funds = monzo_account.get_balance(selection)
+                    if available_funds < drop:
+                        insufficent_diff = drop - available_funds
+                        log.error(f"Insufficient funds in Monzo account to sync pot; required: £{drop/100:.2f}, available: £{available_funds/100:.2f}; diff required £{insufficent_diff/100:.2f}; disabling sync")
+                        settings_repository.save(Setting("enable_sync", "False"))
+                        monzo_account.send_notification(
+                            f"Lacking £{insufficent_diff/100:.2f} - Insufficient Funds, Sync Disabled",
+                            f"Sync disabled due to insufficient funds. Required deposit: £{drop/100:.2f}, available: £{available_funds/100:.2f}. Please top up at least £{insufficent_diff/100:.2f} and re-enable sync.",
+                            account_selection=selection
+                        )
+                        continue
+                    monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
+                    new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
+                    credit_account.stable_pot_balance = new_balance
+                    credit_account.prev_balance = new_balance
+                    credit_account.cooldown_until = None
+                    credit_account.cooldown_ref_card_balance = None
+                    account_repository.update_credit_account_fields(
+                        credit_account.type, credit_account.pot_id, new_balance, None
+                    )
+                    db.session.commit()
+                    log.info(f"[Cooldown Expiration] {credit_account.type}: Updated pot balance is £{new_balance / 100:.2f}.")
                 else:
                     log.info(f"[Cooldown Expiration] {credit_account.type}: No shortfall detected; validating before clearing cooldown.")
                     # Perform an extra fetch and re-calc to confirm
