@@ -279,7 +279,7 @@ def sync_balance():
                 )
 
             # (a) OVERRIDE BRANCH
-            if (settings_repository.get("override_cooldown_spending") == "True" and credit_account.cooldown_until and int(time()) < credit_account.cooldown_until):
+            if (settings_repository.get("override_cooldown_spending") == "True" and (credit_account.cooldown_until is not None) and (int(time()) < credit_account.cooldown_until)):
                 log.info("Step: OVERRIDE branch activated due to cooldown flag.")
                 selection = monzo_account.get_account_type(credit_account.pot_id)
                 # Calculate deposit as the additional spending since the previous baseline.
@@ -297,90 +297,91 @@ def sync_balance():
                 log.info(f"Step: Finished OVERRIDE branch for account '{credit_account.type}'.")
 
             # (b) STANDARD ADJUSTMENT:
-            if live_card_balance > credit_account.prev_balance:
-                log.info("Step: Regular spending detected (card balance increased).")
-                diff = live_card_balance - current_pot
-                selection = monzo_account.get_account_type(credit_account.pot_id)
-                # NEW: Check if enough funds in Monzo account before depositing the difference
-                available_funds = monzo_account.get_balance(selection)
-                if available_funds < diff:
-                    insufficent_diff = diff - available_funds
-                    log.error(f"Insufficient funds in Monzo account to sync pot; required: £{diff/100:.2f}, available: £{available_funds/100:.2f}; diff required £{insufficent_diff/100:.2f}; disabling sync")
-                    settings_repository.save(Setting("enable_sync", "False"))
-                    monzo_account.send_notification(
-                        f"Lacking £{insufficent_diff/100:.2f} - Insufficient Funds, Sync Disabled",
-                        f"Sync disabled due to insufficient funds. Required deposit: £{diff/100:.2f}, available: £{available_funds/100:.2f}. Please top up at least £{insufficent_diff/100:.2f} and re-enable sync.",
-                        account_selection=selection
-                    )
-                    continue
-                monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
-                new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
-                log.info(
-                    f"[Standard] {credit_account.type}: Deposited £{diff / 100:.2f}."
-                    f"Pot updated from £{current_pot / 100:.2f} to £{new_pot / 100:.2f}; card increased from £{credit_account.prev_balance / 100:.2f} to £{live_card_balance / 100:.2f}."
-                )
-                credit_account.prev_balance = live_card_balance
-                account_repository.update_credit_account_fields(
-                    credit_account.type,
-                    credit_account.pot_id,
-                    live_card_balance,
-                    credit_account.cooldown_until
-                )
-                db.session.commit()
-            elif live_card_balance < current_pot:
-                log.info("Step: Withdrawal due to pot exceeding card balance.")
-                diff = current_pot - live_card_balance
-                selection = monzo_account.get_account_type(credit_account.pot_id)
-                monzo_account.withdraw_from_pot(credit_account.pot_id, diff, account_selection=selection)
-                new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
-                log.info(
-                    f"[Standard] {credit_account.type}: Withdrew £{diff / 100:.2f} as pot exceeded card. "
-                    f"Pot changed from £{current_pot / 100:.2f} to £{new_pot / 100:.2f} while card remains at £{live_card_balance / 100:.2f}."
-                )
-                credit_account.prev_balance = live_card_balance
-                account_repository.save(credit_account)
-            elif live_card_balance == credit_account.prev_balance:
-                log.info("Step: No increase in card balance detected.")
-                if current_pot < live_card_balance:
-                    if settings_repository.get("enable_sync") == "False":
-                        log.info(f"[Standard] {credit_account.type}: Sync disabled; not initiating cooldown.")
-                    elif credit_account.cooldown_until is not None:
-                        # Double-check persistence of the cooldown value
-                        db.session.commit()
-                        if hasattr(credit_account, "_sa_instance_state"):
-                            db.session.expire(credit_account)
-                        refreshed = account_repository.get(credit_account.type)
-                        if refreshed.cooldown_until and refreshed.cooldown_until > int(time()):
-                            log.info(f"[Standard] {credit_account.type}: Cooldown already active; no new cooldown initiated.")
-                            # Skip initiating a new cooldown.
-                            continue
-                        else:
-                            # Fall-through to cooldown initiation below.
-                            log.info("Persisted cooldown check not active; proceeding to initiate cooldown.")
-                    else:
-                        log.info("Situation: Pot dropped below card balance without confirmed spending.")
-                        try:
-                            cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
-                        except Exception:
-                            cooldown_hours = 3
-                        new_cooldown = int(time()) + cooldown_hours * 3600
-                        credit_account.cooldown_until = new_cooldown
-                        hr_cooldown = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
-                        log.info(
-                            f"[Standard] {credit_account.type}: Initiating cooldown because pot (£{current_pot / 100:.2f}) is less than card (£{live_card_balance / 100:.2f}). "
-                            f"Cooldown set until {hr_cooldown} (epoch: {new_cooldown})."
+            if (credit_account.cooldown_until is not None or int(time()) > credit_account.cooldown_until):
+                if live_card_balance > credit_account.prev_balance:
+                    log.info("Step: Regular spending detected (card balance increased).")
+                    diff = live_card_balance - current_pot
+                    selection = monzo_account.get_account_type(credit_account.pot_id)
+                    # NEW: Check if enough funds in Monzo account before depositing the difference
+                    available_funds = monzo_account.get_balance(selection)
+                    if available_funds < diff:
+                        insufficent_diff = diff - available_funds
+                        log.error(f"Insufficient funds in Monzo account to sync pot; required: £{diff/100:.2f}, available: £{available_funds/100:.2f}; diff required £{insufficent_diff/100:.2f}; disabling sync")
+                        settings_repository.save(Setting("enable_sync", "False"))
+                        monzo_account.send_notification(
+                            f"Lacking £{insufficent_diff/100:.2f} - Insufficient Funds, Sync Disabled",
+                            f"Sync disabled due to insufficient funds. Required deposit: £{diff/100:.2f}, available: £{available_funds/100:.2f}. Please top up at least £{insufficent_diff/100:.2f} and re-enable sync.",
+                            account_selection=selection
                         )
-                        account_repository.save(credit_account)
-                        try:
+                        continue
+                    monzo_account.add_to_pot(credit_account.pot_id, diff, account_selection=selection)
+                    new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
+                    log.info(
+                        f"[Standard] {credit_account.type}: Deposited £{diff / 100:.2f}."
+                        f"Pot updated from £{current_pot / 100:.2f} to £{new_pot / 100:.2f}; card increased from £{credit_account.prev_balance / 100:.2f} to £{live_card_balance / 100:.2f}."
+                    )
+                    credit_account.prev_balance = live_card_balance
+                    account_repository.update_credit_account_fields(
+                        credit_account.type,
+                        credit_account.pot_id,
+                        live_card_balance,
+                        credit_account.cooldown_until
+                    )
+                    db.session.commit()
+                elif live_card_balance < current_pot:
+                    log.info("Step: Withdrawal due to pot exceeding card balance.")
+                    diff = current_pot - live_card_balance
+                    selection = monzo_account.get_account_type(credit_account.pot_id)
+                    monzo_account.withdraw_from_pot(credit_account.pot_id, diff, account_selection=selection)
+                    new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
+                    log.info(
+                        f"[Standard] {credit_account.type}: Withdrew £{diff / 100:.2f} as pot exceeded card. "
+                        f"Pot changed from £{current_pot / 100:.2f} to £{new_pot / 100:.2f} while card remains at £{live_card_balance / 100:.2f}."
+                    )
+                    credit_account.prev_balance = live_card_balance
+                    account_repository.save(credit_account)
+                elif live_card_balance == credit_account.prev_balance:
+                    log.info("Step: No increase in card balance detected.")
+                    if current_pot < live_card_balance:
+                        if settings_repository.get("enable_sync") == "False":
+                            log.info(f"[Standard] {credit_account.type}: Sync disabled; not initiating cooldown.")
+                        elif credit_account.cooldown_until is not None:
+                            # Double-check persistence of the cooldown value
                             db.session.commit()
+                            if hasattr(credit_account, "_sa_instance_state"):
+                                db.session.expire(credit_account)
                             refreshed = account_repository.get(credit_account.type)
-                            if refreshed.cooldown_until != new_cooldown:
-                                log.error(f"[Standard] {credit_account.type}: Cooldown persistence error: expected {new_cooldown}, got {refreshed.cooldown_until}.")
+                            if refreshed.cooldown_until and refreshed.cooldown_until > int(time()):
+                                log.info(f"[Standard] {credit_account.type}: Cooldown already active; no new cooldown initiated.")
+                                # Skip initiating a new cooldown.
+                                continue
                             else:
-                                log.info(f"[Standard] {credit_account.type}: Cooldown persisted successfully.")
-                        except Exception as e:
-                            db.session.rollback()
-                            log.error(f"[Standard] {credit_account.type}: Error committing cooldown to database: {e}")
+                                # Fall-through to cooldown initiation below.
+                                log.info("Persisted cooldown check not active; proceeding to initiate cooldown.")
+                        else:
+                            log.info("Situation: Pot dropped below card balance without confirmed spending.")
+                            try:
+                                cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                            except Exception:
+                                cooldown_hours = 3
+                            new_cooldown = int(time()) + cooldown_hours * 3600
+                            credit_account.cooldown_until = new_cooldown
+                            hr_cooldown = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
+                            log.info(
+                                f"[Standard] {credit_account.type}: Initiating cooldown because pot (£{current_pot / 100:.2f}) is less than card (£{live_card_balance / 100:.2f}). "
+                                f"Cooldown set until {hr_cooldown} (epoch: {new_cooldown})."
+                            )
+                            account_repository.save(credit_account)
+                            try:
+                                db.session.commit()
+                                refreshed = account_repository.get(credit_account.type)
+                                if refreshed.cooldown_until != new_cooldown:
+                                    log.error(f"[Standard] {credit_account.type}: Cooldown persistence error: expected {new_cooldown}, got {refreshed.cooldown_until}.")
+                                else:
+                                    log.info(f"[Standard] {credit_account.type}: Cooldown persisted successfully.")
+                            except Exception as e:
+                                db.session.rollback()
+                                log.error(f"[Standard] {credit_account.type}: Error committing cooldown to database: {e}")
 
                 else:
                     log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
