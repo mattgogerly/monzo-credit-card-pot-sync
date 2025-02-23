@@ -65,7 +65,7 @@ def clear_cooldown():
     else:
         credit_accounts = account_repository.get_credit_accounts()
     for account in credit_accounts:
-        account.cooldown_until = now_minus_10
+        account.cooldown_until = None
         try:
             new_baseline = account.get_pot_balance(account.pot_id)
         except Exception:
