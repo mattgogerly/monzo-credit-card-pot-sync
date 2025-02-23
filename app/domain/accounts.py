@@ -390,7 +390,7 @@ class TrueLayerAccount(Account):
                 true_pending_balance = pending_charges - balance
 
                 # barclaycard seem to add pending charges to the balance fairly quickly, so we ignore pending transactions
-                adjusted_balance = balance
+                adjusted_balance = balance + true_pending_balance
 
                 log.info(f"Current Balance (Excluding Pending Transactions): £{balance:.2f}")
                 log.info(f"Pending Charges: £{pending_charges:.2f}")
