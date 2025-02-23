@@ -232,8 +232,11 @@ def sync_balance():
         # Process one account at a time with detailed logging.
         
         # Retrieve override setting once and convert to boolean.
-        override_value = settings_repository.get("override_cooldown_spending") or ""
-        override_cooldown_spending = override_value.lower() == "true"
+        override_value = settings_repository.get("override_cooldown_spending")
+        if isinstance(override_value, bool):
+            override_cooldown_spending = override_value
+        else:
+            override_cooldown_spending = override_value.lower() == "true"
         log.info(f"override_cooldown_spending is '{override_value}' -> {override_cooldown_spending}")
         
         for credit_account in credit_accounts:
