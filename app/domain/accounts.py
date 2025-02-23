@@ -387,7 +387,7 @@ class TrueLayerAccount(Account):
                 # it looks like pending charges might take into account credits
                 pending_balance = pending_charges # + pending_payments
 
-                true_pending_balance = balance - pending_charges
+                true_pending_balance = pending_charges - balance
 
                 # barclaycard seem to add pending charges to the balance instantly, so we ignore pending transactions
                 adjusted_balance = balance + true_pending_balance
