@@ -201,7 +201,7 @@ def sync_balance():
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                     credit_account.stable_pot_balance = new_balance
                     credit_account.prev_balance = new_balance
-                    # past_cooldown = int(time()) - 300
+                    past_cooldown = int(time()) - 300
                     # credit_account.cooldown_until = past_cooldown
                     credit_account.cooldown_until = None
                     credit_account.cooldown_ref_card_balance = None
