@@ -413,7 +413,7 @@ def sync_balance():
                     continue
                 if (live != prev):
                     log.info(f"[Baseline Update] {credit_account.type}: Updating baseline from £{prev / 100:.2f} to £{live / 100:.2f}.")
-                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live)
+                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live, credit_account.cooldown_until)
                     db.session.commit()
                     credit_account.prev_balance = live
                 else:
