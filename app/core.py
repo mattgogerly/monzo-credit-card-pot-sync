@@ -149,8 +149,17 @@ def sync_balance():
             db.session.commit()
             db.session.expire_all()  # Clear all caches before reload.
             refreshed = account_repository.get(credit_account.type)
-            if not refreshed.cooldown_until and credit_account.cooldown_until:
-                refreshed.cooldown_until = credit_account.cooldown_until
+            # If our in-memory account has an active cooldown that is missing in the fresh copy,
+            # force an update to save it persistently.
+            if credit_account.cooldown_until is not None and refreshed.cooldown_until is None:
+                account_repository.update_credit_account_fields(
+                    credit_account.type,
+                    credit_account.pot_id,
+                    credit_account.prev_balance,
+                    credit_account.cooldown_until  # explicitly set active cooldown
+                )
+                db.session.commit()
+                refreshed = account_repository.get(credit_account.type)
             credit_accounts[i].cooldown_until = refreshed.cooldown_until
             credit_accounts[i].prev_balance = refreshed.prev_balance
         log.info("Refreshed credit account data including cooldown values.")
@@ -204,13 +213,21 @@ def sync_balance():
                     db.session.commit()
                     log.info(f"[Cooldown Expiration] {credit_account.type}: Updated pot balance is £{new_balance / 100:.2f}.")
                 else:
-                    log.info(f"[Cooldown Expiration] {credit_account.type}: No shortfall detected; clearing cooldown.")
-                    credit_account.cooldown_until = None
-                    credit_account.cooldown_ref_card_balance = None
-                    current_pot = monzo_account.get_pot_balance(credit_account.pot_id)
-                    account_repository.update_credit_account_fields(
-                        credit_account.type, credit_account.pot_id, current_pot, None
-                    )
+                    log.info(f"[Cooldown Expiration] {credit_account.type}: No shortfall detected; validating before clearing cooldown.")
+                    # Perform an extra fetch and re-calc to confirm
+                    fresh_pot = monzo_account.get_pot_balance(credit_account.pot_id)
+                    recomputed_drop = baseline - fresh_pot
+                    log.info(f"[Cooldown Expiration] {credit_account.type}: fresh_pot={fresh_pot}, baseline={baseline}, recomputed_drop={recomputed_drop}")
+                    if recomputed_drop <= 0:
+                        log.info(f"[Cooldown Expiration] {credit_account.type}: Confirmed no shortfall; clearing cooldown.")
+                        current_time = int(time())
+                        credit_account.cooldown_until = current_time  # set cooldown to current time
+                        credit_account.cooldown_ref_card_balance = None
+                        account_repository.update_credit_account_fields(
+                            credit_account.type, credit_account.pot_id, fresh_pot, current_time
+                        )
+                    else:
+                        log.info(f"[Cooldown Expiration] {credit_account.type}: Recomputed drop > 0; retaining active cooldown.")
 
         # --------------------------------------------------------------------
         # SECTION 6: PER-ACCOUNT BALANCE ADJUSTMENT PROCESSING (DEPOSIT / WITHDRAWAL)
