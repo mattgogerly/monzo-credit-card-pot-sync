@@ -327,6 +327,18 @@ def sync_balance():
                     credit_account.cooldown_until
                 )
                 db.session.commit()
+            elif live_card_balance < current_pot:
+                log.info("Step: Withdrawal due to pot exceeding card balance.")
+                diff = current_pot - live_card_balance
+                selection = monzo_account.get_account_type(credit_account.pot_id)
+                monzo_account.withdraw_from_pot(credit_account.pot_id, diff, account_selection=selection)
+                new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
+                log.info(
+                    f"[Standard] {credit_account.type}: Withdrew £{diff / 100:.2f} as pot exceeded card. "
+                    f"Pot changed from £{current_pot / 100:.2f} to £{new_pot / 100:.2f} while card remains at £{live_card_balance / 100:.2f}."
+                )
+                credit_account.prev_balance = live_card_balance
+                account_repository.save(credit_account)
             elif live_card_balance == credit_account.prev_balance:
                 log.info("Step: No increase in card balance detected.")
                 if current_pot < live_card_balance:
@@ -372,18 +384,6 @@ def sync_balance():
 
                 else:
                     log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
-            elif live_card_balance < current_pot:
-                log.info("Step: Withdrawal due to pot exceeding card balance.")
-                diff = current_pot - live_card_balance
-                selection = monzo_account.get_account_type(credit_account.pot_id)
-                monzo_account.withdraw_from_pot(credit_account.pot_id, diff, account_selection=selection)
-                new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
-                log.info(
-                    f"[Standard] {credit_account.type}: Withdrew £{diff / 100:.2f} as pot exceeded card. "
-                    f"Pot changed from £{current_pot / 100:.2f} to £{new_pot / 100:.2f} while card remains at £{live_card_balance / 100:.2f}."
-                )
-                credit_account.prev_balance = live_card_balance
-                account_repository.save(credit_account)
 
             log.info(f"Step: Finished processing account '{credit_account.type}'.")
             log.info("-------------------------------------------------------------")
