@@ -1,10 +1,12 @@
 import logging
+import time
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy.exc import NoResultFound
 
 from app.domain.accounts import MonzoAccount
 from app.extensions import db
 from app.models.account_repository import SqlAlchemyAccountRepository
+from app.utils.account_utils import get_cooldown_for_pot
 
 pots_bp = Blueprint("pots", __name__)
 
@@ -28,7 +30,15 @@ def index():
     log.info("Retrieving credit card accounts")
     accounts = account_repository.get_credit_accounts()
     
-    return render_template("pots/index.html", pots=pots, accounts=accounts, account_type=account_type)
+    # Build a mapping from pot ID to its active cooldown (if any)
+    cooldown_mapping = {}
+    for pot in pots:
+        cooldown = get_cooldown_for_pot(pot['id'], db.session)
+        if cooldown:
+            cooldown_mapping[pot['id']] = cooldown
+
+    # Pass the current timestamp to the template
+    return render_template("pots/index.html", pots=pots, accounts=accounts, account_type=account_type, now=int(time.time()), cooldown_mapping=cooldown_mapping)
 
 @pots_bp.route("/", methods=["POST"])
 def set_designated_pot():

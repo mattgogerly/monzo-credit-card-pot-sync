@@ -1,6 +1,19 @@
+import pytest
 from time import time
 from urllib import parse
+from flask import Flask
+from app.extensions import db
 from app.domain.accounts import MonzoAccount, TrueLayerAccount
+
+app = Flask(__name__)
+# Adjust test configuration so that URL building and SQLAlchemy work properly.
+app.config.update({
+    "TESTING": True,
+    "SERVER_NAME": "localhost",  # Required for url_for when outside a request
+    "SQLALCHEMY_DATABASE_URI": "sqlite://",  # In-memory database for testing
+    "SECRET_KEY": "testing",
+})
+db.init_app(app)
 
 def test_new_monzo_account():
     account = MonzoAccount("access_token", "refresh_token", 1000, "pot")
@@ -95,6 +108,10 @@ def test_monzo_account_get_pot_balance(requests_mock):
 def test_monzo_account_add_to_pot(requests_mock):
     account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
+    # Add a mock for the pots endpoint required by add_to_pot (GET pots?current_account_id=id)
+    pots_url = f"https://api.monzo.com/pots?{parse.urlencode({'current_account_id': 'id'})}"
+    pot_response = {"pots": [{"id": "1", "deleted": False, "balance": 0}]}
+    requests_mock.get(pots_url, status_code=200, json=pot_response)
 
     requests_mock.put("https://api.monzo.com/pots/1/deposit", status_code=200)
 
@@ -105,7 +122,10 @@ def test_monzo_account_add_to_pot(requests_mock):
 def test_monzo_account_withdraw_from_pot(requests_mock):
     account_response = {"accounts": [{"id": "id", "type": "uk_retail", "currency": "GBP"}]}
     requests_mock.get("https://api.monzo.com/accounts", status_code=200, json=account_response)
-
+    # Add a mock for the pots endpoint required by withdraw_from_pot (GET pots?current_account_id=id)
+    pots_url = f"https://api.monzo.com/pots?{parse.urlencode({'current_account_id': 'id'})}"
+    pot_response = {"pots": [{"id": "1", "deleted": False, "balance": 1000}]}
+    requests_mock.get(pots_url, status_code=200, json=pot_response)
     requests_mock.put("https://api.monzo.com/pots/1/withdraw", status_code=200)
 
     account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000)
@@ -189,3 +209,52 @@ def test_truelayer_account_get_total_balance(requests_mock):
     
     # Assert that the total balance is calculated correctly
     assert account.get_total_balance() == 140000  # Total in pence (multiplied by 100)
+
+def test_monzo_account_refresh_access_token_success(monkeypatch, requests_mock):
+    """
+    Simulate successful token refresh with the MonzoAuthProvider.
+    """
+    from app.domain.accounts import MonzoAccount
+    requests_mock.post("https://api.monzo.com/oauth2/token", json={
+        "access_token": "new_access",
+        "refresh_token": "new_refresh",
+        "expires_in": 3600
+    })
+    account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
+    monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
+    with app.app_context():
+        db.create_all()
+        account.refresh_access_token()
+        db.drop_all()  # cleanup
+    assert account.access_token == "new_access"
+    assert account.refresh_token == "new_refresh"
+
+def test_monzo_account_refresh_access_token_keyerror(monkeypatch, requests_mock):
+    """
+    Exercise the KeyError branch, ensuring an exception is raised when fields are missing.
+    """
+    from app.domain.accounts import MonzoAccount
+    requests_mock.post("https://api.monzo.com/oauth2/token", json={})
+    account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
+    monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
+    with app.app_context():
+        db.create_all()
+        with pytest.raises(Exception) as excinfo:  # or pytest.raises(AuthException) if AuthException is expected
+            account.refresh_access_token()
+        db.drop_all()
+    assert "missing required fields" in str(excinfo.value)
+
+def test_monzo_account_refresh_access_token_authexception(monkeypatch, requests_mock):
+    """
+    Exercise the AuthException branch, ensuring it’s raised when underlying logic signals an auth failure.
+    """
+    from app.domain.accounts import MonzoAccount
+    from app.errors import AuthException
+    requests_mock.post("https://api.monzo.com/oauth2/token", json={"error": "invalid_grant"}, status_code=400)
+    account = MonzoAccount("old_access", "old_refresh", 100, "test_pot")
+    monkeypatch.setattr(account.auth_provider, "get_token_url", lambda: "https://api.monzo.com/oauth2/token")
+    with app.app_context():
+        db.create_all()
+        with pytest.raises(AuthException):
+            account.refresh_access_token()
+        db.drop_all()

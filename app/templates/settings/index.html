@@ -24,14 +24,40 @@
             <label for="sync_interval_seconds" class="block mb-2 text-sm font-medium">Sync Interval (seconds)</label>
             <input type="number" name="sync_interval_seconds" id="sync_interval_seconds" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ data['sync_interval_seconds'] }}" />
         </div>
+        <div>
+            <label for="deposit_cooldown_hours" class="block mb-2 text-sm font-medium">Deposit Cooldown (hours)</label>
+            <input type="number" name="deposit_cooldown_hours" id="deposit_cooldown_hours" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" value="{{ data['deposit_cooldown_hours'] }}" />
+        </div>
 
         <label class="inline-flex items-center cursor-pointer">
             <input type="checkbox" name="enable_sync" class="sr-only peer" {% if data['enable_sync'] %} checked {% endif %} />
             <div class="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
             <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">Enable Balance Sync</span>
         </label>
+
+        <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" name="override_cooldown_spending" class="sr-only peer" {% if data['override_cooldown_spending'] %} checked {% endif %} />
+            <div class="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">Override Cooldown Spending</span>
+        </label>
   
+        
         <button type="submit" class="w-full mt-10 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Save</button>
+    </form>
+
+    <form action="{{ url_for('settings.clear_cooldown') }}" method="post" style="margin-top:1rem;">
+        <div class="mb-4">
+            <label for="account_type" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Select Account</label>
+            <select id="account_type" name="account_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white">
+                <option value="">All Accounts</option>
+                {% for account in accounts %}
+                <option value="{{ account.type }}">{{ account.type }} (Pot: {{ account.pot_id }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="w-full mt-2 text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+            Clear Cooldown
+        </button>
     </form>
 </div>
 {% endblock %}

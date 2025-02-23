@@ -1,11 +1,10 @@
 import logging
 import math
+import datetime  # Needed for human-readable time conversions
 from time import time
 from urllib import parse
 
 import requests as r
-
-from app.domain.auth_providers import AuthProviderType, provider_mapping
 from app.errors import AuthException
 
 log = logging.getLogger("account")
@@ -20,6 +19,11 @@ class Account:
         token_expiry=None,
         pot_id=None,
         account_id=None,
+        cooldown_until=None,
+        prev_balance=0,
+        cooldown_ref_card_balance=None,
+        cooldown_ref_pot_balance=None,
+        stable_pot_balance=None
     ):
         self.type = type
         self.access_token = access_token
@@ -27,7 +31,12 @@ class Account:
         self.token_expiry = token_expiry
         self.pot_id = pot_id
         self.account_id = account_id
-        self.auth_provider = provider_mapping[AuthProviderType(type)]
+        self.cooldown_until = cooldown_until
+        self.prev_balance = prev_balance
+        self.cooldown_ref_card_balance = cooldown_ref_card_balance
+        self.cooldown_ref_pot_balance = cooldown_ref_pot_balance
+        self.stable_pot_balance = stable_pot_balance
+
 
     def is_token_within_expiry_window(self):
         # Returns True if the token expires in the next two minutes or has already expired.
@@ -51,8 +60,9 @@ class Account:
             self.access_token = tokens["access_token"]
             self.refresh_token = tokens["refresh_token"]
             self.token_expiry = int(time()) + tokens["expires_in"]
+            token_expiry_hr = datetime.datetime.fromtimestamp(self.token_expiry).strftime("%Y-%m-%d %H:%M:%S")
 
-            log.info(f"Successfully refreshed {self.type} access token, new expiry time is {self.token_expiry}")
+            log.info(f"Successfully refreshed {self.type} access token, new expiry time is {token_expiry_hr}")
 
         except KeyError as e:
             log.error(f"KeyError while refreshing {self.type} token: {str(e)} - Response: {sanitized_tokens}")
@@ -65,13 +75,42 @@ class Account:
     def get_auth_header(self):
         return {"Authorization": f"Bearer {self.access_token}"}
 
+    def pre_deposit_check(self, current_balance, new_balance, cooldown_duration):
+        """
+        Only activate cooldown when the new pot balance is lower than the previous balance.
+        """
+        now = int(time())
+        if new_balance < current_balance:
+            if self.cooldown_until and now < self.cooldown_until:
+                log.info(f"Cooldown active until {self.cooldown_until}. Deposit postponed for {self.type}.")
+                return False
+            else:
+                self.cooldown_until = now + cooldown_duration
+                log.info(f"Pot balance decreased. Initiating cooldown until {self.cooldown_until} for {self.type}.")
+                return False
+        return True
+
+    def get_prev_balance(self, pot_id: str) -> int:
+        # Retrieve the persisted previous balance; fallback to 0 if not stored.
+        try:
+            return int(self.prev_balance) if self.prev_balance is not None else 0
+        except Exception:
+            return 0
 
 class MonzoAccount(Account):
-    def __init__(
-        self, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None
-    ):
-        # Pass all parameters directly to the parent class
-        super().__init__("Monzo", access_token, refresh_token, token_expiry, pot_id, account_id)
+    def __init__(self, access_token, refresh_token, token_expiry, pot_id="default_pot", account_id=None, prev_balance=0):
+        super().__init__(
+            type="Monzo",
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expiry=token_expiry,
+            pot_id=pot_id,
+            account_id=account_id,
+            prev_balance=prev_balance
+        )
+        # Initialize the auth provider for Monzo
+        from app.domain.auth_providers import MonzoAuthProvider
+        self.auth_provider = MonzoAuthProvider()
 
     def ping(self) -> None:
         r.get(
@@ -90,10 +129,9 @@ class MonzoAccount(Account):
         return self._fetch_accounts()
 
     def get_account_id(self, account_selection="personal") -> str:
-        """
-        Return the account id for the desired account type.
-        Defaults to personal ('uk_retail') and uses 'uk_retail_joint' for joint accounts.
-        """
+        # Treat any account selection not 'joint' as 'personal'
+        if account_selection != "joint":
+            account_selection = "personal"
         desired_type = "uk_retail_joint" if account_selection == "joint" else "uk_retail"
         accounts = self._fetch_accounts()
         for account in accounts:
@@ -154,11 +192,31 @@ class MonzoAccount(Account):
         """
         for account_selection in ("personal", "joint"):
             pots = self.get_pots(account_selection)
-            if any(p["id"] == pot_id for p in pots):
-                return account_selection
+            # If using the default value, fall back to the first returned pot's id.
+            if pot_id == "default_pot" and pots:
+                pot_id = pots[0]["id"]
+            for pot in pots:
+                if any(p["id"] == pot_id for p in pots):
+                    return account_selection
         raise Exception(f"Pot with id {pot_id} not found in personal or joint pots.")
 
     def add_to_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
+        # Normalize account_selection immediately
+        if account_selection not in ("personal", "joint"):
+            account_selection = "personal"
+        
+        # Retrieve pot details using normalized account_selection
+        pots = self.get_pots(account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if not pot:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+            
+        # Re-fetch pot list for extra safety
+        pots = self.get_pots(account_selection=account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if pot is None:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+    
         data = {
             "source_account_id": self.get_account_id(account_selection=account_selection),
             "amount": amount,
@@ -174,6 +232,22 @@ class MonzoAccount(Account):
             raise Exception(f"Deposit failed: {response.json()}")
 
     def withdraw_from_pot(self, pot_id: str, amount: int, account_selection="personal") -> None:
+        # Normalize account_selection immediately
+        if account_selection not in ("personal", "joint"):
+            account_selection = "personal"
+        
+        # Retrieve pot details using normalized account_selection
+        pots = self.get_pots(account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if not pot:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+        
+        # Re-fetch pot list for extra safety
+        pots = self.get_pots(account_selection=account_selection)
+        pot = next((p for p in pots if p["id"] == pot_id), None)
+        if pot is None:
+            raise Exception(f"Pot with id {pot_id} not found in {account_selection} pots")
+    
         data = {
             "destination_account_id": self.get_account_id(account_selection=account_selection),
             "amount": amount,
@@ -204,8 +278,49 @@ class MonzoAccount(Account):
 
 
 class TrueLayerAccount(Account):
-    def __init__(self, type, access_token=None, refresh_token=None, token_expiry=None, pot_id=None, account_id=None):
-        super().__init__(type, access_token, refresh_token, token_expiry, pot_id, account_id)
+    def __init__(
+        self,
+        account_type,
+        access_token=None,
+        refresh_token=None,
+        token_expiry=None,
+        pot_id=None,
+        account_id=None,
+        prev_balance=0,
+        stable_pot_balance=None,
+        cooldown_ref_card_balance=None,
+        cooldown_ref_pot_balance=None,
+        cooldown_until=None  # Add the cooldown_until parameter
+    ):
+        super().__init__(
+            account_type,
+            access_token,
+            refresh_token,
+            token_expiry,
+            pot_id,
+            account_id,
+            cooldown_until=cooldown_until,  # Pass it to the parent initializer
+            prev_balance=prev_balance,
+            stable_pot_balance=stable_pot_balance,
+            cooldown_ref_card_balance=cooldown_ref_card_balance,
+            cooldown_ref_pot_balance=cooldown_ref_pot_balance
+        )
+        from app.domain.auth_providers import TrueLayerAuthProvider
+        if account_type.lower() == "american express":
+            icon = "amex.svg"
+        elif account_type.lower() == "barclaycard":
+            icon = "barclaycard.svg"
+        elif account_type.lower() == "halifax":
+            icon = "halifax.svg"
+        elif account_type.lower() == "natwest":
+            icon = "natwest.svg"
+        else:
+            icon = "truelayer.svg"
+        self.auth_provider = TrueLayerAuthProvider(
+            name="TrueLayer",
+            type="truelayer",
+            icon_name=icon
+        )
 
     def ping(self) -> None:
         r.get(f"{self.auth_provider.api_url}/data/v1/me", headers=self.get_auth_header())
@@ -229,9 +344,13 @@ class TrueLayerAccount(Account):
         # Multiply by 100, round up, then divide by 100 to get two decimal places
         return [math.ceil(txn["amount"] * 100) / 100 for txn in transactions] if transactions else []
 
-    def get_total_balance(self) -> int:
+    def get_total_balance(self, force_refresh=False) -> int:
         total_balance = 0.0
         cards = self.get_cards()
+
+        # If we have a cached balance and not forcing a refresh, return it:
+        if not force_refresh and hasattr(self, "_cached_balance"):
+            return self._cached_balance
 
         for card in cards:
             card_id = card["account_id"]
@@ -268,13 +387,16 @@ class TrueLayerAccount(Account):
                 # it looks like pending charges might take into account credits
                 pending_balance = pending_charges # + pending_payments
 
-                # barclaycard seem to add pending charges to the balance instantly, so we ignore pending transactions
+                true_pending_balance = pending_charges - balance
+
+                # barclaycard seem to add pending charges to the balance fairly quickly, so we ignore pending transactions
                 adjusted_balance = balance
 
                 log.info(f"Current Balance (Excluding Pending Transactions): £{balance:.2f}")
                 log.info(f"Pending Charges: £{pending_charges:.2f}")
                 log.info(f"Pending Payments: £{pending_payments:.2f}")
                 log.info(f"Pending Balance: £{pending_balance:.2f}")
+                log.info(f"True Pending Balance: £{true_pending_balance:.2f}")
                 log.info(f"Total Balance: £{adjusted_balance:.2f}")
 
                 balance = adjusted_balance
@@ -282,4 +404,5 @@ class TrueLayerAccount(Account):
             total_balance += balance
 
         log.info(f"Total balance calculated: £{total_balance:.2f}")
-        return int(total_balance * 100)  # Convert balance to pence
+        self._cached_balance = int(total_balance * 100)  # Convert balance to pence
+        return self._cached_balance

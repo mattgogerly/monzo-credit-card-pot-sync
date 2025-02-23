@@ -4,14 +4,33 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/mattgogerly/monzo-credit-card-pot-sync/build.yml?branch=main)
 ![Coveralls](https://img.shields.io/coverallsCoverage/github/mattgogerly/monzo-credit-card-pot-sync?branch=main)
 
-This project is a tool to sync the balance of your credit cards and a Monzo pot. It allows you to use credit cards for your day-to-day spend, all the while ensuring your Monzo pot has enough funds to pay off bills in full — providing a seamless experience for managing your finances.
+This project provides a robust system to keep your Monzo pot in sync with your credit card spending. It allows you to spend on your credit cards day-to-day while ensuring there are always enough funds in your Monzo pot to pay off bills. The system supports multiple credit card providers and seamlessly manages both personal and joint Monzo accounts.
 
 ## Features
 
-- Automatically add and remove funds from a Monzo pot as you spend on your credit cards
-- Choose a Monzo pot to keep synced, and change it at any time
-- Connect all of your credit card providers to keep your pot up to date
-- **Support for joint Monzo accounts:** Seamlessly sync funds from both personal and joint accounts
+- **Automatic Fund Management:** Automatically deposits to or withdraws from your selected Monzo pot to match your credit card spending.
+- **Flexible Pot Selection:** Easily choose and switch the designated Monzo pot that stays in sync.
+- **Multiple Provider Support:** Connect various credit cards. Providers such as American Express and Barclaycard now include pending transaction calculations.
+- **Joint Account Support:** Sync funds across both personal and joint Monzo accounts.
+- **Cooldown & Override Logic:**  
+  - **Normal Operations:**  
+    - When you spend on a card, the pot is increased to match the new card balance.
+    - If the pot balance exceeds your card balance, the excess is automatically withdrawn.
+  - **Cooldown Scenario:**  
+    - When the pot falls below the card balance with no new spending detected (perhaps due to a direct payment from the pot), a cooldown period is triggered.
+    - Once the cooldown expires and if the card balance remains above the pot, the shortfall is deposited automatically.
+  - **Override Spending:**  
+    - If override spending is enabled while a cooldown is active and the card balance increases, the additional difference is deposited immediately.
+    - The original shortfall remains under cooldown and will be addressed upon expiration.
+- **Detailed Logging:** Every step—from token refreshes to pot adjustments and cooldown checks—is logged for visibility and troubleshooting.
+
+## Extended Logic for Credit Card Providers
+
+For cards like American Express and Barclaycard, pending transactions are now taken into account to calculate the true balance. This ensures the Monzo pot will adjust accurately to reflect your spending even when transactions are still pending.
+
+## Upgrade Notice
+
+**Important:** If you are upgrading from a previous version, you will need to recreate your database, relink your accounts, and remap your pots again due to new fields being added.
 
 ## Installation
 

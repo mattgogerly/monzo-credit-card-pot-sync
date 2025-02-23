@@ -25,6 +25,7 @@ def monzo_callback():
         tokens["access_token"],
         tokens["refresh_token"],
         int(time()) + tokens["expires_in"],
+        pot_id="default_pot"  # Provide a default pot ID
     )
     account_repository.save(account)
 
@@ -44,6 +45,7 @@ def truelayer_callback():
         tokens["access_token"],
         tokens["refresh_token"],
         int(time()) + tokens["expires_in"],
+        pot_id="default_pot"  # Provide a default pot ID
     )
     account_repository.save(account)
 

@@ -1,10 +1,16 @@
 from app.extensions import db
-
+from sqlalchemy import Column, Integer, String
 
 class AccountModel(db.Model):
-    type = db.Column(db.String(150), primary_key=True)
-    pot_id = db.Column(db.String(150))
-    access_token = db.Column(db.String(1024))
-    refresh_token = db.Column(db.String(1024))
-    token_expiry = db.Column(db.Integer)
-    account_id = db.Column(db.String(150), nullable=True)
+    id = Column(Integer, primary_key=True)
+    type = Column(String(50), nullable=False, unique=True)
+    access_token = Column(String(255), nullable=False)
+    refresh_token = Column(String(255), nullable=False)
+    token_expiry = Column(Integer)
+    pot_id = Column(String(255))
+    account_id = Column(String(255))
+    cooldown_until = Column(Integer, nullable=True)
+    prev_balance = Column(Integer, default=0)
+    cooldown_ref_card_balance = Column(Integer, default=0)
+    cooldown_ref_pot_balance = Column(Integer, default=0)
+    stable_pot_balance = Column(Integer, nullable=True)

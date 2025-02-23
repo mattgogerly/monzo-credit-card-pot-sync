@@ -56,7 +56,10 @@ def test_client():
 
 @pytest.fixture(scope="function")
 def seed_data():
-    monzo_account = MonzoAccount("access_token", "refresh_token", time() + 10000)
+    from time import time
+    from app.domain.accounts import MonzoAccount
+    # Update seed data with pot_id provided
+    monzo_account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000, pot_id="default_pot")
     amex_account = TrueLayerAccount(
         AuthProviderType.AMEX.value,
         "access_token",
