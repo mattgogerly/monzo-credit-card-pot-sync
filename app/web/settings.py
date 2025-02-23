@@ -1,6 +1,5 @@
 import logging
 from flask import Blueprint, flash, redirect, render_template, request, url_for
-from time import time
 from app.domain.settings import Setting
 from app.extensions import db, scheduler
 from app.models.setting_repository import SqlAlchemySettingRepository
