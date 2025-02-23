@@ -1,6 +1,5 @@
 import logging
 from flask import Blueprint, flash, redirect, render_template, request, url_for
-from time import time
 from app.domain.settings import Setting
 from app.extensions import db, scheduler
 from app.models.setting_repository import SqlAlchemySettingRepository
@@ -54,8 +53,7 @@ def save():
 
 @settings_bp.route("/clear_cooldown", methods=["POST"])
 def clear_cooldown():
-    # Clear cooldown by setting cooldown_until to 10 minutes in the past
-    now_minus_10 = int(time()) - 600
+    # Clear cooldown
     selected_type = request.form.get("account_type")
     if selected_type:
         credit_accounts = [
