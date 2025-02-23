@@ -289,7 +289,8 @@ class TrueLayerAccount(Account):
         prev_balance=0,
         stable_pot_balance=None,
         cooldown_ref_card_balance=None,
-        cooldown_ref_pot_balance=None
+        cooldown_ref_pot_balance=None,
+        cooldown_until=None  # Add the cooldown_until parameter
     ):
         super().__init__(
             account_type,
@@ -298,6 +299,7 @@ class TrueLayerAccount(Account):
             token_expiry,
             pot_id,
             account_id,
+            cooldown_until=cooldown_until,  # Pass it to the parent initializer
             prev_balance=prev_balance,
             stable_pot_balance=stable_pot_balance,
             cooldown_ref_card_balance=cooldown_ref_card_balance,
