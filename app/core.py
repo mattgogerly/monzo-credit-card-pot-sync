@@ -204,10 +204,11 @@ def sync_balance():
                     new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
                     credit_account.stable_pot_balance = new_balance
                     credit_account.prev_balance = new_balance
-                    credit_account.cooldown_until = None
+                    past_cooldown = int(time()) - 300
+                    credit_account.cooldown_until = past_cooldown
                     credit_account.cooldown_ref_card_balance = None
                     account_repository.update_credit_account_fields(
-                        credit_account.type, credit_account.pot_id, new_balance, None
+                        credit_account.type, credit_account.pot_id, new_balance, past_cooldown
                     )
                     db.session.commit()
                     log.info(f"[Cooldown Expiration] {credit_account.type}: Updated pot balance is £{new_balance / 100:.2f}.")
@@ -219,10 +220,11 @@ def sync_balance():
                     log.info(f"[Cooldown Expiration] {credit_account.type}: fresh_pot={fresh_pot}, baseline={baseline}, recomputed_drop={recomputed_drop}")
                     if recomputed_drop <= 0:
                         log.info(f"[Cooldown Expiration] {credit_account.type}: Confirmed no shortfall; clearing cooldown.")
-                        credit_account.cooldown_until = None # set cooldown to None
+                        past_cooldown = int(time()) - 300
+                        credit_account.cooldown_until = past_cooldown # set cooldown to past_cooldown
                         credit_account.cooldown_ref_card_balance = None
                         account_repository.update_credit_account_fields(
-                            credit_account.type, credit_account.pot_id, fresh_pot, None # set cooldown to None
+                            credit_account.type, credit_account.pot_id, fresh_pot, past_cooldown # set cooldown to past_cooldown
                         )
                     else:
                         log.info(f"[Cooldown Expiration] {credit_account.type}: Recomputed drop > 0; retaining active cooldown.")
@@ -321,7 +323,12 @@ def sync_balance():
                     f"Pot updated from £{current_pot / 100:.2f} to £{new_pot / 100:.2f}; card increased from £{credit_account.prev_balance / 100:.2f} to £{live_card_balance / 100:.2f}."
                 )
                 credit_account.prev_balance = live_card_balance
-                account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, live_card_balance, None)
+                account_repository.update_credit_account_fields(
+                    credit_account.type,
+                    credit_account.pot_id,
+                    live_card_balance,
+                    credit_account.cooldown_until
+                )
                 db.session.commit()
             elif live_card_balance == credit_account.prev_balance:
                 log.info("Step: No increase in card balance detected.")

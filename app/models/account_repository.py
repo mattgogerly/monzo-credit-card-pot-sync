@@ -98,8 +98,12 @@ class SqlAlchemyAccountRepository:
             existing.pot_id = account.pot_id
             existing.account_id = account.account_id
             existing.prev_balance = account.prev_balance
-            existing.cooldown_until = account.cooldown_until
-            existing.cooldown_ref_card_balance = account.cooldown_ref_card_balance
+            # Only overwrite the cooldown fields if the domain object is explicitly setting them
+            if account.cooldown_until is not None:
+                existing.cooldown_until = account.cooldown_until
+            # If needed, do the same for cooldown_ref_card_balance or others:
+            # if account.cooldown_ref_card_balance is not None:
+            #     existing.cooldown_ref_card_balance = account.cooldown_ref_card_balance
             existing.cooldown_ref_pot_balance = account.cooldown_ref_pot_balance
             existing.stable_pot_balance = account.stable_pot_balance
         else:
