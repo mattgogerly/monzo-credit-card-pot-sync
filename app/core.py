@@ -218,8 +218,8 @@ def sync_balance():
                     log.info(f"[Cooldown Expiration] {credit_account.type}: fresh_pot={fresh_pot}, baseline={baseline}, recomputed_drop={recomputed_drop}")
                     if recomputed_drop <= 0:
                         log.info(f"[Cooldown Expiration] {credit_account.type}: Confirmed no shortfall; clearing cooldown.")
-                        past_cooldown = int(time()) - 300
-                            credit_account.cooldown_until = None # past_cooldown # set cooldown to past_cooldown
+                        # past_cooldown = int(time()) - 300
+                        credit_account.cooldown_until = None # past_cooldown # set cooldown to past_cooldown
                         credit_account.cooldown_ref_card_balance = None
                         account_repository.update_credit_account_fields(
                             credit_account.type, credit_account.pot_id, fresh_pot, past_cooldown # set cooldown to past_cooldown
