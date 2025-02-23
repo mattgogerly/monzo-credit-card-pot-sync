@@ -344,9 +344,13 @@ class TrueLayerAccount(Account):
         # Multiply by 100, round up, then divide by 100 to get two decimal places
         return [math.ceil(txn["amount"] * 100) / 100 for txn in transactions] if transactions else []
 
-    def get_total_balance(self) -> int:
+    def get_total_balance(self, force_refresh=False) -> int:
         total_balance = 0.0
         cards = self.get_cards()
+
+        # If we have a cached balance and not forcing a refresh, return it:
+        if not force_refresh and hasattr(self, "_cached_balance"):
+            return self._cached_balance
 
         for card in cards:
             card_id = card["account_id"]
@@ -397,4 +401,5 @@ class TrueLayerAccount(Account):
             total_balance += balance
 
         log.info(f"Total balance calculated: £{total_balance:.2f}")
-        return int(total_balance * 100)  # Convert balance to pence
+        self._cached_balance = int(total_balance * 100)  # Convert balance to pence
+        return self._cached_balance
