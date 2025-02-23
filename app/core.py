@@ -202,7 +202,8 @@ def sync_balance():
                     credit_account.stable_pot_balance = new_balance
                     credit_account.prev_balance = new_balance
                     past_cooldown = int(time()) - 300
-                    credit_account.cooldown_until = past_cooldown
+                    # credit_account.cooldown_until = past_cooldown
+                    credit_account.cooldown_until = None
                     credit_account.cooldown_ref_card_balance = None
                     account_repository.update_credit_account_fields(
                         credit_account.type, credit_account.pot_id, new_balance, past_cooldown
