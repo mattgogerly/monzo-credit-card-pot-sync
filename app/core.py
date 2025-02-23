@@ -230,6 +230,12 @@ def sync_balance():
         # --------------------------------------------------------------------
         # SECTION 6: PER-ACCOUNT BALANCE ADJUSTMENT PROCESSING (DEPOSIT / WITHDRAWAL)
         # Process one account at a time with detailed logging.
+        
+        # Retrieve override setting once and convert to boolean.
+        override_value = settings_repository.get("override_cooldown_spending") or ""
+        override_cooldown_spending = override_value.lower() == "true"
+        log.info(f"override_cooldown_spending is '{override_value}' -> {override_cooldown_spending}")
+        
         for credit_account in credit_accounts:
             db.session.commit()
             if hasattr(credit_account, "_sa_instance_state"):
@@ -279,7 +285,7 @@ def sync_balance():
                 )
 
             # (a) OVERRIDE BRANCH
-            if settings_repository.get("override_cooldown_spending") == "True" and int(time()) < credit_account.cooldown_until:
+            if override_cooldown_spending and int(time()) < credit_account.cooldown_until:
                 log.info("Step: OVERRIDE branch activated due to cooldown flag.")
                 selection = monzo_account.get_account_type(credit_account.pot_id)
                 # Calculate deposit as the additional spending since the previous baseline.
