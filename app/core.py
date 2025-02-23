@@ -343,25 +343,31 @@ def sync_balance():
                             log.info("Persisted cooldown check not active; proceeding to initiate cooldown.")
                     else:
                         log.info("Situation: Pot dropped below card balance without confirmed spending.")
-                        try:
-                            cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
-                        except Exception:
-                            cooldown_hours = 3
-                        new_cooldown = int(time()) + cooldown_hours * 3600
-                        credit_account.cooldown_until = new_cooldown
-                        hr_cooldown = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
-                        log.info(
-                            f"[Standard] {credit_account.type}: Initiating cooldown because pot (£{current_pot / 100:.2f}) is less than card (£{live_card_balance / 100:.2f}). "
-                            f"Cooldown set until {hr_cooldown} (epoch: {new_cooldown})."
-                        )
-                        account_repository.save(credit_account)
-                        db.session.commit()
-                        # Double-check persistence by reloading the account
-                        refreshed = account_repository.get(credit_account.type)
-                        if refreshed.cooldown_until != new_cooldown:
-                            log.error(f"[Standard] {credit_account.type}: Cooldown persistence error: expected {new_cooldown}, got {refreshed.cooldown_until}.")
-                        else:
-                            log.info(f"[Standard] {credit_account.type}: Cooldown persisted successfully.")
+                    try:
+                        cooldown_hours = int(settings_repository.get("deposit_cooldown_hours"))
+                    except Exception:
+                        cooldown_hours = 3
+                    new_cooldown = int(time()) + cooldown_hours * 3600
+                    credit_account.cooldown_until = new_cooldown
+                    hr_cooldown = datetime.datetime.fromtimestamp(new_cooldown).strftime("%Y-%m-%d %H:%M:%S")
+                    log.info(
+                        f"[Standard] {credit_account.type}: Initiating cooldown because pot (£{current_pot / 100:.2f}) is less than card (£{live_card_balance / 100:.2f}). "
+                        f"Cooldown set until {hr_cooldown} (epoch: {new_cooldown})."
+                    )
+                    # Use the update method to explicitly update the cooldown field
+                    account_repository.update_credit_account_fields(
+                        credit_account.type,
+                        credit_account.pot_id,
+                        credit_account.prev_balance,  # or the appropriate balance field
+                        credit_account.cooldown_until
+                    )
+                    db.session.commit()
+                    # Immediately refresh the account to verify persistence.
+                    refreshed = account_repository.get(credit_account.type)
+                    if refreshed.cooldown_until != new_cooldown:
+                        log.error(f"[Standard] {credit_account.type}: Cooldown persistence error: expected {new_cooldown}, got {refreshed.cooldown_until}.")
+                    else:
+                        log.info(f"[Standard] {credit_account.type}: Cooldown persisted successfully.")
                 else:
                     log.info(f"[Standard] {credit_account.type}: Card and pot balance unchanged; no action taken.")
             elif live_card_balance < current_pot:
