@@ -186,7 +186,6 @@ def sync_balance():
                 )
                 drop = baseline - current_pot
                 if (drop > 0):
-                    if (drop > 0):
                     log.info(f"[Cooldown Expiration] {credit_account.type}: Depositing shortfall of £{drop / 100:.2f} for pot {credit_account.pot_id}.")
                     selection = monzo_account.get_account_type(credit_account.pot_id)
                     # NEW: Check if enough funds in Monzo account before deposit
