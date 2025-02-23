@@ -384,33 +384,34 @@ def sync_balance():
         # --------------------------------------------------------------------
         # SECTION 7: FINAL DEPOSIT RE-CHECK (AFTER COOLDOWN)
         # --------------------------------------------------------------------
-        EXTRA_WAIT_SECONDS = 600  # e.g. 10 minutes delay after cooldown expiration
-        for credit_account in credit_accounts:
-            if (credit_account.pot_id and credit_account.cooldown_until):
-                if (int(time()) < credit_account.cooldown_until + EXTRA_WAIT_SECONDS):
-                    human_readable = datetime.datetime.fromtimestamp(
-                        credit_account.cooldown_until + EXTRA_WAIT_SECONDS
-                    ).strftime("%Y-%m-%d %H:%M:%S")
-                    log.info(f"[Final Re-check] Waiting until at least {human_readable} before re‑check for {credit_account.type}.")
-                    continue
-                pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
-                current_balance = monzo_account.get_pot_balance(credit_account.pot_id)
-                baseline = (
-                    credit_account.cooldown_ref_card_balance
-                    if credit_account.cooldown_ref_card_balance is not None
-                    else pre_deposit
-                )
-                drop = baseline - current_balance
-                if (drop > 0):
-                    log.info(f"[Final Re-check] Depositing pending drop of £{drop / 100:.2f} for {credit_account.type} into pot {credit_account.pot_id}.")
-                    selection = monzo_account.get_account_type(credit_account.pot_id)
-                    monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
-                    new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
-                    credit_account.stable_pot_balance = new_balance
-                    account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, new_balance, None)
-                    credit_account.prev_balance = new_balance
-                else:
-                    log.info(f"[Final Re-check] No residual drop for {credit_account.type} after cooldown; no deposit executed.")
+        # EXTRA_WAIT_SECONDS = 600  # e.g. 10 minutes delay after cooldown expiration
+        # for credit_account in credit_accounts:
+        #     if (credit_account.pot_id and credit_account.cooldown_until):
+        #         if (int(time()) < credit_account.cooldown_until + EXTRA_WAIT_SECONDS):
+        #             human_readable = datetime.datetime.fromtimestamp(
+        #                 credit_account.cooldown_until + EXTRA_WAIT_SECONDS
+        #             ).strftime("%Y-%m-%d %H:%M:%S")
+        #             log.info(f"[Final Re-check] Waiting until at least {human_readable} before re‑check for {credit_account.type}.")
+        #             continue
+        #         pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
+        #         current_balance = monzo_account.get_pot_balance(credit_account.pot_id)
+        #         baseline = (
+        #             credit_account.cooldown_ref_card_balance
+        #             if credit_account.cooldown_ref_card_balance is not None
+        #             else pre_deposit
+        #         )
+        #         drop = baseline - current_balance
+        #         if (drop > 0):
+        #             log.info(f"[Final Re-check] Depositing pending drop of £{drop / 100:.2f} for {credit_account.type} into pot {credit_account.pot_id}.")
+        #             selection = monzo_account.get_account_type(credit_account.pot_id)
+        #             monzo_account.add_to_pot(credit_account.pot_id, drop, account_selection=selection)
+        #             new_balance = monzo_account.get_pot_balance(credit_account.pot_id)
+        #             credit_account.stable_pot_balance = new_balance
+        #             account_repository.update_credit_account_fields(credit_account.type, credit_account.pot_id, new_balance, None)
+        #             credit_account.prev_balance = new_balance
+        #         else:
+        #             log.info(f"[Final Re-check] No residual drop for {credit_account.type} after cooldown; no deposit executed.")
+
 
         # --------------------------------------------------------------------
         # SECTION 8: UPDATE BASELINE PERSISTENCE
