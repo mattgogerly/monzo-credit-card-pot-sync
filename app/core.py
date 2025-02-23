@@ -297,7 +297,7 @@ def sync_balance():
                 log.info(f"Step: Finished OVERRIDE branch for account '{credit_account.type}'.")
 
             # (b) STANDARD ADJUSTMENT:
-            if credit_account.cooldown_until is not None or int(time()) > credit_account.cooldown_until:
+            if credit_account.cooldown_until is None or int(time()) > credit_account.cooldown_until:
                 if live_card_balance > credit_account.prev_balance:
                     log.info("Step: Regular spending detected (card balance increased).")
                     diff = live_card_balance - current_pot
