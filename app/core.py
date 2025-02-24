@@ -82,14 +82,13 @@ def sync_balance():
         for credit_account in credit_accounts:
             try:
                 log.info(f"Checking if {credit_account.type} access token needs refreshing")
-                if (credit_account.is_token_within_expiry_window()):
+                if credit_account.is_token_within_expiry_window():
                     credit_account.refresh_access_token()
                     account_repository.save(credit_account)
                 log.info(f"Checking health of {credit_account.type} connection")
                 credit_account.ping()
                 log.info(f"{credit_account.type} connection is healthy")
             except AuthException as e:
-                # Suppose the exception carries a details attribute
                 details = getattr(e, 'details', {})
                 description = details.get('error_description', '')
                 if "currently unavailable" in description or details.get('error') == 'provider_error':
@@ -101,7 +100,7 @@ def sync_balance():
                             "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
                         )
                     account_repository.delete(credit_account.type)
-       
+               
         if (monzo_account is None or len(credit_accounts) == 0):
             log.info("Either Monzo connection is invalid, or there are no valid credit card connections; exiting sync loop")
             return
