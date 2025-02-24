@@ -330,7 +330,19 @@ def sync_balance():
 
             # (b) STANDARD ADJUSTMENT:
             if credit_account.cooldown_until is None or int(time()) > credit_account.cooldown_until:
-                if live_card_balance > credit_account.prev_balance:
+                if live_card_balance < current_pot:
+                    log.info("Step: Withdrawal due to pot exceeding card balance.")
+                    diff = current_pot - live_card_balance
+                    selection = monzo_account.get_account_type(credit_account.pot_id)
+                    monzo_account.withdraw_from_pot(credit_account.pot_id, diff, account_selection=selection)
+                    new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
+                    log.info(
+                        f"[Standard] {credit_account.type}: Withdrew £{diff / 100:.2f} as pot exceeded card. "
+                        f"Pot changed from £{current_pot / 100:.2f} to £{new_pot / 100:.2f} while card remains at £{live_card_balance / 100:.2f}."
+                    )
+                    credit_account.prev_balance = live_card_balance
+                    account_repository.save(credit_account)
+                elif live_card_balance > credit_account.prev_balance:
                     log.info("Step: Regular spending detected (card balance increased).")
                     diff = live_card_balance - current_pot
                     selection = monzo_account.get_account_type(credit_account.pot_id)
