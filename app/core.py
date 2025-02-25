@@ -326,6 +326,18 @@ def sync_balance():
                     credit_account.prev_balance = live_card_balance
                     account_repository.save(credit_account)
                     db.session.commit()
+                if live_card_balance < current_pot:
+                    log.info("[Override] {credit_account.type}: Withdrawal due to pot exceeding card balance.")
+                    diff = current_pot - live_card_balance
+                    selection = monzo_account.get_account_type(credit_account.pot_id)
+                    monzo_account.withdraw_from_pot(credit_account.pot_id, diff, account_selection=selection)
+                    new_pot = monzo_account.get_pot_balance(credit_account.pot_id)
+                    log.info(
+                        f"[Override] {credit_account.type}: Withdrew £{diff / 100:.2f} as pot exceeded card. "
+                        f"Pot changed from £{current_pot / 100:.2f} to £{new_pot / 100:.2f} while card remains at £{live_card_balance / 100:.2f}."
+                    )
+                    credit_account.prev_balance = live_card_balance
+                    account_repository.save(credit_account)
                 log.info(f"Step: Finished OVERRIDE branch for account '{credit_account.type}'.")
 
             # (b) STANDARD ADJUSTMENT:
