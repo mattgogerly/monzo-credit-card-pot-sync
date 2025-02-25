@@ -77,7 +77,7 @@ def sync_balance():
                         "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
                     )
 
-                account_repository.delete(credit_account)
+                account_repository.delete(credit_account.type)
 
         # nothing to sync, so exit now
         if monzo_account is None or len(credit_accounts) == 0:
