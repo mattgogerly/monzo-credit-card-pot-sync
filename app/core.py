@@ -457,7 +457,7 @@ def sync_balance():
             # Ensure we have the latest prev_balance.
             credit_account.prev_balance = refreshed.prev_balance
             if (credit_account.pot_id):
-                live = credit_account.get_total_balance(force_refresh=True)
+                live = credit_account.get_total_balance(force_refresh=False)
                 prev = credit_account.get_prev_balance(credit_account.pot_id)
                 if (credit_account.cooldown_until and current_time < credit_account.cooldown_until):
                     log.info(f"[Baseline Update] {credit_account.type}: Cooldown active; baseline not updated.")
