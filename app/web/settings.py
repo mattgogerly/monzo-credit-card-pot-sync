@@ -54,6 +54,7 @@ def save():
 @settings_bp.route("/clear_cooldown", methods=["POST"])
 def clear_cooldown():
     # Clear cooldown
+    monzo_account = account_repository.get_monzo_account()  # get the MonzoAccount for pot balance
     selected_type = request.form.get("account_type")
     if selected_type:
         credit_accounts = [
@@ -64,8 +65,9 @@ def clear_cooldown():
         credit_accounts = account_repository.get_credit_accounts()
     for account in credit_accounts:
         account.cooldown_until = None
-        new_baseline = account.get_pot_balance(account.pot_id)
-        # Reassign the updated account returned by update_credit_account_fields
+        # Use the monzo_account to retrieve the pot balance
+        new_baseline = monzo_account.get_pot_balance(account.pot_id)
+        account.prev_balance = new_baseline
         account = account_repository.update_credit_account_fields(account.type, account.pot_id, new_baseline, None)
     flash("Cooldown cleared—baseline updated for selected account(s).")
     return redirect(url_for("settings.index"))
