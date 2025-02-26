@@ -394,7 +394,7 @@ class TrueLayerAccount(Account):
                 log.info(f"True Pending Balance: £{net_pending:.2f}")
                 log.info(f"Total Balance: £{adjusted_balance:.2f}")
 
-                balance = adjusted_balance
+                balance = balance
 
             total_balance += balance
 
