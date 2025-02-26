@@ -64,11 +64,7 @@ def clear_cooldown():
         credit_accounts = account_repository.get_credit_accounts()
     for account in credit_accounts:
         account.cooldown_until = None
-        try:
-            new_baseline = account.get_pot_balance(account.pot_id)
-        except Exception:
-            new_baseline = account.get_total_balance()
-        account.prev_balance = new_baseline
+        new_baseline = account.get_pot_balance(account.pot_id)
         # Reassign the updated account returned by update_credit_account_fields
         account = account_repository.update_credit_account_fields(account.type, account.pot_id, new_baseline, None)
     flash("Cooldown cleared—baseline updated for selected account(s).")
