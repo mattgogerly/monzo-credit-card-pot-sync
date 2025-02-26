@@ -69,6 +69,7 @@ def clear_cooldown():
         except Exception:
             new_baseline = account.get_total_balance()
         account.prev_balance = new_baseline
-        account_repository.save(account)
+        # Explicitly update cooldown field in the database
+        account_repository.update_credit_account_fields(account.type, account.pot_id, new_baseline, None)
     flash("Cooldown cleared—baseline updated for selected account(s).")
     return redirect(url_for("settings.index"))
