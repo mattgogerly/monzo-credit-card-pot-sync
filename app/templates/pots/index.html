@@ -3,26 +3,46 @@
 {% block content %}
 <section class="flex-col w-full text-center">
     {% if accounts|length == 0 %}
-        Add a credit card to choose which pot to sync with
+        <p>Add a credit card to choose which pot to sync with</p>
     {% endif %}
 
     <ul class="flex flex-wrap justify-center mb-5 text-base font-semibold text-center" data-tabs-toggle="#tab-content" data-tabs-inactive-classes="text-white dark:text-white">
         {% for account in accounts %}
             <li class="me-2" role="presentation">
-                <button class="inline-block p-4 border-b-2 rounded-t-lg" id="{{ account.type|replace(' ', '') }}-tab" data-tabs-target="#{{ account.type|replace(' ', '') }}" type="button" role="tab" aria-controls="{{ account.type|replace(' ', '') }}" aria-selected="false">{{ account.type }}</button>
+                <button class="inline-block p-4 border-b-2 rounded-t-lg" id="{{ account.type|replace(' ', '') }}-tab" data-tabs-target="#{{ account.type|replace(' ', '') }}" type="button" role="tab" aria-controls="{{ account.type|replace(' ', '') }}" aria-selected="false">
+                    {{ account.type }}
+                </button>
             </li>
         {% endfor %}
     </ul>
 
-    <div id="tab-content w-full">
+    <div id="tab-content">
         {% for account in accounts %}
             <div class="hidden" id="{{ account.type|replace(' ', '') }}" role="tabpanel" aria-labelledby="{{ account.type|replace(' ', '') }}-tab">
+                {% if account.description %}
+                    <p class="mb-3 text-sm">Authorized account: {{ account.description }}</p>
+                {% endif %}
+
+                <!-- Account-specific drop-down for selecting Personal or Joint -->
+                <div class="mb-4">
+                    <label for="account_switcher_{{ account.type|replace(' ', '') }}" class="font-medium">Select Account:</label>
+                    <select id="account_switcher_{{ account.type|replace(' ', '') }}" class="border rounded p-2 bg-transparent">
+                        <option value="personal" {% if account_type == 'personal' or account_type is not defined %}selected{% endif %}>Personal Account</option>
+                        <option value="joint" {% if account_type == 'joint' %}selected{% endif %}>Joint Account</option>
+                    </select>
+                </div>
+
                 <section class="flex flex-row flex-wrap gap-3 justify-center w-full">
                     {% for pot in pots %}
                         <div class="basis-96 p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 dark:bg-gray-800 dark:border-gray-700">
                             <h5 class="mb-3 text-base font-semibold md:text-xl">
                                 {{ pot['name'] }}
                             </h5>
+                            {% if cooldown_mapping[pot['id']] is defined %}
+                              <small class="block text-xs text-red-600">
+                                Countdown Timer Active Until: {{ cooldown_mapping[pot['id']] }}
+                              </small>
+                            {% endif %}
                             <p class="text-sm font-normal">
                                 {% if account.pot_id == pot['id'] %}
                                     <h5 class="flex pt-2 text-green-900 dark:text-green-600">
@@ -32,10 +52,12 @@
                                         <span class="ms-1 text-md font-medium">Credit Card pot</span>
                                     </h5>
                                 {% else %}
-                                    <form action="" method="post">
-                                        <input name="account_type" id="account_type" type="text" value="{{ account['type'] }}" hidden />
-                                        <input name="pot_id" id="pot_id" type="text" value="{{ pot['id'] }}" hidden />
-                                        <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Set as Credit Card pot</button>
+                                    <form action="{{ url_for('pots.set_designated_pot') }}" method="post">
+                                        <input name="account_type" id="account_type" type="hidden" value="{{ account.type }}" />
+                                        <input name="pot_id" id="pot_id" type="hidden" value="{{ pot['id'] }}" />
+                                        <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                                            Set as Credit Card pot
+                                        </button>
                                     </form>
                                 {% endif %}
                             </p>
@@ -46,4 +68,52 @@
         {% endfor %}
     </div>
 </section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const defaultAccount = "personal";  // Default to "personal" if nothing is saved
+        const storageKey = "selectedAccount_global"; // Use a consistent key for global selection
+        const tabStorageKey = "activeTab"; // Key for storing the active tab
+        let savedAccountType = localStorage.getItem(storageKey) || defaultAccount;
+        let savedTab = localStorage.getItem(tabStorageKey);
+
+        // Check if the URL already has the account parameter
+        let currentUrl = new URL(window.location.href);
+        let currentAccount = currentUrl.searchParams.get("account");
+
+        if (!currentAccount) {
+            // If no account type is in the URL, redirect to the saved one
+            currentUrl.searchParams.set("account", savedAccountType);
+            window.location.replace(currentUrl.href); // Use replace to avoid back button issues
+        }
+
+        // Ensure dropdown selections reflect the saved choice
+        const selects = document.querySelectorAll("select[id^='account_switcher_']");
+        selects.forEach(function(select) {
+            select.value = savedAccountType;
+            select.addEventListener("change", function() {
+                localStorage.setItem(storageKey, this.value);
+                let updatedUrl = new URL(window.location.href);
+                updatedUrl.searchParams.set("account", this.value);
+                window.location.href = updatedUrl.href; // Navigate to update the URL
+            });
+        });
+
+        // Restore the active tab
+        if (savedTab) {
+            const activeTabButton = document.querySelector(`#${savedTab}-tab`);
+            if (activeTabButton) {
+                activeTabButton.click();
+            }
+        }
+
+        // Save the active tab when a tab is clicked
+        const tabButtons = document.querySelectorAll("[data-tabs-target]");
+        tabButtons.forEach(function(button) {
+            button.addEventListener("click", function() {
+                localStorage.setItem(tabStorageKey, this.getAttribute("data-tabs-target").substring(1));
+            });
+        });
+    });
+</script>
 {% endblock %}
