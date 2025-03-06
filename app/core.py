@@ -95,7 +95,7 @@ def sync_balance():
                     log.info(f"Service provider for {credit_account.type} is currently unavailable, will retry later.")
                 else:
                     if monzo_account is not None:
-                        monzo_account.send_notification
+                        monzo_account.send_notification(
                             f"{credit_account.type} Pot Sync Access Expired",
                             "Reconnect the account(s) on your Monzo Credit Card Pot Sync portal to resume sync",
                         )
