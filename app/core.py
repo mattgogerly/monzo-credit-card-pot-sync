@@ -164,7 +164,7 @@ def sync_balance():
         # --------------------------------------------------------------------
         now = int(time())
         for credit_account in credit_accounts:
-            # Force fresh reload of this account’s persisted values
+            # Force fresh reload of this account's persisted values
             db.session.commit()
             if hasattr(credit_account, "_sa_instance_state"):
                 db.session.expire(credit_account)
@@ -172,18 +172,39 @@ def sync_balance():
             credit_account.cooldown_until = refreshed.cooldown_until
             credit_account.prev_balance = refreshed.prev_balance
         
-            # Immediately clear cooldown if pot and live balance match
+            # Immediately clear cooldown if any termination conditions are met
             if credit_account.pot_id and credit_account.cooldown_until and now < credit_account.cooldown_until:
                 pre_deposit = credit_account.get_prev_balance(credit_account.pot_id)
                 current_pot = monzo_account.get_pot_balance(credit_account.pot_id)
+                live_card_balance = credit_account.get_total_balance(force_refresh=True)
+                
                 baseline = (
                     credit_account.cooldown_ref_card_balance
                     if credit_account.cooldown_ref_card_balance is not None
                     else pre_deposit
                 )
                 drop = baseline - current_pot
-                if drop <= 0:
-                    log.info(f"[Cooldown Expiration] {credit_account.type}: Pot and live balance match; clearing cooldown immediately.")
+                
+                # Clear cooldown if any of these conditions are met
+                should_clear = (drop <= 0 or              # Original condition: pot matches baseline
+                               live_card_balance == 0 or  # Card has been paid off
+                               current_pot == 0 or        # Pot is empty
+                               current_pot == live_card_balance)  # Pot and card are equal
+                
+                if should_clear:
+                    reason = "conditions met for early cooldown termination"
+                    if drop <= 0:
+                        reason = "pot matches baseline"
+                    elif live_card_balance == 0:
+                        reason = "card has been paid off"
+                    elif current_pot == 0:
+                        reason = "pot is empty"
+                    elif current_pot == live_card_balance:
+                        reason = "pot and card balance are equal"
+                        
+                    log.info(f"[Cooldown Expiration] {credit_account.type}: Clearing cooldown because {reason}.")
+                    log.info(f"[Cooldown Expiration] {credit_account.type}: Card balance: £{live_card_balance/100:.2f}, Pot balance: £{current_pot/100:.2f}")
+                    
                     credit_account.cooldown_until = None
                     credit_account.cooldown_ref_card_balance = None
                     account_repository.update_credit_account_fields(
