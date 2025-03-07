@@ -188,7 +188,6 @@ def sync_balance():
                 # Clear cooldown if any of these conditions are met
                 should_clear = (drop <= 0 or              # Original condition: pot matches baseline
                                live_card_balance == 0 or  # Card has been paid off
-                               current_pot == 0 or        # Pot is empty
                                current_pot == live_card_balance)  # Pot and card are equal
                 
                 if should_clear:
@@ -197,8 +196,6 @@ def sync_balance():
                         reason = "pot matches baseline"
                     elif live_card_balance == 0:
                         reason = "card has been paid off"
-                    elif current_pot == 0:
-                        reason = "pot is empty"
                     elif current_pot == live_card_balance:
                         reason = "pot and card balance are equal"
                         
