@@ -34,9 +34,10 @@ def amex_provider():
 
 @pytest.fixture
 def setting_repository(mocker):
-    setting_repository = SqlAlchemySettingRepository(MockDatabase())
-    mocker.patch.object(setting_repository, "get", return_value="setting_value")
-    mocker.patch("app.domain.auth_providers.repository", setting_repository)
+    repository = SqlAlchemySettingRepository(MockDatabase())
+    mocker.patch.object(repository, "get", return_value="setting_value")
+    mocker.patch("app.domain.auth_providers.repository", repository)
+    return repository
 
 
 @pytest.fixture(scope="function")
@@ -55,7 +56,38 @@ def test_client():
 
 @pytest.fixture(scope="function")
 def seed_data():
-    monzo_account = MonzoAccount("access_token", "refresh_token", time() + 10000)
+    from time import time
+    from app.domain.accounts import MonzoAccount
+    # Update seed data with pot_id provided
+    monzo_account = MonzoAccount("access_token", "refresh_token", int(time()) + 1000, pot_id="default_pot")
+    amex_account = TrueLayerAccount(
+        AuthProviderType.AMEX.value,
+        "access_token",
+        "refresh_token",
+        time() + 10000,
+        "pot_id",
+    )
+
+    account_repository = SqlAlchemyAccountRepository(db)
+    account_repository.save(monzo_account)
+    account_repository.save(amex_account)
+
+    setting_repository = SqlAlchemySettingRepository(db)
+    setting_repository.save(Setting("monzo_client_id", "monzo_dummy_client_id"))
+    setting_repository.save(Setting("monzo_client_secret", "monzo_dummy_client_secret"))
+    setting_repository.save(
+        Setting("truelayer_client_id", os.getenv("TRUELAYER_SANDBOX_CLIENT_ID"))
+    )
+    setting_repository.save(
+        Setting("truelayer_client_secret", os.getenv("TRUELAYER_SANDBOX_CLIENT_SECRET"))
+    )
+
+
+@pytest.fixture(scope="function")
+def seed_data_joint():
+    monzo_account = MonzoAccount(
+        "access_token", "refresh_token", time() + 10000, "pot_id", account_id="joint_123"
+    )
     amex_account = TrueLayerAccount(
         AuthProviderType.AMEX.value,
         "access_token",
@@ -96,3 +128,4 @@ def barclaycard_sandbox_provider(mocker):
 
     replaced_provider_mapping = {AuthProviderType.BARCLAYCARD: barclaycard_provider}
     mocker.patch("app.web.auth.provider_mapping", replaced_provider_mapping)
+    return barclaycard_provider
