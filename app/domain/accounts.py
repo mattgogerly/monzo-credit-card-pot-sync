@@ -67,7 +67,10 @@ class MonzoAccount(Account):
         response = r.get(
             f"{self.auth_provider.api_url}/accounts", headers=self.get_auth_header()
         )
-        return response.json()["accounts"][0]["id"]
+        accounts = response.json()["accounts"]
+        # Filter out closed accounts
+        open_accounts = [account for account in accounts if not account.get("closed", False)]
+        return open_accounts[0]["id"]
 
     def get_balance(self) -> int:
         query = parse.urlencode({"account_id": self.get_account_id()})
